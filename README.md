@@ -6,6 +6,15 @@ planets, and a dedicated **black holes** layer covering stellar-mass X-ray
 binaries, supermassive/AGN & quasars (including the two EHT-imaged flagships,
 Sgr A* and M87*), and notable gravitational-wave mergers.
 
+Designed for the general public with scientific-tool standards: an
+Apple-native frosted-glass UI floats over a full-bleed sky, only
+high-signal layers are on by default (heavier catalogs lazy-load when
+toggled), and famous objects — every planet, well-studied exoplanets,
+bright stars, and all black holes — open with an animated **3-D render**
+generated in-browser by a WebGL shader from published parameters (planet
+class, stellar temperature, accretion-disk physics). Renders are
+explicitly labeled as illustrations, never passed off as observations.
+
 Built with [Aladin Lite v3](https://aladin.cds.unistra.fr/AladinLite/) as the
 sky-rendering engine. No build step, no framework, no backend, no API keys —
 plain ES modules, HTML and CSS.
@@ -33,8 +42,9 @@ js/blackholes.js      Stellar-mass BHs, supermassive/AGN & quasars, GW mergers
 js/planets.js         Self-contained Solar System ephemeris (no external calls)
 js/search.js          CDS Sesame name resolver + coordinate parsing
 js/ui.js              Detail panel, toasts, tours, onboarding, about modal
+js/render3d.js        WebGL procedural 3-D renders (planets, stars, black holes)
 js/net.js             Shared fetch-with-timeout-and-retry helper
-data/*.json           Curated black hole, GW merger, tour and catalog data
+data/*.json           Curated black hole, GW merger, tour, render and catalog data
 ```
 
 ## Data sources & attribution
@@ -57,6 +67,18 @@ Every curated JSON file carries a `source` field per entry, and an
 `approx: true` flag wherever the literature disagrees or a value (especially
 sky-localization centroids for GW events) is only approximate rather than
 precise.
+
+## 3-D renders
+
+There is no public API serving true 3-D models of exoplanets or distant
+stars, so `js/render3d.js` generates each render procedurally: sphere
+shading with per-class surface synthesis (rocky, gas giant, ice giant,
+lava world, cloud deck), blackbody-correct star colors from published
+T_eff, Saturn-style ring occlusion, and a black hole visualization with
+event-horizon shadow, photon ring, and a doppler-beamed accretion disk.
+`data/renders.json` curates which objects get renders, with a `source`
+citation per factual claim; every render carries an on-screen caption
+stating it is an illustration, not an observed image.
 
 ## Known limitations
 

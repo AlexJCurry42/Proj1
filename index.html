@@ -2,9 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="theme-color" content="#000000" />
 <title>Deep Sky Atlas</title>
-<meta name="description" content="An interactive, browser-based atlas of the night sky — stars, galaxies, nebulae, exoplanets and black holes, powered by Aladin Lite and CDS/NASA data." />
+<meta name="description" content="An interactive atlas of the night sky — stars, galaxies, nebulae, exoplanets and black holes, powered by Aladin Lite and CDS/NASA data." />
 
 <link rel="stylesheet" href="https://aladin.cds.unistra.fr/AladinLite/api/v3/latest/aladin.css" />
 <link rel="stylesheet" href="css/style.css" />
@@ -13,120 +16,116 @@
 
 <a class="skip-link" href="#aladin-lite-div">Skip to sky view</a>
 
-<!-- ===================== TOP BAR ===================== -->
-<header id="top-bar" role="banner">
-  <button id="rail-toggle" class="icon-btn" aria-label="Toggle layer panel" aria-expanded="true" aria-controls="left-rail">☰</button>
+<!-- Full-bleed sky -->
+<main id="sky-wrap"><div id="aladin-lite-div"></div></main>
 
-  <div id="brand">
-    <span class="brand-title">Deep&nbsp;Sky&nbsp;Atlas</span>
-  </div>
+<!-- Floating top controls -->
+<header id="top-bar">
+  <button id="rail-toggle" class="glass-btn" aria-label="Toggle layers panel" aria-expanded="true" aria-controls="left-rail">
+    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4.5" width="18" height="15" rx="3.5"/><line x1="9.5" y1="4.5" x2="9.5" y2="19.5"/></svg>
+  </button>
 
   <form id="search-form" role="search" autocomplete="off">
+    <svg class="icon search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><line x1="15.8" y1="15.8" x2="20" y2="20"/></svg>
     <label for="search-input" class="visually-hidden">Search an object or coordinates</label>
-    <input id="search-input" type="text" placeholder="Search: M87, Cygnus X-1, NGC 253, 13 29 52 +47 11 43…" aria-label="Search an object or coordinates" />
-    <button type="submit" class="icon-btn" aria-label="Search">🔍</button>
+    <input id="search-input" type="search" placeholder="Search the sky" aria-label="Search an object or coordinates" enterkeyhint="search" />
     <ul id="search-history" class="dropdown-list" role="listbox" aria-label="Recent searches" hidden></ul>
   </form>
 
-  <nav id="tour-nav" aria-label="Guided tour">
-    <label for="tour-select" class="visually-hidden">Guided tour destinations</label>
-    <select id="tour-select" aria-label="Guided tour destinations">
-      <option value="">🚀 Tour…</option>
-    </select>
-  </nav>
-
   <div id="top-bar-right">
-    <button id="redlight-toggle" class="icon-btn" aria-pressed="false" aria-label="Toggle red-light night vision mode" title="Red-light mode">🔴</button>
-    <button id="about-toggle" class="icon-btn" aria-label="About &amp; credits" title="About &amp; credits">ℹ️</button>
+    <label for="tour-select" class="visually-hidden">Guided tours</label>
+    <select id="tour-select" class="glass-select" aria-label="Guided tours">
+      <option value="">Tours</option>
+    </select>
+    <button id="redlight-toggle" class="glass-btn" aria-pressed="false" aria-label="Toggle red-light night-vision mode" title="Red-light mode">
+      <svg class="icon icon-red" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="6.5" fill="currentColor" stroke="none"/></svg>
+    </button>
+    <button id="about-toggle" class="glass-btn" aria-label="About and credits" title="About &amp; credits">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><line x1="12" y1="11" x2="12" y2="16"/><line x1="12" y1="7.6" x2="12" y2="7.7"/></svg>
+    </button>
   </div>
 </header>
 
-<!-- ===================== READOUTS ===================== -->
+<!-- Layers panel (floating card on desktop, bottom sheet on phones) -->
+<aside id="left-rail" class="glass-panel" aria-label="Layers">
+  <div class="sheet-grabber" aria-hidden="true"></div>
+  <div class="rail-scroll">
+    <h1 class="rail-title">Deep Sky Atlas</h1>
+
+    <section class="rail-section">
+      <h2>Imagery</h2>
+      <label for="base-layer-select">Base survey</label>
+      <select id="base-layer-select" aria-label="Base imagery survey"></select>
+
+      <label for="overlay-layer-select">Overlay survey</label>
+      <select id="overlay-layer-select" aria-label="Overlay imagery survey">
+        <option value="">None</option>
+      </select>
+
+      <label for="overlay-opacity">Overlay blend</label>
+      <input type="range" id="overlay-opacity" min="0" max="100" value="0" aria-label="Overlay blend opacity" />
+      <p id="overlay-note" class="hint" hidden></p>
+    </section>
+
+    <section class="rail-section">
+      <h2>Catalogs</h2>
+      <ul id="catalog-toggle-list" class="toggle-list"></ul>
+    </section>
+
+    <section class="rail-section">
+      <h2>Black Holes</h2>
+      <ul id="blackhole-toggle-list" class="toggle-list"></ul>
+      <p class="hint">Tap any marker for mass, distance and discovery details — famous objects include a 3-D render.</p>
+    </section>
+  </div>
+</aside>
+
+<!-- Object detail panel -->
+<aside id="detail-panel" class="glass-panel" aria-label="Object details" hidden>
+  <div class="sheet-grabber" aria-hidden="true"></div>
+  <button id="detail-close" class="glass-btn small" aria-label="Close details">
+    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="7" y1="7" x2="17" y2="17"/><line x1="17" y1="7" x2="7" y2="17"/></svg>
+  </button>
+  <div id="detail-content"></div>
+</aside>
+
+<!-- Position readout -->
 <div id="readouts" aria-live="off">
-  <span id="coord-readout">RA — / Dec —</span>
-  <span id="fov-readout">FoV —</span>
+  <span id="coord-readout">—</span>
+  <span class="dot-sep" aria-hidden="true"></span>
+  <span id="fov-readout">—</span>
+  <span class="dot-sep" aria-hidden="true"></span>
   <span id="clock-readout"></span>
 </div>
 
-<!-- ===================== MAIN LAYOUT ===================== -->
-<div id="main-layout">
-
-  <!-- LEFT RAIL: layer manager -->
-  <aside id="left-rail" aria-label="Layer manager">
-    <div class="rail-scroll">
-
-      <section class="rail-section">
-        <h2>Imagery</h2>
-        <label for="base-layer-select">Base survey</label>
-        <select id="base-layer-select" aria-label="Base imagery survey"></select>
-
-        <label for="overlay-layer-select">Overlay survey</label>
-        <select id="overlay-layer-select" aria-label="Overlay imagery survey">
-          <option value="">None</option>
-        </select>
-
-        <label for="overlay-opacity">Overlay blend</label>
-        <input type="range" id="overlay-opacity" min="0" max="100" value="0" aria-label="Overlay blend opacity" />
-        <p id="overlay-note" class="hint" hidden></p>
-      </section>
-
-      <section class="rail-section">
-        <h2>Catalogs</h2>
-        <ul id="catalog-toggle-list" class="toggle-list"></ul>
-      </section>
-
-      <section class="rail-section">
-        <h2>Black Holes</h2>
-        <ul id="blackhole-toggle-list" class="toggle-list"></ul>
-        <p class="hint">Dark markers with an accretion-ring glow. Click any marker for mass, distance and discovery details.</p>
-      </section>
-
-      <section class="rail-section">
-        <h2>Legend</h2>
-        <ul id="legend-list" class="legend-list"></ul>
-      </section>
-
-    </div>
-  </aside>
-
-  <!-- SKY VIEW -->
-  <main id="sky-wrap">
-    <div id="aladin-lite-div"></div>
-  </main>
-
-  <!-- RIGHT PANEL: object details -->
-  <aside id="detail-panel" aria-label="Object details" hidden>
-    <button id="detail-close" class="icon-btn" aria-label="Close details">✕</button>
-    <div id="detail-content"></div>
-  </aside>
-
-</div>
-
-<!-- ===================== ONBOARDING ===================== -->
+<!-- First-run onboarding -->
 <div id="onboarding" role="dialog" aria-label="Welcome to Deep Sky Atlas" hidden>
-  <div id="onboarding-card">
-    <h2>Welcome to Deep Sky Atlas</h2>
+  <div id="onboarding-card" class="glass-panel">
+    <h2>Deep Sky Atlas</h2>
     <div id="onboarding-steps"></div>
+    <div id="onboarding-dots" aria-hidden="true"></div>
     <div class="onboarding-actions">
-      <button id="onboarding-prev" class="btn-secondary">Back</button>
-      <button id="onboarding-next" class="btn-primary">Next</button>
       <button id="onboarding-skip" class="btn-text">Skip</button>
+      <span class="actions-spacer"></span>
+      <button id="onboarding-prev" class="btn-secondary">Back</button>
+      <button id="onboarding-next" class="btn-primary">Continue</button>
     </div>
   </div>
 </div>
 
-<!-- ===================== ABOUT MODAL ===================== -->
+<!-- About & credits -->
 <div id="about-modal" role="dialog" aria-label="About and credits" hidden>
-  <div id="about-card">
-    <button id="about-close" class="icon-btn" aria-label="Close about dialog">✕</button>
+  <div id="about-card" class="glass-panel">
+    <button id="about-close" class="glass-btn small" aria-label="Close about dialog">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="7" y1="7" x2="17" y2="17"/><line x1="17" y1="7" x2="7" y2="17"/></svg>
+    </button>
     <div id="about-content"></div>
   </div>
 </div>
 
-<!-- ===================== TOASTS ===================== -->
+<!-- Toasts -->
 <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
 
-<!-- ===================== SCRIPTS ===================== -->
 <script src="https://aladin.cds.unistra.fr/AladinLite/api/v3/latest/aladin.js" charset="utf-8"></script>
 <script type="module" src="js/app.js"></script>
 </body>

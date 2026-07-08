@@ -2,6 +2,7 @@
 // about/credits modal, red-light night-vision mode.
 
 import { fetchJSON } from './net.js';
+import { attachRenderIfFamous } from './render3d.js';
 
 const SIMBAD_TAP_URL = 'https://simbad.cds.unistra.fr/simbad/sim-tap/sync';
 
@@ -42,21 +43,23 @@ export async function humanObjectType(code) {
 // ----------------------------------------------------------- Coord format ---
 
 export function toSexagesimalRA(raDeg) {
-  let h = raDeg / 15;
-  const hh = Math.floor(h);
-  const mFull = (h - hh) * 60;
-  const mm = Math.floor(mFull);
-  const ss = (mFull - mm) * 60;
+  // Round to 0.1 s of time FIRST, then decompose, so 59.96 s carries into the
+  // next minute instead of printing the invalid "60.0s".
+  let ds = Math.round((((raDeg % 360) + 360) % 360) / 15 * 36000); // deciseconds
+  ds = ds % 864000;
+  const hh = Math.floor(ds / 36000);
+  const mm = Math.floor((ds % 36000) / 600);
+  const ss = (ds % 600) / 10;
   return `${String(hh).padStart(2, '0')}h ${String(mm).padStart(2, '0')}m ${ss.toFixed(1).padStart(4, '0')}s`;
 }
 
 export function toSexagesimalDec(decDeg) {
   const sign = decDeg < 0 ? '-' : '+';
-  const abs = Math.abs(decDeg);
-  const dd = Math.floor(abs);
-  const mFull = (abs - dd) * 60;
-  const mm = Math.floor(mFull);
-  const ss = (mFull - mm) * 60;
+  // Same carry-safe rounding, in tenths of an arcsecond.
+  let das = Math.round(Math.abs(decDeg) * 36000);
+  const dd = Math.floor(das / 36000);
+  const mm = Math.floor((das % 36000) / 600);
+  const ss = (das % 600) / 10;
   return `${sign}${String(dd).padStart(2, '0')}° ${String(mm).padStart(2, '0')}' ${ss.toFixed(1).padStart(4, '0')}"`;
 }
 
@@ -137,6 +140,9 @@ export function renderDetailPanel(obj) {
       <a href="https://en.wikipedia.org/w/index.php?search=${nameForLinks}" target="_blank" rel="noopener">Wikipedia</a>
     </div>
   `;
+  // Famous objects (and every black hole) get a procedural 3-D render,
+  // inserted between the type chip and the data rows. Fire-and-forget.
+  attachRenderIfFamous(detailContent(), obj);
 }
 
 function row(label, value) {
@@ -189,22 +195,24 @@ export async function initTours(aladin) {
 // --------------------------------------------------------------- Onboarding ---
 
 const ONBOARDING_STEPS = [
-  { title: 'Pan & zoom', body: 'Drag to pan across the sky. Scroll or pinch to zoom — the deepest imagery reveals itself as you zoom into a field.' },
-  { title: 'Layers', body: 'Use the left rail to switch imagery surveys, blend an overlay on top, and toggle catalogs like SIMBAD, Gaia, exoplanets and black holes on or off.' },
-  { title: 'Search', body: 'Type an object name ("M87", "Cygnus X-1"), or raw coordinates, into the search bar and press Enter to fly there.' }
+  { title: 'Explore the sky', body: 'Drag to pan, pinch or scroll to zoom. Deeper imagery reveals itself as you zoom in.' },
+  { title: 'Layers', body: 'Only the essentials are on by default. Open Layers to switch surveys and turn on Gaia stars, exoplanets, quasars and more.' },
+  { title: 'Search anything', body: 'Try "Cygnus X-1" or "M87" — famous objects and every black hole open with a 3-D render.' }
 ];
 
 export function initOnboarding() {
   if (sessionStorage.getItem('dsa-onboarding-shown')) return;
   const overlay = document.getElementById('onboarding');
   const stepsEl = document.getElementById('onboarding-steps');
+  const dotsEl = document.getElementById('onboarding-dots');
   let step = 0;
 
   function render() {
     const s = ONBOARDING_STEPS[step];
-    stepsEl.innerHTML = `<div class="onboarding-step"><span class="step-num">${step + 1}/${ONBOARDING_STEPS.length}</span><strong>${s.title}</strong><p>${s.body}</p></div>`;
+    stepsEl.innerHTML = `<div class="onboarding-step"><strong>${s.title}</strong><p>${s.body}</p></div>`;
+    dotsEl.innerHTML = ONBOARDING_STEPS.map((_, i) => `<span${i === step ? ' class="active"' : ''}></span>`).join('');
     document.getElementById('onboarding-prev').disabled = step === 0;
-    document.getElementById('onboarding-next').textContent = step === ONBOARDING_STEPS.length - 1 ? 'Done' : 'Next';
+    document.getElementById('onboarding-next').textContent = step === ONBOARDING_STEPS.length - 1 ? 'Start exploring' : 'Continue';
   }
 
   function dismiss() {
@@ -252,6 +260,8 @@ export function initAboutModal() {
     </ul>
     <h3>Name resolution</h3>
     <p>Object search uses the CDS <strong>Sesame</strong> name resolver, querying SIMBAD, NED and VizieR.</p>
+    <h3>3-D renders</h3>
+    <p>Renders of planets, stars and black holes are <strong>procedural illustrations</strong> generated in-browser from published parameters (planet class, stellar temperature, accretion physics) — they are not observed images, and each one is labeled as such.</p>
     <p class="hint">Every dataset should be cited per its provider's own guidelines in any derived publication. This tool is for exploration and education, not a substitute for primary catalogs.</p>
   `;
   document.getElementById('about-toggle').addEventListener('click', () => { modal.hidden = false; });

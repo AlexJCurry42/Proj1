@@ -1,5 +1,10 @@
 // Deep Sky Atlas — application entry point: wires up the sky view, imagery
 // layer manager, readouts, and every catalog/black-hole/planet/search module.
+//
+// Layer philosophy: the sky should feel calm on first load. Only lightweight,
+// high-signal layers (Messier/NGC, Solar System, the black hole sets) are on
+// by default; bulk/progressive layers (SIMBAD, Gaia, exoplanets, Milliquas
+// quasars, GW mergers) are created lazily the first time they're switched on.
 
 import {
   showToast, renderDetailPanel, showDetailLoading, closeDetailPanel,
@@ -8,7 +13,7 @@ import {
   initDetailPanelClose
 } from './ui.js';
 import { runSearch, getHistory } from './search.js';
-import { initSimbadHips, initGaiaHips, loadMessierNgc, loadExoplanets, TYPE_STYLE } from './catalogs.js';
+import { initSimbadHips, initGaiaHips, loadMessierNgc, loadExoplanets } from './catalogs.js';
 import { loadStellarBlackHoles, loadFlagshipSupermassive, initMilliquasLayer, loadGwMergers } from './blackholes.js';
 import { computePlanetPositions, PLANET_LABELS } from './planets.js';
 
@@ -16,11 +21,11 @@ const SGR_A_STAR = { ra: 266.41683, dec: -29.007811 };
 
 const BASE_SURVEYS = [
   { id: 'P/DSS2/color', label: 'DSS2 color (optical)' },
-  { id: 'P/PanSTARRS/DR1/color-z-zg-g', label: 'Pan-STARRS DR1 color (deepest wide optical)' },
-  { id: 'P/SDSS9/color', label: 'SDSS9 color (optical)' },
-  { id: 'P/2MASS/color', label: '2MASS color (near-infrared)' },
-  { id: 'P/allWISE/color', label: 'AllWISE color (mid-infrared)' },
-  { id: 'P/Fermi/color', label: 'Fermi color (gamma-ray)' },
+  { id: 'P/PanSTARRS/DR1/color-z-zg-g', label: 'Pan-STARRS DR1 (deepest optical)' },
+  { id: 'P/SDSS9/color', label: 'SDSS9 (optical)' },
+  { id: 'P/2MASS/color', label: '2MASS (near-infrared)' },
+  { id: 'P/allWISE/color', label: 'AllWISE (mid-infrared)' },
+  { id: 'P/Fermi/color', label: 'Fermi (gamma-ray)' },
   { id: 'P/NVSS', label: 'NVSS (radio)' }
 ];
 
@@ -31,11 +36,14 @@ function debounce(fn, ms) {
   return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
 }
 
-function addToggle(listEl, { label, checked = true, onToggle }) {
-  const id = 'tgl-' + Math.random().toString(36).slice(2, 9);
+let toggleSeq = 0;
+function addToggle(listEl, { label, color, checked = true, onToggle }) {
+  const id = `tgl-${++toggleSeq}`;
   const li = document.createElement('li');
-  li.innerHTML = `<input type="checkbox" id="${id}" ${checked ? 'checked' : ''}/>` +
-    `<label class="toggle-label" for="${id}">${label}</label><span class="toggle-count"></span>`;
+  li.innerHTML =
+    `<span class="legend-dot" style="background:${color};color:${color}"></span>` +
+    `<label class="toggle-label" for="${id}">${label}<span class="toggle-count"></span></label>` +
+    `<input type="checkbox" role="switch" id="${id}" ${checked ? 'checked' : ''}/>`;
   listEl.appendChild(li);
   li.querySelector('input').addEventListener('change', (e) => onToggle(e.target.checked));
   return { setCount: (n) => { li.querySelector('.toggle-count').textContent = n; } };
@@ -92,6 +100,12 @@ async function main() {
   initDetailPanelClose();
   initOnboarding();
 
+  // Phones start with the layers sheet tucked away so the sky is unobstructed.
+  if (window.matchMedia('(max-width: 640px)').matches) {
+    document.getElementById('left-rail').classList.add('collapsed');
+    document.getElementById('rail-toggle').setAttribute('aria-expanded', 'false');
+  }
+
   const baseSelect = document.getElementById('base-layer-select');
   const overlaySelect = document.getElementById('overlay-layer-select');
   for (const s of BASE_SURVEYS) {
@@ -117,8 +131,12 @@ async function main() {
     survey: BASE_SURVEYS[0].id,
     fov: 180,
     projection: 'SIN',
-    showFullscreenControl: true,
-    showCooGridControl: true,
+    showFullscreenControl: false,
+    showCooGridControl: false,
+    showLayersControl: false,
+    showGotoControl: false,
+    showZoomControl: false,
+    showFrame: false,
     cooFrame: 'ICRS'
   });
   aladin.gotoRaDec(SGR_A_STAR.ra, SGR_A_STAR.dec);
@@ -144,7 +162,6 @@ async function main() {
     } catch (err) { /* non-critical visual feature */ }
   });
 
-  // -------------------------------------------------------------- Chrome ---
   initTours(aladin);
 
   // ------------------------------------------------------------ Readouts ---
@@ -153,7 +170,7 @@ async function main() {
     try {
       const [ra, dec] = aladin.pix2world(x, y);
       if (ra == null) return;
-      document.getElementById('coord-readout').textContent = `RA ${toSexagesimalRA(ra)}  Dec ${toSexagesimalDec(dec)}`;
+      document.getElementById('coord-readout').textContent = `${toSexagesimalRA(ra)} ${toSexagesimalDec(dec)}`;
     } catch (err) { /* cursor left the sky area, e.g. off the sphere */ }
   }, 250);
   skyDiv.addEventListener('mousemove', (e) => {
@@ -164,16 +181,19 @@ async function main() {
   const updateFovReadout = debounce(() => {
     try {
       const fov = aladin.getFov();
-      document.getElementById('fov-readout').textContent = `FoV ${fov[0].toFixed(3)}°`;
+      document.getElementById('fov-readout').textContent = `FoV ${fov[0].toFixed(2)}°`;
     } catch (err) { /* ignore transient state during animation */ }
   }, 250);
   aladin.on('zoomChanged', updateFovReadout);
   updateFovReadout();
 
   function tickClock() {
-    document.getElementById('clock-readout').textContent = new Date().toUTCString();
+    const now = new Date();
+    const hh = String(now.getUTCHours()).padStart(2, '0');
+    const mm = String(now.getUTCMinutes()).padStart(2, '0');
+    document.getElementById('clock-readout').textContent = `${hh}:${mm} UTC`;
   }
-  setInterval(tickClock, 1000);
+  setInterval(tickClock, 15000);
   tickClock();
 
   // -------------------------------------------------------------- Search ---
@@ -200,8 +220,21 @@ async function main() {
   });
   searchForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    await runSearch(aladin, searchInput.value);
+    const result = await runSearch(aladin, searchInput.value);
     renderHistory();
+    searchInput.blur();
+    // A resolved named object opens its detail card (with 3-D render if famous).
+    if (result && result.name) {
+      const typeLabel = result.otype ? await humanObjectType(result.otype) : 'Astronomical object';
+      renderDetailPanel({
+        name: result.name,
+        aliases: result.aliases,
+        typeLabel,
+        ra: result.ra,
+        dec: result.dec,
+        source: 'CDS Sesame name resolver (SIMBAD/NED/VizieR)'
+      });
+    }
   });
 
   // ----------------------------------------------------- Object detail UX ---
@@ -235,48 +268,99 @@ async function main() {
     }
   });
 
-  // -------------------------------------------------------------- Catalogs ---
+  // ------------------------------------------------ Catalog layers (rail) ---
   const catalogList = document.getElementById('catalog-toggle-list');
   const bhList = document.getElementById('blackhole-toggle-list');
 
-  const simbadCat = initSimbadHips(aladin);
-  addToggle(catalogList, { label: 'SIMBAD (progressive)', onToggle: (v) => setCatalogVisible(simbadCat, v) });
-
-  const gaiaCat = initGaiaHips(aladin);
-  addToggle(catalogList, { label: 'Gaia DR3 stars (progressive)', onToggle: (v) => setCatalogVisible(gaiaCat, v) });
-
-  const messierToggle = addToggle(catalogList, { label: 'Messier & NGC/IC', onToggle: (v) => setCatalogVisible(messierRef.catalog, v) });
+  // On by default: small, curated, high-signal.
   const messierRef = {};
+  const messierToggle = addToggle(catalogList, {
+    label: 'Messier & bright NGC/IC', color: '#ffd60a', checked: true,
+    onToggle: v => setCatalogVisible(messierRef.catalog, v)
+  });
   loadMessierNgc(aladin).then(({ catalog, count }) => { messierRef.catalog = catalog; messierToggle.setCount(count); });
 
-  const exoToggle = addToggle(catalogList, { label: 'Exoplanets', onToggle: (v) => setCatalogVisible(exoRef.catalog, v) });
-  const exoRef = {};
-  loadExoplanets(aladin).then(({ catalog, count }) => {
-    exoRef.catalog = catalog;
-    exoToggle.setCount(count.toLocaleString());
-    if (count > 0) showToast(`Loaded ${count.toLocaleString()} confirmed exoplanets from the NASA Exoplanet Archive.`, 'info');
-  });
-
-  const planetsToggle = addToggle(catalogList, { label: 'Solar System (now)', onToggle: (v) => setCatalogVisible(planetsRef.catalog, v) });
   const planetsRef = {};
+  const planetsToggle = addToggle(catalogList, {
+    label: 'Solar System', color: '#7fd6ff', checked: true,
+    onToggle: v => setCatalogVisible(planetsRef.catalog, v)
+  });
   initPlanetsLayer(aladin).then(({ catalog, count }) => { planetsRef.catalog = catalog; planetsToggle.setCount(count); });
 
+  // Off by default, created lazily on first enable: heavy/bulk layers.
+  let simbadCat = null;
+  addToggle(catalogList, {
+    label: 'SIMBAD database', color: '#0a84ff', checked: false,
+    onToggle: (v) => {
+      if (v && !simbadCat) simbadCat = initSimbadHips(aladin);
+      else setCatalogVisible(simbadCat, v);
+    }
+  });
+
+  let gaiaCat = null;
+  addToggle(catalogList, {
+    label: 'Gaia DR3 stars', color: '#ffffff', checked: false,
+    onToggle: (v) => {
+      if (v && !gaiaCat) gaiaCat = initGaiaHips(aladin);
+      else setCatalogVisible(gaiaCat, v);
+    }
+  });
+
+  const exoRef = { loading: false };
+  const exoToggle = addToggle(catalogList, {
+    label: 'Exoplanets', color: '#30d158', checked: false,
+    onToggle: async (v) => {
+      if (v && !exoRef.catalog && !exoRef.loading) {
+        exoRef.loading = true;
+        const { catalog, count } = await loadExoplanets(aladin);
+        exoRef.catalog = catalog;
+        exoRef.loading = false;
+        if (count > 0) exoToggle.setCount(count.toLocaleString());
+      } else {
+        setCatalogVisible(exoRef.catalog, v);
+      }
+    }
+  });
+
   // ----------------------------------------------------------- Black holes ---
-  const stellarToggle = addToggle(bhList, { label: 'Confirmed stellar-mass', onToggle: (v) => setCatalogVisible(stellarRef.catalog, v) });
   const stellarRef = {};
+  const stellarToggle = addToggle(bhList, {
+    label: 'Stellar-mass black holes', color: '#ff9f0a', checked: true,
+    onToggle: v => setCatalogVisible(stellarRef.catalog, v)
+  });
   loadStellarBlackHoles(aladin).then(({ catalog, count }) => { stellarRef.catalog = catalog; stellarToggle.setCount(count); });
 
-  const smToggle = addToggle(bhList, { label: 'Supermassive / AGN & quasars', onToggle: (v) => { setCatalogVisible(smRef.flagship, v); setCatalogVisible(smRef.milliquas, v); } });
-  const smRef = {};
-  loadFlagshipSupermassive(aladin).then(({ catalog, count }) => { smRef.flagship = catalog; smToggle.setCount(`2 flagship + live`); });
-  smRef.milliquas = initMilliquasLayer(aladin);
+  const flagshipRef = {};
+  const flagshipToggle = addToggle(bhList, {
+    label: 'EHT-imaged supermassive', color: '#ffd60a', checked: true,
+    onToggle: v => setCatalogVisible(flagshipRef.catalog, v)
+  });
+  loadFlagshipSupermassive(aladin).then(({ catalog, count }) => { flagshipRef.catalog = catalog; flagshipToggle.setCount(count); });
 
-  const gwToggle = addToggle(bhList, { label: 'Gravitational-wave mergers', onToggle: (v) => setCatalogVisible(gwRef.catalog, v) });
-  const gwRef = {};
-  loadGwMergers(aladin).then(({ catalog, count }) => { gwRef.catalog = catalog; gwToggle.setCount(count); });
+  let milliquasCat = null;
+  addToggle(bhList, {
+    label: 'AGN & quasars (Milliquas)', color: '#ff453a', checked: false,
+    onToggle: (v) => {
+      if (v && !milliquasCat) milliquasCat = initMilliquasLayer(aladin);
+      else setCatalogVisible(milliquasCat, v);
+    }
+  });
 
-  // -------------------------------------------------------------- Legend ---
-  renderLegend();
+  const gwRef = { loading: false };
+  const gwToggle = addToggle(bhList, {
+    label: 'Gravitational-wave mergers', color: '#bf5af2', checked: false,
+    onToggle: async (v) => {
+      if (v && !gwRef.catalog && !gwRef.loading) {
+        gwRef.loading = true;
+        const { catalog, count } = await loadGwMergers(aladin);
+        gwRef.catalog = catalog;
+        gwRef.loading = false;
+        if (count > 0) gwToggle.setCount(count);
+      } else {
+        setCatalogVisible(gwRef.catalog, v);
+      }
+    }
+  });
 
   window.addEventListener('error', (e) => {
     console.error('Unhandled error:', e.error || e.message);
@@ -312,24 +396,6 @@ async function initPlanetsLayer(aladin) {
   aladin.addCatalog(cat);
   setInterval(build, 10 * 60 * 1000); // refresh every 10 minutes to reflect real orbital motion
   return { catalog: cat, count };
-}
-
-function renderLegend() {
-  const legend = document.getElementById('legend-list');
-  const items = [
-    ...Object.values(TYPE_STYLE).map(s => ({ color: s.color, label: s.label })),
-    { color: '#5eb1ff', label: 'SIMBAD source' },
-    { color: '#ffffff', label: 'Gaia DR3 star' },
-    { color: '#7CFF9C', label: 'Exoplanet' },
-    { color: '#7fd6ff', label: 'Solar System planet' },
-    { color: '#ff9d3f', label: 'Stellar-mass black hole' },
-    { color: '#ff5555', label: 'AGN / quasar' },
-    { color: '#ffd166', label: 'EHT-imaged supermassive black hole' },
-    { color: '#b388ff', label: 'Gravitational-wave merger (illustrative)' }
-  ];
-  legend.innerHTML = items.map(i =>
-    `<li><span class="legend-swatch" style="background:${i.color}"></span>${i.label}</li>`
-  ).join('');
 }
 
 // On-page debug console for devices without dev tools (phones): append
@@ -375,7 +441,7 @@ function showFatalError(message) {
   btn.className = 'btn-primary';
   btn.addEventListener('click', () => location.reload());
   banner.append(h, p, tips, btn);
-  document.getElementById('sky-wrap').appendChild(banner);
+  document.body.appendChild(banner);
 }
 
 initDebugConsole();
