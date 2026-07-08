@@ -18,7 +18,13 @@ export function showToast(message, kind = 'info', timeoutMs = 6000) {
   el.setAttribute('role', kind === 'error' ? 'alert' : 'status');
   el.textContent = message;
   container.appendChild(el);
-  setTimeout(() => el.remove(), timeoutMs);
+  setTimeout(() => {
+    // Graceful exit: play the out animation, then remove (with a safety
+    // timeout so reduced-motion users aren't left with a stuck toast).
+    el.classList.add('toast-out');
+    el.addEventListener('animationend', () => el.remove(), { once: true });
+    setTimeout(() => el.remove(), 500);
+  }, timeoutMs);
 }
 
 // ------------------------------------------------------- Object type dict ---
@@ -157,6 +163,60 @@ function escapeHtml(str) {
 
 export function initDetailPanelClose() {
   document.getElementById('detail-close').addEventListener('click', closeDetailPanel);
+  const panel = document.getElementById('detail-panel');
+  makeSheetDraggable(panel, panel, closeDetailPanel);
+}
+
+// ------------------------------------------------- Mobile sheet gestures ---
+
+const isPhone = () => window.matchMedia('(max-width: 640px)').matches;
+
+/**
+ * Swipe-down-to-dismiss for mobile bottom sheets. A drag can start from the
+ * grabber, or from anywhere in the sheet while its scroller sits at the top.
+ * The sheet follows the finger; past ~90 px (or a quick flick) it dismisses,
+ * otherwise it springs back.
+ */
+function makeSheetDraggable(sheet, scroller, onDismiss) {
+  let startY = null, curY = 0, dragging = false, startT = 0;
+
+  sheet.addEventListener('touchstart', (e) => {
+    if (!isPhone()) return;
+    const fromGrabber = !!e.target.closest('.sheet-grabber');
+    if (!fromGrabber && scroller && scroller.scrollTop > 2) return;
+    startY = e.touches[0].clientY;
+    startT = Date.now();
+    curY = 0;
+    dragging = false;
+  }, { passive: true });
+
+  sheet.addEventListener('touchmove', (e) => {
+    if (startY == null || !isPhone()) return;
+    const dy = e.touches[0].clientY - startY;
+    if (!dragging && dy > 8) dragging = true;
+    if (dragging) {
+      if (e.cancelable) e.preventDefault(); // the gesture owns this move, not the scroller
+      curY = Math.max(0, dy);
+      sheet.style.transition = 'none';
+      sheet.style.transform = `translateY(${curY}px)`;
+    }
+  }, { passive: false });
+
+  const end = () => {
+    if (startY == null) return;
+    const velocity = curY / Math.max(Date.now() - startT, 1); // px/ms
+    sheet.style.transition = '';
+    if (dragging && (curY > 90 || velocity > 0.55)) onDismiss();
+    // Clear the inline transform on the next frame so the stylesheet's
+    // transition animates the sheet the rest of the way (down or back up).
+    requestAnimationFrame(() => { sheet.style.transform = ''; });
+    startY = null; curY = 0; dragging = false;
+  };
+  sheet.addEventListener('touchend', end);
+  sheet.addEventListener('touchcancel', end);
+
+  // A plain tap on the grabber also dismisses.
+  sheet.querySelector('.sheet-grabber')?.addEventListener('click', onDismiss);
 }
 
 // -------------------------------------------------------------------- Tours ---
@@ -284,8 +344,18 @@ export function initRedlightToggle() {
 export function initRailToggle() {
   const btn = document.getElementById('rail-toggle');
   const rail = document.getElementById('left-rail');
-  btn.addEventListener('click', () => {
-    const collapsed = rail.classList.toggle('collapsed');
+
+  function setCollapsed(collapsed) {
+    rail.classList.toggle('collapsed', collapsed);
     btn.setAttribute('aria-expanded', String(!collapsed));
+  }
+
+  btn.addEventListener('click', () => setCollapsed(!rail.classList.contains('collapsed')));
+
+  // On phones the layers sheet must never trap the sky: swipe it down, tap
+  // its grabber, or simply touch the sky to clear the view.
+  makeSheetDraggable(rail, rail.querySelector('.rail-scroll'), () => setCollapsed(true));
+  document.getElementById('sky-wrap').addEventListener('pointerdown', () => {
+    if (isPhone() && !rail.classList.contains('collapsed')) setCollapsed(true);
   });
 }

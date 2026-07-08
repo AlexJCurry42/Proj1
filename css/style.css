@@ -149,7 +149,10 @@ button, select, input{ font-family: inherit; color: inherit; }
   border: 0.5px solid var(--hairline); border-radius: 16px;
   box-shadow: var(--shadow-card);
   max-height: 40vh; overflow-y: auto;
+  transform-origin: top center;
+  animation: pop-in 0.2s cubic-bezier(0.32, 0.72, 0, 1);
 }
+@keyframes pop-in{ from{ opacity: 0; transform: scale(0.97) translateY(-4px); } }
 .dropdown-list li{
   padding: 10px 12px; border-radius: 10px; cursor: pointer;
   font-size: 14px; color: var(--text-primary);
@@ -276,12 +279,15 @@ input[type="range"]::-moz-range-thumb{
 }
 .toggle-list input[type="checkbox"]::after{
   content: ""; position: absolute; top: 2px; left: 2px;
-  width: 23px; height: 23px; border-radius: 50%;
+  width: 23px; height: 23px; border-radius: 999px;
   background: #fff; box-shadow: 0 1.5px 4px rgba(0,0,0,0.35);
-  transition: transform 0.22s cubic-bezier(0.32, 0.72, 0, 1);
+  transition: transform 0.22s cubic-bezier(0.32, 0.72, 0, 1), width 0.15s ease;
 }
 .toggle-list input[type="checkbox"]:checked{ background: var(--green); }
 .toggle-list input[type="checkbox"]:checked::after{ transform: translateX(17px); }
+/* iOS detail: the knob stretches while held, then settles */
+.toggle-list input[type="checkbox"]:active::after{ width: 27px; }
+.toggle-list input[type="checkbox"]:checked:active::after{ transform: translateX(13px); }
 
 /* ================= Detail panel ================= */
 #detail-panel{
@@ -341,7 +347,9 @@ input[type="range"]::-moz-range-thumb{
   display: block; width: 100%; height: auto; aspect-ratio: 1;
   border-radius: 16px;
   background: radial-gradient(ellipse at center, rgba(20,22,32,0.9), rgba(4,5,10,0.95));
+  animation: fade-in 0.6s ease;
 }
+@keyframes fade-in{ from{ opacity: 0; } }
 .render-blurb{ font-size: 13.5px; line-height: 1.5; color: var(--text-primary); margin: 12px 0 0; }
 .render-caption{ font-size: 11px; color: var(--text-tertiary); margin: 6px 0 0; }
 
@@ -381,19 +389,25 @@ input[type="range"]::-moz-range-thumb{
 #onboarding-card{
   max-width: 380px; width: calc(100% - 48px); padding: 28px 24px 20px;
   background: var(--material-thick);
+  animation: card-in 0.4s cubic-bezier(0.32, 0.72, 0, 1);
 }
+@keyframes card-in{ from{ opacity: 0; transform: scale(0.94) translateY(10px); } }
 #onboarding-card h2{
   margin: 0 0 18px; font-size: 24px; font-weight: 700; letter-spacing: -0.03em; text-align: center;
 }
-.onboarding-step{ font-size: 15px; line-height: 1.5; min-height: 88px; text-align: center; }
+.onboarding-step{
+  font-size: 15px; line-height: 1.5; min-height: 88px; text-align: center;
+  animation: step-in 0.28s ease; /* re-plays on every step change (node is rebuilt) */
+}
+@keyframes step-in{ from{ opacity: 0; transform: translateX(12px); } }
 .onboarding-step strong{ display: block; font-size: 16px; margin-bottom: 6px; }
 .onboarding-step p{ margin: 0; color: var(--text-secondary); }
 #onboarding-dots{ display: flex; justify-content: center; gap: 7px; margin: 18px 0 20px; }
 #onboarding-dots span{
-  width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,0.22);
-  transition: background 0.2s ease;
+  width: 7px; height: 7px; border-radius: 999px; background: rgba(255,255,255,0.22);
+  transition: background 0.25s ease, width 0.25s cubic-bezier(0.32, 0.72, 0, 1);
 }
-#onboarding-dots span.active{ background: var(--text-primary); }
+#onboarding-dots span.active{ width: 18px; background: var(--text-primary); }
 .onboarding-actions{ display: flex; align-items: center; gap: 8px; }
 .actions-spacer{ flex: 1; }
 
@@ -420,6 +434,7 @@ input[type="range"]::-moz-range-thumb{
   max-height: min(78vh, 700px); overflow-y: auto; padding: 26px 24px;
   background: var(--material-thick);
   -webkit-overflow-scrolling: touch;
+  animation: card-in 0.4s cubic-bezier(0.32, 0.72, 0, 1);
 }
 #about-close{ position: absolute; top: 14px; right: 14px; }
 #about-content h2{ font-size: 20px; font-weight: 700; letter-spacing: -0.02em; margin: 0 30px 12px 0; }
@@ -452,6 +467,8 @@ input[type="range"]::-moz-range-thumb{
 .toast.toast-error{ border-color: rgba(255, 69, 58, 0.5); }
 .toast.toast-info{ border-color: var(--hairline); }
 @keyframes toast-in{ from{ opacity: 0; transform: translateY(-10px) scale(0.97); } to{ opacity: 1; transform: none; } }
+.toast.toast-out{ animation: toast-out 0.28s ease forwards; }
+@keyframes toast-out{ to{ opacity: 0; transform: translateY(-8px) scale(0.97); } }
 
 /* ================= Fatal banner & debug console ================= */
 #fatal-banner{
@@ -486,6 +503,14 @@ body.redlight :is(.glass-panel, .glass-btn, #search-form, .glass-select, #readou
 body.redlight{ --text-primary: #ff6b60; --text-secondary: rgba(255, 107, 96, 0.6); --text-tertiary: rgba(255, 107, 96, 0.35); --blue: #ff6b60; --green: #a83a32; }
 body.redlight .render-canvas{ filter: sepia(1) saturate(4) hue-rotate(-50deg) brightness(0.8); }
 
+/* ================= Desktop hover refinements ================= */
+@media (hover: hover){
+  .glass-btn:hover{ background: rgba(255, 255, 255, 0.10); }
+  .glass-select:hover{ background-color: rgba(255, 255, 255, 0.10); }
+  .toggle-list li{ border-radius: 10px; transition: background 0.15s ease; }
+  .toggle-list li:hover{ background: rgba(255, 255, 255, 0.035); }
+}
+
 /* ================= Reduced motion ================= */
 @media (prefers-reduced-motion: reduce){
   *{ animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
@@ -496,9 +521,14 @@ body.redlight .render-canvas{ filter: sepia(1) saturate(4) hue-rotate(-50deg) br
   #top-bar{ gap: 6px; }
   .glass-select{ padding: 0 26px 0 10px; font-size: 13px; }
 
+  /* Full-width grabber = a generous drag/tap target for dismissing sheets */
   .sheet-grabber{
-    display: block; width: 36px; height: 5px; border-radius: 3px;
-    background: rgba(255,255,255,0.25); margin: 8px auto 2px; flex-shrink: 0;
+    display: block; width: 100%; padding: 10px 0 8px; flex-shrink: 0;
+    cursor: grab; touch-action: none;
+  }
+  .sheet-grabber::after{
+    content: ""; display: block; width: 36px; height: 5px; border-radius: 3px;
+    background: rgba(255,255,255,0.28); margin: 0 auto;
   }
 
   #left-rail{
@@ -516,8 +546,11 @@ body.redlight .render-canvas{ filter: sepia(1) saturate(4) hue-rotate(-50deg) br
     max-height: 62vh;
     border-radius: var(--radius-card) var(--radius-card) 0 0;
     padding-top: 4px;
+    transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+    overscroll-behavior-y: contain;
   }
   #detail-close{ top: 14px; }
+  .rail-scroll{ overscroll-behavior-y: contain; }
 
   #readouts{ bottom: auto; top: calc(58px + var(--safe-top)); height: 26px; font-size: 10.5px; padding: 0 12px; gap: 8px; }
 
