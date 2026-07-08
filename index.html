@@ -75,7 +75,6 @@
     <section class="rail-section">
       <h2>Black Holes</h2>
       <ul id="blackhole-toggle-list" class="toggle-list"></ul>
-      <p class="hint">Tap any marker for mass, distance and discovery details — famous objects include a 3-D render.</p>
     </section>
   </div>
 </aside>
@@ -88,6 +87,16 @@
   </button>
   <div id="detail-content"></div>
 </aside>
+
+<!-- Zoom controls -->
+<div id="zoom-stack">
+  <button id="zoom-in" class="glass-btn" aria-label="Zoom in">
+    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="12" y1="6" x2="12" y2="18"/><line x1="6" y1="12" x2="18" y2="12"/></svg>
+  </button>
+  <button id="zoom-out" class="glass-btn" aria-label="Zoom out">
+    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="6" y1="12" x2="18" y2="12"/></svg>
+  </button>
+</div>
 
 <!-- Position readout -->
 <div id="readouts" aria-live="off">

@@ -16,6 +16,7 @@ import { runSearch, getHistory } from './search.js';
 import { initSimbadHips, initGaiaHips, loadMessierNgc, loadExoplanets } from './catalogs.js';
 import { loadStellarBlackHoles, loadFlagshipSupermassive, initMilliquasLayer, loadGwMergers } from './blackholes.js';
 import { computePlanetPositions, PLANET_LABELS } from './planets.js';
+import { makePlanetIcon } from './markers.js';
 
 const SGR_A_STAR = { ra: 266.41683, dec: -29.007811 };
 
@@ -49,12 +50,16 @@ function addToggle(listEl, { label, color, checked = true, onToggle }) {
   return { setCount: (n) => { li.querySelector('.toggle-count').textContent = n; } };
 }
 
-function setCatalogVisible(catalog, visible) {
-  if (!catalog) return;
-  try {
-    if (visible && typeof catalog.show === 'function') catalog.show();
-    else if (!visible && typeof catalog.hide === 'function') catalog.hide();
-  } catch (err) { /* best-effort; visibility toggling is not essential to correctness */ }
+function setCatalogVisible(catalogOrList, visible) {
+  if (!catalogOrList) return;
+  const list = Array.isArray(catalogOrList) ? catalogOrList : [catalogOrList];
+  for (const catalog of list) {
+    if (!catalog) continue;
+    try {
+      if (visible && typeof catalog.show === 'function') catalog.show();
+      else if (!visible && typeof catalog.hide === 'function') catalog.hide();
+    } catch (err) { /* best-effort; visibility toggling is not essential to correctness */ }
+  }
 }
 
 function setBaseSurvey(aladin, id) {
@@ -163,6 +168,16 @@ async function main() {
   });
 
   initTours(aladin);
+
+  // Floating zoom controls (Aladin's own chrome is disabled for a clean sky).
+  function zoomBy(factor) {
+    try {
+      const fov = aladin.getFov()[0];
+      aladin.setFoV(Math.min(180, Math.max(0.02, fov * factor)));
+    } catch (err) { /* engine mid-animation; ignore */ }
+  }
+  document.getElementById('zoom-in').addEventListener('click', () => zoomBy(0.5));
+  document.getElementById('zoom-out').addEventListener('click', () => zoomBy(2));
 
   // ------------------------------------------------------------ Readouts ---
   const skyDiv = document.getElementById('aladin-lite-div');
@@ -276,9 +291,9 @@ async function main() {
   const messierRef = {};
   const messierToggle = addToggle(catalogList, {
     label: 'Messier & bright NGC/IC', color: '#ffd60a', checked: true,
-    onToggle: v => setCatalogVisible(messierRef.catalog, v)
+    onToggle: v => setCatalogVisible(messierRef.catalogs, v)
   });
-  loadMessierNgc(aladin).then(({ catalog, count }) => { messierRef.catalog = catalog; messierToggle.setCount(count); });
+  loadMessierNgc(aladin).then(({ catalogs, count }) => { messierRef.catalogs = catalogs; messierToggle.setCount(count); });
 
   const planetsRef = {};
   const planetsToggle = addToggle(catalogList, {
@@ -371,12 +386,22 @@ async function main() {
 }
 
 async function initPlanetsLayer(aladin) {
-  const cat = A.catalog({ name: 'Solar System', shape: 'circle', color: '#7fd6ff', sourceSize: 14, onClick: null });
+  const cat = A.catalog({
+    name: 'Solar System',
+    shape: makePlanetIcon('#7fd6ff', 18),
+    sourceSize: 18,
+    displayLabel: true,
+    labelColumn: 'name',
+    labelColor: 'rgba(220, 235, 255, 0.85)',
+    labelFont: '11px -apple-system, sans-serif',
+    onClick: null
+  });
 
   function build() {
     if (typeof cat.removeAll === 'function') cat.removeAll();
     const positions = computePlanetPositions(new Date());
     const sources = positions.map(p => A.source(p.ra, p.dec, {
+      name: PLANET_LABELS[p.body],
       _detail: {
         name: PLANET_LABELS[p.body],
         typeLabel: 'Solar System planet',
@@ -387,7 +412,7 @@ async function initPlanetsLayer(aladin) {
         approxNote: 'Computed client-side from truncated Keplerian orbital elements (JPL/Meeus low-precision formulae), accurate to a few arcminutes for 1800-2050.',
         source: 'Self-contained ephemeris (see js/planets.js); orbital elements from JPL "Keplerian Elements for Approximate Positions of the Major Planets".'
       }
-    }, { shape: 'circle', color: '#7fd6ff' }));
+    }));
     cat.addSources(sources);
     return sources.length;
   }

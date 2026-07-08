@@ -195,9 +195,9 @@ export async function initTours(aladin) {
 // --------------------------------------------------------------- Onboarding ---
 
 const ONBOARDING_STEPS = [
-  { title: 'Explore the sky', body: 'Drag to pan, pinch or scroll to zoom. Deeper imagery reveals itself as you zoom in.' },
-  { title: 'Layers', body: 'Only the essentials are on by default. Open Layers to switch surveys and turn on Gaia stars, exoplanets, quasars and more.' },
-  { title: 'Search anything', body: 'Try "Cygnus X-1" or "M87" — famous objects and every black hole open with a 3-D render.' }
+  { title: 'Explore the sky', body: 'Drag to pan, pinch to zoom. This is the real sky — more detail and more objects reveal themselves the deeper you go.' },
+  { title: 'Tap anything', body: 'Every glowing marker opens a story: black holes, nebulae, planets. Famous objects come with an animated 3-D render.' },
+  { title: 'Search the universe', body: 'Try "Cygnus X-1" or "Orion Nebula" — or pick a Tour for a guided flight to the sky’s greatest hits.' }
 ];
 
 export function initOnboarding() {

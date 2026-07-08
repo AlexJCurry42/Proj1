@@ -5,13 +5,14 @@
 
 import { fetchJSON } from './net.js';
 import { showToast } from './ui.js';
+import { makeGlowDot, makeBlackHoleIcon, makeDiffuseBlob } from './markers.js';
 
 const VIZIER_TAP_URL = 'https://tapvizier.cds.unistra.fr/TAPVizieR/tap/sync';
 
-const STELLAR_COLOR = '#ff9d3f';
-const SUPERMASSIVE_COLOR = '#ff5555';
-const FLAGSHIP_COLOR = '#ffd166';
-const GW_COLOR = '#b388ff';
+const STELLAR_COLOR = '#ff9f0a';
+const SUPERMASSIVE_COLOR = '#ff453a';
+const FLAGSHIP_COLOR = '#ffd60a';
+const GW_COLOR = '#bf5af2';
 
 function debounce(fn, ms) {
   let t = null;
@@ -28,7 +29,12 @@ export async function loadStellarBlackHoles(aladin) {
     return { catalog: null, count: 0 };
   }
 
-  const cat = A.catalog({ name: 'Stellar-mass black holes', shape: 'circle', color: STELLAR_COLOR, sourceSize: 12, onClick: null });
+  const cat = A.catalog({
+    name: 'Stellar-mass black holes',
+    shape: makeBlackHoleIcon(STELLAR_COLOR, 20),
+    sourceSize: 20,
+    onClick: null
+  });
   for (const bh of data.objects) {
     const massText = bh.mass_solar != null ? `${bh.mass_solar}${bh.approx ? ' (approx.)' : ''} M☉` : 'Not dynamically measured';
     const source = A.source(bh.ra, bh.dec, {
@@ -43,7 +49,7 @@ export async function loadStellarBlackHoles(aladin) {
         source: bh.source,
         approxNote: bh.approx || bh.distance_approx ? 'Some values above are approximate; the literature disagrees on precise mass/distance for this system.' : (bh.notes || null)
       }
-    }, { shape: 'circle', color: STELLAR_COLOR });
+    });
     cat.addSources([source]);
   }
   aladin.addCatalog(cat);
@@ -60,10 +66,20 @@ export async function loadFlagshipSupermassive(aladin) {
     return { catalog: null, count: 0 };
   }
 
-  const cat = A.catalog({ name: 'EHT-imaged supermassive black holes', shape: 'circle', color: FLAGSHIP_COLOR, sourceSize: 16, onClick: null });
+  const cat = A.catalog({
+    name: 'EHT-imaged supermassive black holes',
+    shape: makeBlackHoleIcon(FLAGSHIP_COLOR, 26, 1.25),
+    sourceSize: 26,
+    displayLabel: true,
+    labelColumn: 'name',
+    labelColor: '#ffd60acc',
+    labelFont: '12px -apple-system, sans-serif',
+    onClick: null
+  });
   for (const bh of data.objects) {
     const massText = `${(bh.mass_solar / 1e6).toLocaleString(undefined, { maximumFractionDigits: 2 })} million M☉`;
     const source = A.source(bh.ra, bh.dec, {
+      name: bh.name,
       _detail: {
         name: bh.name,
         aliases: bh.aliases,
@@ -75,7 +91,7 @@ export async function loadFlagshipSupermassive(aladin) {
         extraRows: [['Mass', massText]],
         source: bh.source
       }
-    }, { shape: 'circle', color: FLAGSHIP_COLOR });
+    });
     cat.addSources([source]);
   }
   aladin.addCatalog(cat);
@@ -90,7 +106,12 @@ export async function loadFlagshipSupermassive(aladin) {
  * "load only what's in view" behavior with cone searches.
  */
 export function initMilliquasLayer(aladin) {
-  const cat = A.catalog({ name: 'AGN & Quasars (Milliquas)', shape: 'circle', color: SUPERMASSIVE_COLOR, sourceSize: 7, onClick: null });
+  const cat = A.catalog({
+    name: 'AGN & Quasars (Milliquas)',
+    shape: makeGlowDot(SUPERMASSIVE_COLOR, 9),
+    sourceSize: 9,
+    onClick: null
+  });
   aladin.addCatalog(cat);
 
   let lastKey = '';
@@ -129,7 +150,7 @@ export function initMilliquasLayer(aladin) {
             extraRows: [['Redshift (z)', get('z')]],
             source: 'Million Quasars catalog (Milliquas, VII/294) via VizieR TAP'
           }
-        }, { shape: 'circle', color: SUPERMASSIVE_COLOR });
+        });
       });
       cat.addSources(sources);
     } catch (err) {
@@ -154,7 +175,12 @@ export async function loadGwMergers(aladin) {
     return { catalog: null, count: 0 };
   }
 
-  const cat = A.catalog({ name: 'Gravitational-wave mergers', shape: 'plus', color: GW_COLOR, sourceSize: 14, onClick: null });
+  const cat = A.catalog({
+    name: 'Gravitational-wave mergers',
+    shape: makeDiffuseBlob(GW_COLOR, 26),
+    sourceSize: 26,
+    onClick: null
+  });
   for (const ev of data.events) {
     const source = A.source(ev.ra, ev.dec, {
       _detail: {
@@ -172,7 +198,7 @@ export async function loadGwMergers(aladin) {
         source: ev.source,
         approxNote: `Sky position is an illustrative centroid only — the real localization region spans roughly ${ev.localization_area_deg2} square degrees, not a point.`
       }
-    }, { shape: 'plus', color: GW_COLOR });
+    });
     cat.addSources([source]);
   }
   aladin.addCatalog(cat);
