@@ -84,7 +84,34 @@ function updateSurveyHint(baseId, overlayId) {
 }
 
 async function main() {
-  await A.init;
+  // Aladin-independent chrome first, so a sky-engine failure still leaves a
+  // working shell (rail, about modal, red-light mode, onboarding).
+  initRailToggle();
+  initRedlightToggle();
+  initAboutModal();
+  initDetailPanelClose();
+  initOnboarding();
+
+  const baseSelect = document.getElementById('base-layer-select');
+  const overlaySelect = document.getElementById('overlay-layer-select');
+  for (const s of BASE_SURVEYS) {
+    baseSelect.appendChild(new Option(s.label, s.id));
+    overlaySelect.appendChild(new Option(s.label, s.id));
+  }
+  baseSelect.value = BASE_SURVEYS[0].id;
+
+  // ----------------------------------------------------------- Sky engine ---
+  if (typeof window.A === 'undefined') {
+    throw new Error('the Aladin Lite script never loaded from aladin.cds.unistra.fr — a content blocker, DNS filter, or captive network is the usual cause.');
+  }
+  // A.init resolves once Aladin's WASM core is downloaded and compiled. It can
+  // stall silently (e.g. Safari Lockdown Mode disables WebAssembly), so race
+  // it against a timeout rather than awaiting it unconditionally.
+  await Promise.race([
+    A.init,
+    new Promise((_, reject) => setTimeout(() =>
+      reject(new Error('the Aladin Lite engine stalled during startup (20 s timeout). Anything that blocks WebAssembly or WebGL — such as Safari Lockdown Mode — causes this.')), 20000))
+  ]);
 
   const aladin = A.aladin('#aladin-lite-div', {
     survey: BASE_SURVEYS[0].id,
@@ -97,13 +124,6 @@ async function main() {
   aladin.gotoRaDec(SGR_A_STAR.ra, SGR_A_STAR.dec);
 
   // ---------------------------------------------------------- Imagery UI ---
-  const baseSelect = document.getElementById('base-layer-select');
-  const overlaySelect = document.getElementById('overlay-layer-select');
-  for (const s of BASE_SURVEYS) {
-    baseSelect.appendChild(new Option(s.label, s.id));
-    overlaySelect.appendChild(new Option(s.label, s.id));
-  }
-  baseSelect.value = BASE_SURVEYS[0].id;
   baseSelect.addEventListener('change', () => {
     setBaseSurvey(aladin, baseSelect.value);
     updateSurveyHint(baseSelect.value, overlaySelect.value);
@@ -125,11 +145,6 @@ async function main() {
   });
 
   // -------------------------------------------------------------- Chrome ---
-  initRailToggle();
-  initRedlightToggle();
-  initAboutModal();
-  initDetailPanelClose();
-  initOnboarding();
   initTours(aladin);
 
   // ------------------------------------------------------------ Readouts ---
@@ -317,7 +332,53 @@ function renderLegend() {
   ).join('');
 }
 
+// On-page debug console for devices without dev tools (phones): append
+// ?debug=1 to the URL and every console error / unhandled rejection is
+// mirrored into a scrollable pane you can screenshot.
+function initDebugConsole() {
+  if (!new URLSearchParams(location.search).has('debug')) return;
+  const pane = document.createElement('div');
+  pane.id = 'debug-pane';
+  document.body.appendChild(pane);
+  const log = (kind, msg) => {
+    const line = document.createElement('div');
+    line.textContent = `[${kind}] ${msg}`;
+    pane.appendChild(line);
+    pane.scrollTop = pane.scrollHeight;
+  };
+  for (const kind of ['error', 'warn']) {
+    const orig = console[kind].bind(console);
+    console[kind] = (...args) => { orig(...args); log(kind, args.map(a => a instanceof Error ? `${a.message}\n${a.stack}` : String(a)).join(' ')); };
+  }
+  window.addEventListener('error', e => log('error', e.message + (e.filename ? ` @ ${e.filename}:${e.lineno}` : '')));
+  window.addEventListener('unhandledrejection', e => log('rejection', String(e.reason?.message || e.reason)));
+  log('info', `debug console active — aladin.js ${typeof window.A === 'undefined' ? 'NOT LOADED' : 'loaded'}, UA: ${navigator.userAgent}`);
+  window.__dsaDebugLog = log;
+}
+
+// Persistent (non-toast) failure banner: if the sky engine can't start there
+// is no app to speak of, so the user must see why, not a 15-second toast.
+function showFatalError(message) {
+  console.error('Deep Sky Atlas failed to start:', message);
+  document.getElementById('fatal-banner')?.remove();
+  const banner = document.createElement('div');
+  banner.id = 'fatal-banner';
+  banner.setAttribute('role', 'alert');
+  const h = document.createElement('h2');
+  h.textContent = 'The sky engine failed to start';
+  const p = document.createElement('p');
+  p.textContent = `Reason: ${message}`;
+  const tips = document.createElement('p');
+  tips.textContent = 'Things to check: this device can reach aladin.cds.unistra.fr (content blockers and some school/work networks block it), Safari Lockdown Mode is off for this site, and you are online. Then reload.';
+  const btn = document.createElement('button');
+  btn.textContent = 'Reload';
+  btn.className = 'btn-primary';
+  btn.addEventListener('click', () => location.reload());
+  banner.append(h, p, tips, btn);
+  document.getElementById('sky-wrap').appendChild(banner);
+}
+
+initDebugConsole();
 main().catch(err => {
-  console.error(err);
-  showToast('Deep Sky Atlas failed to start: ' + err.message, 'error', 15000);
+  showFatalError(err.message);
 });

@@ -210,6 +210,26 @@ body.redlight #redlight-toggle{ background: #3a0d0d; border-color:#7a1c1c; }
 .toast.toast-info{ border-left-color: var(--accent); }
 @keyframes toast-in{ from{ opacity:0; transform:translateY(8px);} to{ opacity:1; transform:none; } }
 
+/* ---------- Fatal-error banner & on-page debug console ---------- */
+#fatal-banner{
+  position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+  z-index:150; max-width:420px; width:90%;
+  background: var(--panel-bg); border:1px solid var(--danger); border-radius:12px;
+  padding:20px; text-align:center;
+}
+#fatal-banner h2{ color: var(--danger); font-size:16px; margin:0 0 10px; }
+#fatal-banner p{ font-size:13px; line-height:1.5; color: var(--text); }
+#fatal-banner .btn-primary{ margin-top:8px; }
+
+#debug-pane{
+  position:fixed; left:0; right:0; bottom:0; z-index:400;
+  max-height:38vh; overflow-y:auto;
+  background:#000000e6; color:#9dff9d; border-top:1px solid #333;
+  font-family: ui-monospace, Menlo, Consolas, monospace; font-size:10.5px;
+  padding:6px 8px; white-space:pre-wrap; word-break:break-word;
+}
+#debug-pane div{ padding:2px 0; border-bottom:1px dotted #222; }
+
 /* ---------- Aladin popup tweaks ---------- */
 .bh-popup-badge{ color: var(--bh-glow); font-weight:700; }
 
