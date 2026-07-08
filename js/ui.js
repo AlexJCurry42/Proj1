@@ -72,14 +72,27 @@ export function toSexagesimalDec(decDeg) {
 // -------------------------------------------------------------- SIMBAD TAP --
 
 /** On-demand cone-search of SIMBAD's TAP service around a clicked sky position. */
-export async function fetchSimbadNear(ra, dec, radiusDeg = 0.01) {
-  const key = `${ra.toFixed(4)},${dec.toFixed(4)}`;
+export async function fetchSimbadNear(ra, dec, radiusDeg = 0.02) {
+  // Never let bad inputs reach the ADQL string — "CIRCLE('ICRS', undefined,…)"
+  // is a guaranteed HTTP 400 from the TAP parser.
+  const raNum = Number(ra), decNum = Number(dec);
+  if (!Number.isFinite(raNum) || !Number.isFinite(decNum)) {
+    throw new Error('this source did not report usable coordinates');
+  }
+  const raQ = raNum.toFixed(6), decQ = decNum.toFixed(6);
+  const key = `${raQ},${decQ}`;
   if (simbadCache.has(key)) return simbadCache.get(key);
 
-  const query = `SELECT TOP 1 basic.main_id, basic.otype, basic.ra, basic.dec, basic.plx_value, ` +
-    `flux.flux AS v_mag FROM basic LEFT JOIN flux ON flux.oidref = basic.oid AND flux.filter = 'V' ` +
-    `WHERE CONTAINS(POINT('ICRS', basic.ra, basic.dec), CIRCLE('ICRS', ${ra}, ${dec}, ${radiusDeg})) = 1 ` +
-    `ORDER BY DISTANCE(POINT('ICRS', basic.ra, basic.dec), POINT('ICRS', ${ra}, ${dec})) ASC`;
+  // Minimal, parser-safe ADQL: no joins, and the DISTANCE expression is
+  // selected under an alias then ordered by the alias — the pattern SIMBAD's
+  // own TAP examples use. (Magnitude is skipped deliberately; the compound
+  // flux join this replaced was 400-ing on the strict grammar.)
+  const query =
+    `SELECT TOP 1 main_id, otype, ra, dec, plx_value, ` +
+    `DISTANCE(POINT('ICRS', ra, dec), POINT('ICRS', ${raQ}, ${decQ})) AS dist ` +
+    `FROM basic ` +
+    `WHERE CONTAINS(POINT('ICRS', ra, dec), CIRCLE('ICRS', ${raQ}, ${decQ}, ${radiusDeg})) = 1 ` +
+    `ORDER BY dist ASC`;
 
   const url = `${SIMBAD_TAP_URL}?request=doQuery&lang=adql&format=json&query=${encodeURIComponent(query)}`;
   const json = await fetchJSON(url);
@@ -96,7 +109,7 @@ export async function fetchSimbadNear(ra, dec, radiusDeg = 0.01) {
     ra: get('ra'),
     dec: get('dec'),
     distancePc: get('plx_value') ? 1000 / get('plx_value') : null,
-    mag: get('v_mag') ?? null
+    mag: null
   };
   simbadCache.set(key, result);
   return result;
@@ -320,8 +333,10 @@ export function initAboutModal() {
     </ul>
     <h3>Name resolution</h3>
     <p>Object search uses the CDS <strong>Sesame</strong> name resolver, querying SIMBAD, NED and VizieR.</p>
-    <h3>3-D renders</h3>
-    <p>Renders of planets, stars and black holes are <strong>procedural illustrations</strong> generated in-browser from published parameters (planet class, stellar temperature, accretion physics) — they are not observed images, and each one is labeled as such.</p>
+    <h3>Photographs &amp; artist impressions</h3>
+    <p>Object photographs are real mission and observatory images — NASA/JPL-Caltech, NASA/ESA Hubble, ESO, ALMA, MESSENGER, Cassini, Voyager, New Horizons, and the Event Horizon Telescope Collaboration — served via <strong>Wikimedia Commons</strong> and credited individually beneath each image. Famous exoplanets use official NASA/ESO artist impressions.</p>
+    <h3>Procedural renders</h3>
+    <p>Objects without real imagery fall back to <strong>procedural illustrations</strong> generated in-browser from published parameters (planet class, stellar temperature, accretion physics) — never passed off as observations, and labeled as such.</p>
     <p class="hint">Every dataset should be cited per its provider's own guidelines in any derived publication. This tool is for exploration and education, not a substitute for primary catalogs.</p>
   `;
   document.getElementById('about-toggle').addEventListener('click', () => { modal.hidden = false; });

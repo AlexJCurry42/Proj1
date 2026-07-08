@@ -38,9 +38,18 @@ export async function findRenderFor(name, aliases = [], typeLabel = '') {
   return null;
 }
 
+// Stable Wikimedia Commons entry point: needs only the exact filename (no
+// hash paths), and its thumbnail service converts even TIFF sources to web
+// formats at the requested width.
+function commonsUrl(file, width = 900) {
+  return `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(file)}?width=${width}`;
+}
+
 /**
- * If the detail object matches a curated render (or is a black hole), insert
- * an animated render canvas into the detail panel content element.
+ * Insert the best available media for a famous object into the detail panel:
+ * a real photograph where one exists, an official artist's impression next,
+ * and the procedural WebGL render as generator-of-last-resort — which is
+ * also the live fallback if the photograph fails to load.
  */
 export async function attachRenderIfFamous(containerEl, detailObj) {
   try {
@@ -50,14 +59,9 @@ export async function attachRenderIfFamous(containerEl, detailObj) {
     const wrap = document.createElement('div');
     wrap.className = 'render-wrap';
 
-    const canvas = document.createElement('canvas');
-    const size = 640; // rendered at 2x for retina crispness, CSS-scaled down
-    canvas.width = size;
-    canvas.height = size;
-    canvas.className = 'render-canvas';
-    canvas.setAttribute('role', 'img');
-    canvas.setAttribute('aria-label', `Illustrative render of ${detailObj.name || entry.title || 'object'}`);
-    wrap.appendChild(canvas);
+    const media = document.createElement('div');
+    media.className = 'render-media';
+    wrap.appendChild(media);
 
     if (entry.blurb) {
       const blurb = document.createElement('p');
@@ -67,17 +71,42 @@ export async function attachRenderIfFamous(containerEl, detailObj) {
     }
     const cap = document.createElement('p');
     cap.className = 'render-caption';
-    cap.textContent = 'Illustrative render from published parameters — not an observed image.';
     wrap.appendChild(cap);
 
-    // Place the render between the type chip and the data rows.
+    function mountProcedural() {
+      if (!entry.type) { wrap.remove(); return; }
+      media.innerHTML = '';
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = 640; // 2x for retina crispness
+      canvas.className = 'render-canvas';
+      canvas.setAttribute('role', 'img');
+      canvas.setAttribute('aria-label', `Illustrative render of ${detailObj.name || entry.title || 'object'}`);
+      media.appendChild(canvas);
+      cap.textContent = 'Illustrative render from published parameters — not an observed image.';
+      startRender(canvas, entry);
+    }
+
+    if (entry.photo) {
+      const img = document.createElement('img');
+      img.className = 'render-photo';
+      img.alt = `${entry.photo.kind === 'art' ? "Artist's impression" : 'Photograph'} of ${detailObj.name || entry.title}`;
+      img.loading = 'eager';
+      img.decoding = 'async';
+      img.src = commonsUrl(entry.photo.file);
+      img.addEventListener('error', mountProcedural, { once: true });
+      media.appendChild(img);
+      cap.textContent = `${entry.photo.kind === 'art' ? "Artist's impression" : 'Photograph'} — ${entry.photo.credit}. Via Wikimedia Commons.`;
+    } else {
+      mountProcedural();
+      if (!entry.type) return; // nothing to show at all
+    }
+
+    // Place the media between the type chip and the data rows.
     const anchor = containerEl.querySelector('.drows');
     containerEl.insertBefore(wrap, anchor || null);
-
-    startRender(canvas, entry);
   } catch (err) {
     // A failed render must never break the detail panel.
-    console.warn('3-D render skipped:', err.message);
+    console.warn('Object media skipped:', err.message);
   }
 }
 

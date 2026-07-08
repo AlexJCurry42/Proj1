@@ -17,6 +17,7 @@ import { initSimbadHips, initGaiaHips, loadMessierNgc, loadExoplanets } from './
 import { loadStellarBlackHoles, loadFlagshipSupermassive, initMilliquasLayer, loadGwMergers } from './blackholes.js';
 import { computePlanetPositions, PLANET_LABELS } from './planets.js';
 import { makePlanetIcon } from './markers.js';
+import { initWarpEffect } from './warp.js';
 
 const SGR_A_STAR = { ra: 266.41683, dec: -29.007811 };
 
@@ -145,6 +146,7 @@ async function main() {
     cooFrame: 'ICRS'
   });
   aladin.gotoRaDec(SGR_A_STAR.ra, SGR_A_STAR.dec);
+  initWarpEffect(aladin);
 
   // ---------------------------------------------------------- Imagery UI ---
   baseSelect.addEventListener('change', () => {
@@ -261,11 +263,13 @@ async function main() {
       return;
     }
     // Anything without pre-built detail is a raw progressive-catalog hit
-    // (SIMBAD or Gaia HiPS) — resolve it on demand via SIMBAD TAP.
+    // (SIMBAD or Gaia HiPS) — resolve it on demand via SIMBAD TAP. Different
+    // catalog sources expose their position under different keys, so try the
+    // common ones and validate before querying.
     showDetailLoading();
     try {
-      const ra = object.ra ?? object.data?.ra;
-      const dec = object.dec ?? object.data?.dec;
+      const ra = [object.ra, data.ra, data.RA, data.RAJ2000, data.RA_ICRS].map(Number).find(Number.isFinite);
+      const dec = [object.dec, data.dec, data.DE, data.DEJ2000, data.DE_ICRS].map(Number).find(Number.isFinite);
       const rec = await fetchSimbadNear(ra, dec);
       const typeLabel = await humanObjectType(rec.otype);
       renderDetailPanel({

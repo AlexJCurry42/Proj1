@@ -68,17 +68,28 @@ Every curated JSON file carries a `source` field per entry, and an
 sky-localization centroids for GW events) is only approximate rather than
 precise.
 
-## 3-D renders
+## Object media (photographs → artist impressions → renders)
 
-There is no public API serving true 3-D models of exoplanets or distant
-stars, so `js/render3d.js` generates each render procedurally: sphere
-shading with per-class surface synthesis (rocky, gas giant, ice giant,
-lava world, cloud deck), blackbody-correct star colors from published
-T_eff, Saturn-style ring occlusion, and a black hole visualization with
-event-horizon shadow, photon ring, and a doppler-beamed accretion disk.
-`data/renders.json` curates which objects get renders, with a `source`
-citation per factual claim; every render carries an on-screen caption
-stating it is an illustration, not an observed image.
+Famous objects show the best media humanity has, in strict priority order:
+
+1. **Real photographs** where they exist — all eight planets + Pluto from
+   MESSENGER/Mariner/Rosetta/Hubble/Cassini/Voyager/New Horizons, Hubble
+   showpieces (Orion, Andromeda, Crab, Whirlpool, Pillars of Creation),
+   ALMA's resolved disk of Betelgeuse, and the two real Event Horizon
+   Telescope black hole images (M87* 2019, Sgr A* 2022). Served from
+   Wikimedia Commons via the stable `Special:FilePath` endpoint, credited
+   on screen per image.
+2. **Official artist impressions** (ESO/NASA) for famous exoplanets
+   (51 Peg b, HD 189733 b, Proxima b, Kepler-452b).
+3. **Procedural WebGL renders** (`js/render3d.js`) for everything else —
+   sphere shading per planet class, blackbody-correct star colors from
+   published T_eff, ring occlusion, and a black hole visualization with
+   event-horizon shadow, photon ring, and doppler-beamed accretion disk.
+   Also the automatic live fallback if a photograph fails to load.
+
+Commons filenames were verified by search in July 2026 but could not be
+fetched from the development sandbox (network policy); if any filename
+drifts, the UI degrades to the procedural render without a broken image.
 
 ## Known limitations
 

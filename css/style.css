@@ -72,6 +72,13 @@ button, select, input{ font-family: inherit; color: inherit; }
 #sky-wrap{ position: fixed; inset: 0; }
 #aladin-lite-div{ width: 100%; height: 100%; background: #000; }
 
+/* Warp-streak zoom feedback overlay */
+#warp-canvas{
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  pointer-events: none; z-index: 5;
+}
+body.redlight #warp-canvas{ filter: sepia(1) saturate(6) hue-rotate(-50deg) brightness(0.85); }
+
 /* ================= Shared materials ================= */
 .glass-panel{
   background: var(--material);
@@ -341,12 +348,19 @@ input[type="range"]::-moz-range-thumb{
 #detail-content .approx-note{ color: var(--yellow); font-size: 12px; line-height: 1.45; margin-top: 10px; }
 #detail-loading{ color: var(--text-secondary); font-size: 13px; }
 
-/* 3-D render block */
+/* Object media block (photograph / artist's impression / procedural render) */
 .render-wrap{ margin: 4px 0 14px; }
+.render-media{ min-height: 60px; }
 .render-canvas{
   display: block; width: 100%; height: auto; aspect-ratio: 1;
   border-radius: 16px;
   background: radial-gradient(ellipse at center, rgba(20,22,32,0.9), rgba(4,5,10,0.95));
+  animation: fade-in 0.6s ease;
+}
+.render-photo{
+  display: block; width: 100%; height: auto; max-height: 340px;
+  object-fit: cover; border-radius: 16px;
+  background: rgba(8, 10, 16, 0.8);
   animation: fade-in 0.6s ease;
 }
 @keyframes fade-in{ from{ opacity: 0; } }
