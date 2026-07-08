@@ -1,0 +1,33 @@
+{
+  "_comment": "Hardcoded flagship supermassive black hole entries with Event Horizon Telescope (EHT) imaging badges. The full AGN/quasar population is loaded separately and progressively from the VizieR Milliquas catalog (see js/blackholes.js).",
+  "objects": [
+    {
+      "name": "Sagittarius A*",
+      "aliases": ["Sgr A*", "Galactic Center black hole"],
+      "ra": 266.41683,
+      "dec": -29.007811,
+      "mass_solar": 4297000,
+      "approx": false,
+      "distance_kpc": 8.178,
+      "distance_approx": false,
+      "eht_imaged": true,
+      "eht_year": 2022,
+      "notes": "The supermassive black hole at the center of the Milky Way. Mass and distance from stellar-orbit and interferometric monitoring of stars orbiting it; imaged directly by the Event Horizon Telescope in 2022.",
+      "source": "GRAVITY Collaboration 2019/2022, A&A; EHT Collaboration 2022, ApJL 930, L12"
+    },
+    {
+      "name": "M87*",
+      "aliases": ["Virgo A black hole", "NGC 4486 nucleus"],
+      "ra": 187.70593,
+      "dec": 12.391123,
+      "mass_solar": 6500000000,
+      "approx": false,
+      "distance_kpc": 16800,
+      "distance_approx": true,
+      "eht_imaged": true,
+      "eht_year": 2019,
+      "notes": "Supermassive black hole at the heart of the giant elliptical galaxy M87. The first black hole ever directly imaged, released by the Event Horizon Telescope in April 2019. Powers a relativistic jet visible across the electromagnetic spectrum.",
+      "source": "Event Horizon Telescope Collaboration 2019, ApJL 875, L1 (Paper I) and L6 (Paper VI, mass)"
+    }
+  ]
+}
