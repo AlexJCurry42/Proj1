@@ -589,10 +589,17 @@ input[type="range"]::-moz-range-thumb{
 }
 
 /* ================= Sky Now ================= */
-#skynow-btn{
+#bottom-left{
   grid-column: 1; justify-self: start;
+  display: flex; align-items: center; gap: 8px;
+}
+#skynow-btn{
   width: auto; padding: 0 16px; gap: 8px;
   font-size: 14px; font-weight: 600;
+}
+#gyro-toggle[aria-pressed="true"]{
+  background: rgba(10, 132, 255, 0.30);
+  border-color: rgba(10, 132, 255, 0.55);
 }
 #skynow-btn .icon{ width: 15px; height: 15px; }
 #skynow-btn[aria-pressed="true"]{

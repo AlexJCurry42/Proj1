@@ -77,9 +77,36 @@ function getPosition() {
   });
 }
 
+// ---- smoothing helpers: pointing directions as celestial unit vectors ----
+// Working in vectors (not angles) makes the smoothing seamless across the
+// RA 0/360 wrap and near the poles, where angle-space interpolation whips.
+const raDecToVec = (raDeg, decDeg) => {
+  const r = raDeg * D2R, d = decDeg * D2R, cd = Math.cos(d);
+  return [cd * Math.cos(r), cd * Math.sin(r), Math.sin(d)];
+};
+const vecToRaDec = (v) => {
+  let ra = Math.atan2(v[1], v[0]) * R2D;
+  if (ra < 0) ra += 360;
+  return { ra, dec: Math.asin(Math.max(-1, Math.min(1, v[2]))) * R2D };
+};
+const vecMix = (a, b, k) => {
+  const x = a[0] + (b[0] - a[0]) * k, y = a[1] + (b[1] - a[1]) * k, z = a[2] + (b[2] - a[2]) * k;
+  const l = Math.hypot(x, y, z) || 1;
+  return [x / l, y / l, z / l];
+};
+
 export function initSkyNow(aladin) {
   const btn = document.getElementById('skynow-btn');
+  const gyroBtn = document.getElementById('gyro-toggle');
   if (!btn) return;
+
+  // Whether Sky Now should engage live gyro tracking (the compass toggle).
+  const readGyroPref = () => {
+    try { return localStorage.getItem('dsa-gyro') !== 'false'; } catch (err) { return true; }
+  };
+  const writeGyroPref = (v) => {
+    try { localStorage.setItem('dsa-gyro', String(v)); } catch (err) { /* private mode */ }
+  };
 
   let tracking = false;
   let teardown = [];
@@ -90,7 +117,8 @@ export function initSkyNow(aladin) {
     for (const fn of teardown) { try { fn(); } catch (err) { /* best effort */ } }
     teardown = [];
     btn.setAttribute('aria-pressed', 'false');
-    if (!quiet) showToast('Compass mode off. Tap Sky Now to resume.', 'info', 4000);
+    gyroBtn?.setAttribute('aria-pressed', 'false');
+    if (!quiet) showToast('Gyro tracking off — drag to explore. Tap the compass to resume.', 'info', 4000);
   }
 
   function oneShotZenith(latitude, longitude) {
@@ -102,52 +130,50 @@ export function initSkyNow(aladin) {
     showToast(`Your sky at ${hh}:${mm} — centered on the point straight overhead.`, 'info', 8000);
   }
 
-  btn.addEventListener('click', async () => {
-    if (tracking) { stopTracking(); return; }
-
-    // iOS: the motion-sensor prompt must be requested INSIDE the tap gesture,
-    // before any other await, or it auto-denies.
-    let motionAllowed = true;
-    if (typeof DeviceOrientationEvent !== 'undefined' &&
-        typeof DeviceOrientationEvent.requestPermission === 'function') {
-      motionAllowed = await DeviceOrientationEvent.requestPermission()
-        .then(p => p === 'granted')
-        .catch(() => false);
-    }
-
-    let pos;
-    try {
-      showToast('Finding your sky…', 'info', 3000);
-      pos = await getPosition();
-    } catch (err) {
-      showToast(`Location unavailable (${err.message}). Allow location access to use Sky Now — your position never leaves this device.`, 'error', 9000);
-      return;
-    }
-    const { latitude, longitude } = pos.coords;
-
-    if (!motionAllowed) {
-      oneShotZenith(latitude, longitude);
-      showToast('Motion access was declined, so the view won\'t follow the phone — showing a zenith snapshot instead.', 'info', 7000);
-      return;
-    }
-
-    // Live tracking.
+  async function startTracking(latitude, longitude) {
     const evName = 'ondeviceorientationabsolute' in window ? 'deviceorientationabsolute' : 'deviceorientation';
     let gotEvent = false;
-    let lastApply = 0;
+
+    // Two-stage smoothing. Stage 1: each sensor reading nudges a low-passed
+    // TARGET vector (kills magnetometer jitter without adding much lag).
+    // Stage 2: a per-frame critically-damped glide eases the DISPLAYED
+    // pointing toward the target — tiny 60 fps steps instead of the old
+    // 10 Hz gotoRaDec jumps, which is what made tracking feel clunky.
+    let target = null;
+    let shown = null;
     const handler = (e) => {
       const heading = typeof e.webkitCompassHeading === 'number' ? e.webkitCompassHeading : null;
       const p = pointingFromOrientation(e.alpha, e.beta, e.gamma, heading);
       if (!p) return;
       gotEvent = true;
-      const now = performance.now();
-      if (now - lastApply < 100) return; // ~10 Hz is smooth and battery-kind
-      lastApply = now;
       const { ra, dec } = altAzToRaDec(p.alt, p.az, latitude, longitude);
-      try { aladin.gotoRaDec(ra, dec); } catch (err) { /* mid-animation hiccup */ }
+      const v = raDecToVec(ra, dec);
+      target = target ? vecMix(target, v, 0.3) : v;
     };
     window.addEventListener(evName, handler, true);
     teardown.push(() => window.removeEventListener(evName, handler, true));
+
+    let raf = null, lastT = 0;
+    const DEADBAND = Math.cos(0.02 * D2R); // skip engine calls under 0.02°
+    const tick = (t) => {
+      raf = requestAnimationFrame(tick);
+      if (!target) return;
+      const dt = Math.min((t - (lastT || t)) / 1000, 0.1);
+      lastT = t;
+      if (!shown) {
+        // Glide in from wherever the user is looking, not a hard cut.
+        try { const [ra0, dec0] = aladin.getRaDec(); shown = raDecToVec(ra0, dec0); }
+        catch (err) { shown = target; }
+      }
+      // Frame-rate-independent damping: ~63% of the way per 180 ms.
+      shown = vecMix(shown, target, 1 - Math.exp(-dt / 0.18));
+      const dot = shown[0] * target[0] + shown[1] * target[1] + shown[2] * target[2];
+      if (dot > DEADBAND) return;
+      const { ra, dec } = vecToRaDec(shown);
+      try { aladin.gotoRaDec(ra, dec); } catch (err) { /* mid-animation hiccup */ }
+    };
+    raf = requestAnimationFrame(tick);
+    teardown.push(() => cancelAnimationFrame(raf));
 
     // No events within 2.5 s → this device has no usable sensors.
     const fallbackTimer = setTimeout(() => {
@@ -173,7 +199,56 @@ export function initSkyNow(aladin) {
 
     tracking = true;
     btn.setAttribute('aria-pressed', 'true');
+    gyroBtn?.setAttribute('aria-pressed', 'true');
     try { aladin.setFoV(70); } catch (err) { /* keep current FoV */ }
-    showToast('Compass mode: point your phone at the sky and the view follows. Tap Sky Now again — or drag the sky — to stop.', 'info', 8000);
+    showToast('Point your phone at the sky and the view follows. Tap the compass — or drag the sky — to stop.', 'info', 8000);
+  }
+
+  // Shared entry: permission prompt first (iOS requires it inside the tap
+  // gesture, before any other await), then location, then track or snapshot.
+  async function engage(wantTracking) {
+    let motionAllowed = wantTracking;
+    if (wantTracking &&
+        typeof DeviceOrientationEvent !== 'undefined' &&
+        typeof DeviceOrientationEvent.requestPermission === 'function') {
+      motionAllowed = await DeviceOrientationEvent.requestPermission()
+        .then(p => p === 'granted')
+        .catch(() => false);
+    }
+
+    let pos;
+    try {
+      showToast('Finding your sky…', 'info', 3000);
+      pos = await getPosition();
+    } catch (err) {
+      showToast(`Location unavailable (${err.message}). Allow location access to use Sky Now — your position never leaves this device.`, 'error', 9000);
+      return;
+    }
+    const { latitude, longitude } = pos.coords;
+
+    if (!wantTracking) { oneShotZenith(latitude, longitude); return; }
+    if (!motionAllowed) {
+      oneShotZenith(latitude, longitude);
+      showToast('Motion access was declined, so the view won\'t follow the phone — showing a zenith snapshot instead.', 'info', 7000);
+      return;
+    }
+    await startTracking(latitude, longitude);
+  }
+
+  // Sky Now: show my sky (tracking it live if the gyro toggle is on).
+  btn.addEventListener('click', () => {
+    if (tracking) { stopTracking(); return; }
+    engage(readGyroPref());
+  });
+
+  // The compass: explicit gyro on/off, independent of Sky Now.
+  gyroBtn?.addEventListener('click', () => {
+    if (tracking) {
+      writeGyroPref(false);
+      stopTracking();
+    } else {
+      writeGyroPref(true);
+      engage(true);
+    }
   });
 }

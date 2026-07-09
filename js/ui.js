@@ -331,19 +331,56 @@ export async function initTours(aladin) {
     opt.textContent = t.name;
     select.appendChild(opt);
   }
-  select.addEventListener('change', () => {
+
+  // Each selection is a three-act flight: rise (pull back so there's a sky to
+  // cross), glide (the engine's great-circle animation), descend (eased zoom
+  // into the destination). Picking another tour mid-flight cancels the rest
+  // of this one and starts the new flight from wherever the view is now.
+  let flightToken = 0;
+  const easeInOutCubic = (u) => u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
+  function easeFov(toFov, ms, token) {
+    return new Promise((resolve) => {
+      let from;
+      try { from = aladin.getFov()[0]; } catch (err) { resolve(false); return; }
+      if (!Number.isFinite(from) || Math.abs(from - toFov) < 0.001) { resolve(true); return; }
+      const t0 = performance.now();
+      const step = (t) => {
+        if (token !== flightToken) { resolve(false); return; }
+        const u = Math.min(1, (t - t0) / ms);
+        try { aladin.setFoV(from + (toFov - from) * easeInOutCubic(u)); } catch (err) { /* engine hiccup */ }
+        if (u < 1) requestAnimationFrame(step); else resolve(true);
+      };
+      requestAnimationFrame(step);
+    });
+  }
+  const pause = (ms, token) => new Promise((r) => setTimeout(() => r(token === flightToken), ms));
+
+  select.addEventListener('change', async () => {
     const t = tours.find(x => x.id === select.value);
+    select.value = '';
     if (!t) return;
+    const token = ++flightToken;
+    showToast(t.caption, 'info', 12000);
+
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (reduceMotion || typeof aladin.animateToRaDec !== 'function') {
       aladin.gotoRaDec(t.ra, t.dec);
       aladin.setFoV(t.fov_deg);
-    } else {
-      aladin.animateToRaDec(t.ra, t.dec, 1.5);
-      setTimeout(() => aladin.setFoV(t.fov_deg), 1500);
+      return;
     }
-    showToast(t.caption, 'info', 9000);
-    select.value = '';
+
+    // Act 1 — rise: if we're zoomed in tight, pull back first so the glide
+    // reads as travel across the sky rather than an anonymous smear.
+    let cur = 60;
+    try { cur = aladin.getFov()[0]; } catch (err) { /* keep default */ }
+    if (cur < 25) {
+      if (!await easeFov(Math.min(60, Math.max(cur * 4, 35)), 750, token)) return;
+    }
+    // Act 2 — glide.
+    try { aladin.animateToRaDec(t.ra, t.dec, 1.6); } catch (err) { aladin.gotoRaDec(t.ra, t.dec); }
+    if (!await pause(1650, token)) return;
+    // Act 3 — descend into the destination.
+    await easeFov(t.fov_deg, 1200, token);
   });
 }
 
@@ -351,7 +388,7 @@ export async function initTours(aladin) {
 
 const ONBOARDING_STEPS = [
   { title: 'Explore the sky', body: 'Drag to pan, pinch to zoom. This is the real sky — more detail and more objects reveal themselves the deeper you go.' },
-  { title: 'Tap anything', body: 'Every glowing marker opens a story: black holes, nebulae, planets. Famous objects come with an animated 3-D render.' },
+  { title: 'Light up the sky', body: 'The menu on the left holds the universe: constellations, black holes, exoplanets, whole catalogs. Switch on a layer and tap any glowing marker for its story.' },
   { title: 'Search the universe', body: 'Try "Cygnus X-1" or "Orion Nebula" — or pick a Tour for a guided flight to the sky’s greatest hits.' }
 ];
 

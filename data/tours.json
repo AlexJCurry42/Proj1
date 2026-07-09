@@ -64,6 +64,86 @@
       "dec": 22.0145,
       "fov_deg": 0.3,
       "caption": "The expanding remnant of a supernova witnessed by astronomers worldwide in 1054 CE. At its center spins the Crab Pulsar, a neutron star rotating about 30 times per second."
+    },
+    {
+      "id": "pleiades",
+      "name": "Pleiades (M45)",
+      "ra": 56.85,
+      "dec": 24.116667,
+      "fov_deg": 2.5,
+      "caption": "The Seven Sisters — the sky's most famous star cluster, about 444 light-years away. Its hot young blue stars are drifting through a chance cloud of dust that scatters their light into wispy blue reflection nebulae."
+    },
+    {
+      "id": "horsehead",
+      "name": "Horsehead Nebula (B33)",
+      "ra": 85.24583,
+      "dec": -2.458333,
+      "fov_deg": 0.5,
+      "caption": "A chess-knight silhouette of cold dust rearing in front of the glowing hydrogen curtain IC 434, just south of Orion's Belt. The whole head spans about 3.5 light-years."
+    },
+    {
+      "id": "carina",
+      "name": "Carina Nebula (NGC 3372)",
+      "ra": 161.28,
+      "dec": -59.866667,
+      "fov_deg": 2.5,
+      "caption": "A southern star factory four times larger than Orion, home to Eta Carinae — a doomed star of roughly 100 solar masses that briefly became the sky's second-brightest during its 1840s eruption. JWST's 'Cosmic Cliffs' image is a corner of this nebula."
+    },
+    {
+      "id": "ring",
+      "name": "Ring Nebula (M57)",
+      "ra": 283.39625,
+      "dec": 33.029175,
+      "fov_deg": 0.12,
+      "caption": "A dying Sun-like star's cast-off outer layers, glowing as a luminous ring about one light-year across in Lyra. In a few billion years the Sun will build something much like this."
+    },
+    {
+      "id": "whirlpool",
+      "name": "Whirlpool Galaxy (M51)",
+      "ra": 202.46958,
+      "dec": 47.195258,
+      "fov_deg": 0.35,
+      "caption": "The archetypal grand-design spiral, its arms lit up by star formation triggered by the small companion galaxy tugging at its edge. It was the first 'nebula' ever seen to have spiral structure, by Lord Rosse in 1845."
+    },
+    {
+      "id": "sombrero",
+      "name": "Sombrero Galaxy (M104)",
+      "ra": 189.99763,
+      "dec": -11.623054,
+      "fov_deg": 0.3,
+      "caption": "A galaxy seen almost edge-on, its brilliant bulge ringed by a dark brim of dust. It hosts a billion-solar-mass central black hole — one of the most massive in our cosmic neighborhood."
+    },
+    {
+      "id": "helix",
+      "name": "Helix Nebula (NGC 7293)",
+      "ra": 337.41083,
+      "dec": -20.837222,
+      "fov_deg": 0.6,
+      "caption": "The nearest bright planetary nebula, about 650 light-years away — often called the 'Eye of God'. Its comet-like knots, each the size of a solar system, number in the tens of thousands."
+    },
+    {
+      "id": "lagoon",
+      "name": "Lagoon Nebula (M8)",
+      "ra": 270.90417,
+      "dec": -24.386667,
+      "fov_deg": 1.2,
+      "caption": "A naked-eye star nursery in Sagittarius, toward the center of the Milky Way. Its glowing hydrogen is carved by winds from the young cluster NGC 6530 forming inside it."
+    },
+    {
+      "id": "tarantula",
+      "name": "Tarantula Nebula (30 Doradus)",
+      "ra": 84.66,
+      "dec": -69.1,
+      "fov_deg": 1.2,
+      "caption": "The most violent star-forming region in the entire Local Group, in the Large Magellanic Cloud. If it sat where Orion's nebula does, it would cast shadows at night and cover a quarter of the sky's width."
+    },
+    {
+      "id": "omegacen",
+      "name": "Omega Centauri (NGC 5139)",
+      "ra": 201.69683,
+      "dec": -47.479472,
+      "fov_deg": 0.8,
+      "caption": "Ten million stars in a ball — the Milky Way's largest globular cluster, possibly the stripped core of a dwarf galaxy we swallowed long ago. Through binoculars it looks like a slightly fuzzy 4th-magnitude star."
     }
   ]
 }

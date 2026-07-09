@@ -103,10 +103,15 @@
 
 <!-- Bottom bar: Sky Now on the left, search front-and-center (iOS Safari style) -->
 <div id="bottom-bar">
-  <button id="skynow-btn" class="glass-btn wide" aria-label="Show my sky right now">
-    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5l18-8-8 18-2.2-7.8L3 11.5z"/></svg>
-    <span class="skynow-label">Sky&nbsp;Now</span>
-  </button>
+  <div id="bottom-left">
+    <button id="skynow-btn" class="glass-btn wide" aria-label="Show my sky right now">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5l18-8-8 18-2.2-7.8L3 11.5z"/></svg>
+      <span class="skynow-label">Sky&nbsp;Now</span>
+    </button>
+    <button id="gyro-toggle" class="glass-btn" aria-pressed="false" aria-label="Toggle gyroscope sky tracking" title="Follow my phone's motion">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M15.4 8.6l-1.8 4.8-4.8 1.8 1.8-4.8z"/></svg>
+    </button>
+  </div>
   <form id="search-form" role="search" autocomplete="off">
     <svg class="icon search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><line x1="15.8" y1="15.8" x2="20" y2="20"/></svg>
     <label for="search-input" class="visually-hidden">Search an object or coordinates</label>
@@ -114,6 +119,7 @@
     <ul id="search-history" class="dropdown-list" role="listbox" aria-label="Recent searches" hidden></ul>
     <ul id="search-suggestions" class="dropdown-list" role="listbox" aria-label="Suggestions" hidden></ul>
   </form>
+  <span aria-hidden="true"></span>
 </div>
 
 <!-- Zoom controls -->

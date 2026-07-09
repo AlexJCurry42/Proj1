@@ -442,7 +442,9 @@ async function main() {
   const catalogList = document.getElementById('layer-dock-list');
   const bhList = catalogList;
 
-  // On by default: small, curated, high-signal.
+  // First-load default: ONLY the Solar System layer is on — the sky itself is
+  // the star of the show. Everything else builds ready-to-go but starts
+  // hidden; the user's own toggle choices persist and override from then on.
   const constRef = {};
   const bordersRef = { loading: false };
 
@@ -464,7 +466,7 @@ async function main() {
     setCatalogVisible(bordersRef.catalogs, show);
   }
   const constToggle = addToggle(catalogList, {
-    label: 'Constellations', color: '#7aa0ff', checked: true,
+    label: 'Constellations', color: '#7aa0ff', checked: false,
     onToggle: (v) => { setCatalogVisible(constRef.catalogs, v); syncBorders(); }
   });
   const bordersToggle = addToggle(catalogList, {
@@ -480,7 +482,7 @@ async function main() {
 
   const messierRef = {};
   const messierToggle = addToggle(catalogList, {
-    label: 'Messier & NGC', color: '#ffd60a', checked: true,
+    label: 'Messier & NGC', color: '#ffd60a', checked: false,
     onToggle: v => setCatalogVisible(messierRef.catalogs, v)
   });
   loadMessierNgc(aladin, onZoom).then(({ catalogs, count }) => {
@@ -539,7 +541,7 @@ async function main() {
   // ----------------------------------------------------------- Black holes ---
   const stellarRef = {};
   const stellarToggle = addToggle(bhList, {
-    label: 'Black holes', color: '#ff9f0a', checked: true,
+    label: 'Black holes', color: '#ff9f0a', checked: false,
     onToggle: v => setCatalogVisible(stellarRef.catalog, v)
   });
   loadStellarBlackHoles(aladin).then(({ catalog, count }) => {
@@ -550,7 +552,7 @@ async function main() {
 
   const flagshipRef = {};
   const flagshipToggle = addToggle(bhList, {
-    label: 'Supermassive', color: '#ffd60a', checked: true,
+    label: 'Supermassive', color: '#ffd60a', checked: false,
     onToggle: v => setCatalogVisible(flagshipRef.catalog, v)
   });
   loadFlagshipSupermassive(aladin).then(({ catalog, count }) => {
