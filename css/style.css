@@ -392,45 +392,48 @@ input[type="range"]::-moz-range-thumb{
   display: flex; flex-direction: column; gap: 8px;
 }
 
-/* ================= Spectrum bar ================= */
-#spectrum-bar{
+/* ================= Spectrum rail (vertical, top-right) ================= */
+#spectrum-rail{
   position: fixed; z-index: 46;
-  bottom: calc(12px + var(--safe-bottom));
-  left: 50%; transform: translateX(-50%);
-  width: min(540px, calc(100vw - 24px));
-  padding: 10px 18px 14px;
-  border-radius: 22px;
+  top: calc(64px + var(--safe-top));
+  right: calc(12px + var(--safe-right));
+  width: 46px;
+  height: min(460px, calc(100vh - 220px));
+  padding: 10px 0 10px;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  border-radius: 23px;
+  transition: right 0.34s cubic-bezier(0.32, 0.72, 0, 1);
 }
-#spectrum-label{
-  display: flex; align-items: baseline; justify-content: center; gap: 10px;
-  margin-bottom: 8px; white-space: nowrap; overflow: hidden;
+/* The detail panel shares the right edge on desktop: the rail glides aside. */
+@media (min-width: 641px){
+  #detail-panel:not([hidden]) ~ #spectrum-rail{ right: calc(362px + var(--safe-right)); }
+  #detail-panel:not([hidden]) ~ #spectrum-chip{ right: calc(418px + var(--safe-right)); }
 }
-#spectrum-name{
-  font-size: 14.5px; font-weight: 650; letter-spacing: -0.01em;
-  font-variant-numeric: tabular-nums;
-}
-#spectrum-band{
-  font-size: 11.5px; color: var(--text-secondary);
-  overflow: hidden; text-overflow: ellipsis;
-}
-#spectrum-track-wrap{ display: flex; align-items: center; gap: 12px; }
 .spectrum-end{
-  font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;
+  font-size: 8.5px; font-weight: 650; text-transform: uppercase; letter-spacing: 0.05em;
   color: var(--text-tertiary); flex-shrink: 0; user-select: none;
 }
-#spectrum-track{ position: relative; flex: 1; height: 28px; }
-/* The electromagnetic spectrum itself: violet (short λ) → white (optical) → deep red (radio) */
+#spectrum-track{
+  position: relative; flex: 1; width: 100%;
+  touch-action: none; cursor: pointer;
+}
+#spectrum-track:focus-visible{ outline: none; }
+#spectrum-track:focus-visible #spectrum-thumb{
+  box-shadow: 0 1px 5px rgba(0,0,0,0.5), 0 0 0 3px rgba(10,132,255,0.6);
+}
+/* The electromagnetic spectrum itself: violet (short λ, top) → optical white
+   → deep radio red (long λ, bottom) */
 #spectrum-gradient{
-  position: absolute; left: 11px; right: 11px; top: 50%; transform: translateY(-50%);
-  height: 4px; border-radius: 2px;
-  background: linear-gradient(90deg,
+  position: absolute; top: 15px; bottom: 15px; left: 50%; transform: translateX(-50%);
+  width: 4px; border-radius: 2px;
+  background: linear-gradient(180deg,
     #a58bff 0%, #7fa8ff 16.7%, #e9eef6 33.3%, #f2ede2 50%,
     #ffd9a0 66.7%, #ff9d6b 83.3%, #c96a4a 100%);
   opacity: 0.85;
 }
-#spectrum-dots{ position: absolute; left: 11px; right: 11px; top: 0; bottom: 0; }
+#spectrum-dots{ position: absolute; inset: 0; }
 .spectrum-dot{
-  position: absolute; top: 50%; width: 7px; height: 7px;
+  position: absolute; left: 50%; width: 7px; height: 7px;
   transform: translate(-50%, -50%);
   border-radius: 50%; background: rgba(10, 12, 18, 0.85);
   border: 1.5px solid rgba(255, 255, 255, 0.55);
@@ -440,25 +443,33 @@ input[type="range"]::-moz-range-thumb{
   transform: translate(-50%, -50%) scale(1.35);
   border-color: #fff;
 }
-#spectrum-slider{
-  -webkit-appearance: none; appearance: none;
-  position: absolute; inset: 0; width: 100%; height: 100%;
-  margin: 0; background: transparent; cursor: pointer;
-}
-#spectrum-slider::-webkit-slider-runnable-track{ background: transparent; height: 28px; }
-#spectrum-slider::-webkit-slider-thumb{
-  -webkit-appearance: none; appearance: none;
-  width: 22px; height: 22px; margin-top: 3px;
-  border-radius: 50%; background: #fff; border: none;
+#spectrum-thumb{
+  position: absolute; left: 50%; top: 15px;
+  width: 24px; height: 24px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%; background: #fff;
   box-shadow: 0 1px 5px rgba(0,0,0,0.5), 0 0 0 0.5px rgba(0,0,0,0.15);
+  pointer-events: none;
 }
-#spectrum-slider::-moz-range-track{ background: transparent; height: 28px; }
-#spectrum-slider::-moz-range-thumb{
-  width: 22px; height: 22px; border-radius: 50%; background: #fff; border: none;
-  box-shadow: 0 1px 5px rgba(0,0,0,0.5);
+
+/* Floating label chip: rides alongside the thumb */
+#spectrum-chip{
+  position: fixed; z-index: 46;
+  right: calc(12px + 46px + 10px + var(--safe-right));
+  transform: translateY(-50%);
+  transition: right 0.34s cubic-bezier(0.32, 0.72, 0, 1);
+  padding: 7px 12px; border-radius: 13px;
+  display: flex; flex-direction: column; align-items: flex-end; gap: 1px;
+  text-align: right; pointer-events: none;
+  max-width: min(240px, calc(100vw - 100px));
 }
-#spectrum-slider:focus-visible{ outline: none; }
-#spectrum-slider:focus-visible::-webkit-slider-thumb{ box-shadow: 0 1px 5px rgba(0,0,0,0.5), 0 0 0 3px rgba(10,132,255,0.6); }
+#spectrum-name{
+  font-size: 13.5px; font-weight: 650; letter-spacing: -0.01em; white-space: nowrap;
+}
+#spectrum-band{
+  font-size: 10.5px; color: var(--text-secondary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+}
 
 /* ================= Sky Now ================= */
 #skynow-btn{
@@ -473,11 +484,8 @@ input[type="range"]::-moz-range-thumb{
   background: rgba(10, 132, 255, 0.30);
   border-color: rgba(10, 132, 255, 0.55);
 }
-/* Below this width the centered spectrum bar owns the bottom edge:
-   Sky Now and zoom float up above it. */
-@media (max-width: 860px){
-  #skynow-btn{ bottom: calc(76px + var(--safe-bottom)); }
-  #zoom-stack{ bottom: calc(76px + var(--safe-bottom)); }
+@media (max-width: 640px){
+  #spectrum-rail{ height: min(320px, calc(100vh - 260px)); }
 }
 
 /* ================= Readout pill ================= */

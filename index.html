@@ -92,22 +92,21 @@
   <div id="detail-content"></div>
 </aside>
 
-<!-- Spectrum slider: every survey on one track, gamma-ray to radio -->
-<div id="spectrum-bar" class="glass-panel" role="group" aria-label="Sky imagery across the electromagnetic spectrum">
-  <div id="spectrum-label" aria-live="off">
-    <span id="spectrum-name">DSS2</span>
-    <span id="spectrum-band">Optical — the classic all-sky view</span>
+<!-- Spectrum rail: every survey on one vertical track, gamma-ray (top) to radio (bottom) -->
+<div id="spectrum-rail" class="glass-panel" role="group" aria-label="Sky imagery across the electromagnetic spectrum">
+  <span class="spectrum-end" aria-hidden="true">γ-ray</span>
+  <div id="spectrum-track" role="slider" tabindex="0" aria-orientation="vertical"
+       aria-valuemin="0" aria-valuemax="600" aria-valuenow="300"
+       aria-label="Blend between sky surveys, gamma-ray at the top to radio at the bottom">
+    <div id="spectrum-gradient" aria-hidden="true"></div>
+    <div id="spectrum-dots" aria-hidden="true"></div>
+    <div id="spectrum-thumb" aria-hidden="true"></div>
   </div>
-  <div id="spectrum-track-wrap">
-    <span class="spectrum-end" aria-hidden="true">γ-ray</span>
-    <div id="spectrum-track">
-      <div id="spectrum-gradient" aria-hidden="true"></div>
-      <div id="spectrum-dots" aria-hidden="true"></div>
-      <label for="spectrum-slider" class="visually-hidden">Blend between sky surveys, from gamma-ray to radio wavelengths</label>
-      <input type="range" id="spectrum-slider" min="0" max="600" value="300" step="1" />
-    </div>
-    <span class="spectrum-end" aria-hidden="true">Radio</span>
-  </div>
+  <span class="spectrum-end" aria-hidden="true">Radio</span>
+</div>
+<div id="spectrum-chip" class="glass-panel" aria-hidden="true">
+  <span id="spectrum-name">DSS2</span>
+  <span id="spectrum-band">Optical — the classic all-sky view</span>
 </div>
 
 <!-- Sky Now: fly to the user's zenith -->

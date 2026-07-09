@@ -1,8 +1,17 @@
-// Deep Sky Atlas — the spectrum slider. One control, the whole electromagnetic
-// spectrum: every imagery survey sits on a single track ordered from the
-// shortest wavelength (gamma-ray) to the longest (radio), and dragging
-// between adjacent stops cross-fades them live. Replaces the old
-// base-select + overlay-select + blend-slider trio.
+// Deep Sky Atlas — the spectrum rail. Every imagery survey on one vertical
+// track at the top-right, ordered by wavelength: gamma-ray at the top, radio
+// at the bottom. Dragging cross-fades adjacent surveys live.
+//
+// Smoothness model:
+//  - the displayed value critically-damps toward the pointer (eased glide,
+//    never a jump — taps on the track travel there smoothly),
+//  - blend opacity follows smoothstep(frac), so fades breathe into and out
+//    of each stop instead of moving linearly,
+//  - crossing a stop is seamless by construction: at the moment of the swap
+//    the overlay is fully opaque and identical to the incoming base layer.
+// Custom pointer-driven slider (native vertical range inputs are unreliable
+// across engines) with full keyboard support: arrows step between surveys,
+// Home/End jump to the spectrum's ends.
 
 export const SURVEYS = [
   { id: 'P/Fermi/color', name: 'Fermi', band: 'Gamma-ray — the violent universe' },
@@ -14,38 +23,40 @@ export const SURVEYS = [
   { id: 'P/NVSS', name: 'NVSS', band: 'Radio — jets, lobes & remnants' }
 ];
 
-export const STOP = 100; // slider units per survey stop
+export const STOP = 100;
 export const MAX_VALUE = (SURVEYS.length - 1) * STOP;
 export const DEFAULT_VALUE = SURVEYS.findIndex(s => s.name === 'DSS2') * STOP;
 
-/**
- * Wire the spectrum bar to the engine. Returns { setValue, getValue,
- * nearestSurveyId, valueForSurveyId } for permalink/preference plumbing.
- * onSettle(value) fires when the user releases the thumb (post-snap).
- */
+const PAD = 15; // px of thumb-travel inset at each end of the track
+const smoothstep = (t) => t * t * (3 - 2 * t);
+
 export function initSpectrumBar(aladin, { onSettle } = {}) {
-  const slider = document.getElementById('spectrum-slider');
+  const track = document.getElementById('spectrum-track');
+  const thumb = document.getElementById('spectrum-thumb');
+  const chip = document.getElementById('spectrum-chip');
   const nameEl = document.getElementById('spectrum-name');
   const bandEl = document.getElementById('spectrum-band');
   const dotsEl = document.getElementById('spectrum-dots');
 
-  // One dot per survey stop, aligned with the thumb's travel.
   for (let i = 0; i < SURVEYS.length; i++) {
     const dot = document.createElement('span');
     dot.className = 'spectrum-dot';
-    dot.style.left = `${(i / (SURVEYS.length - 1)) * 100}%`;
+    dot.style.top = `calc(${PAD}px + (100% - ${2 * PAD}px) * ${i / (SURVEYS.length - 1)})`;
     dotsEl.appendChild(dot);
   }
+  const dots = [...dotsEl.children];
 
-  let curBase = -1;
-  let curOver = -1;
-  let overlayLayer = null;
+  let value = DEFAULT_VALUE;   // displayed (eased) position
+  let target = DEFAULT_VALUE;  // where the pointer/keyboard wants to be
+  let dragging = false;
+  let raf = null;
+  let settlePending = false;
 
-  function apply(value) {
-    const v = Math.max(0, Math.min(MAX_VALUE, value));
+  let curBase = -1, curOver = -1, overlayLayer = null;
+
+  function applyEngine(v) {
     const idx = Math.min(Math.floor(v / STOP), SURVEYS.length - 2);
-    const frac = (v - idx * STOP) / STOP; // 0..1 toward the next survey
-
+    const frac = (v - idx * STOP) / STOP;
     if (idx !== curBase) {
       try { aladin.setBaseImageLayer(SURVEYS[idx].id); } catch (err) { /* mid-drag hiccup */ }
       curBase = idx;
@@ -59,47 +70,106 @@ export function initSpectrumBar(aladin, { onSettle } = {}) {
         } catch (err) { overlayLayer = null; }
         curOver = overIdx;
       }
-      try { overlayLayer?.setOpacity?.(frac); } catch (err) { /* non-fatal */ }
+      try { overlayLayer?.setOpacity?.(smoothstep(frac)); } catch (err) { /* non-fatal */ }
     } else {
       try { overlayLayer?.setOpacity?.(0); } catch (err) { /* non-fatal */ }
     }
 
-    // Label: nearest survey's name and band; both names while truly blended.
     const near = Math.round(v / STOP);
     nameEl.textContent = (frac > 0.18 && frac < 0.82)
       ? `${SURVEYS[idx].name} + ${SURVEYS[overIdx].name}`
       : SURVEYS[near].name;
     bandEl.textContent = SURVEYS[near].band;
-    dotsEl.querySelectorAll('.spectrum-dot').forEach((d, i) => d.classList.toggle('active', i === near));
+    dots.forEach((d, i) => d.classList.toggle('active', i === near));
+    track.setAttribute('aria-valuenow', String(Math.round(v)));
+    track.setAttribute('aria-valuetext', nameEl.textContent);
   }
 
-  // Drag: apply at most once per frame. Release: gentle magnetic snap.
-  let rafPending = false;
-  slider.addEventListener('input', () => {
-    if (rafPending) return;
-    rafPending = true;
-    requestAnimationFrame(() => {
-      rafPending = false;
-      apply(Number(slider.value));
-    });
+  function paint(v) {
+    const rect = track.getBoundingClientRect();
+    const travel = rect.height - 2 * PAD;
+    const y = PAD + (v / MAX_VALUE) * travel;
+    thumb.style.top = `${y}px`;
+    chip.style.top = `${rect.top + y}px`;
+  }
+
+  function tick() {
+    const delta = target - value;
+    if (Math.abs(delta) < 0.35 && !dragging) {
+      value = target;
+      applyEngine(value);
+      paint(value);
+      raf = null;
+      if (settlePending) {
+        settlePending = false;
+        onSettle?.(value);
+      }
+      return;
+    }
+    // Critically-damped approach: fast when far, feather-soft on arrival.
+    value += delta * 0.18;
+    applyEngine(value);
+    paint(value);
+    raf = requestAnimationFrame(tick);
+  }
+  const animate = () => { if (!raf) raf = requestAnimationFrame(tick); };
+
+  function valueFromPointer(clientY) {
+    const rect = track.getBoundingClientRect();
+    const travel = rect.height - 2 * PAD;
+    const t = (clientY - rect.top - PAD) / travel;
+    return Math.max(0, Math.min(MAX_VALUE, t * MAX_VALUE));
+  }
+
+  function release() {
+    if (!dragging) return;
+    dragging = false;
+    const near = Math.round(target / STOP) * STOP;
+    if (Math.abs(target - near) <= 15) target = near; // magnetic snap
+    settlePending = true;
+    animate();
+  }
+
+  track.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    track.setPointerCapture(e.pointerId);
+    dragging = true;
+    target = valueFromPointer(e.clientY);
+    animate();
   });
-  slider.addEventListener('change', () => {
-    let v = Number(slider.value);
-    const near = Math.round(v / STOP) * STOP;
-    if (Math.abs(v - near) <= 15) v = near; // snap when released close to a stop
-    slider.value = v;
-    apply(v);
-    onSettle?.(v);
+  track.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    target = valueFromPointer(e.clientY);
+    animate();
   });
+  track.addEventListener('pointerup', release);
+  track.addEventListener('pointercancel', release);
+
+  track.addEventListener('keydown', (e) => {
+    const stopIdx = Math.round(target / STOP);
+    let next = null;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === 'PageDown') next = Math.min(SURVEYS.length - 1, stopIdx + 1) * STOP;
+    else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft' || e.key === 'PageUp') next = Math.max(0, stopIdx - 1) * STOP;
+    else if (e.key === 'Home') next = 0;
+    else if (e.key === 'End') next = MAX_VALUE;
+    if (next == null) return;
+    e.preventDefault();
+    target = next;
+    settlePending = true;
+    animate();
+  });
+
+  window.addEventListener('resize', () => paint(value));
 
   return {
     setValue(v, { settle = false } = {}) {
-      slider.value = Math.max(0, Math.min(MAX_VALUE, v));
-      apply(Number(slider.value));
-      if (settle) onSettle?.(Number(slider.value));
+      value = target = Math.max(0, Math.min(MAX_VALUE, v));
+      applyEngine(value);
+      paint(value);
+      if (settle) onSettle?.(value);
     },
-    getValue: () => Number(slider.value),
-    nearestSurveyId: () => SURVEYS[Math.round(Number(slider.value) / STOP)].id,
+    getValue: () => target,
+    nearestSurveyId: () => SURVEYS[Math.round(target / STOP)].id,
     valueForSurveyId: (id) => {
       const i = SURVEYS.findIndex(s => s.id === id);
       return i >= 0 ? i * STOP : null;
