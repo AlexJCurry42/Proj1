@@ -2,7 +2,7 @@
 // eagerly-loaded Messier/NGC/IC markers with zoom-aware density, and the
 // NASA Exoplanet Archive layer.
 
-import { fetchJSON } from './net.js';
+import { fetchJSON, fetchText } from './net.js';
 import { showToast } from './ui.js';
 import { makeGlowDot } from './markers.js';
 
@@ -144,17 +144,67 @@ export async function loadMessierNgc(aladin, onZoom = (fn) => aladin.on('zoomCha
   return { catalogs: Object.values(catalogs), count: all.length };
 }
 
-/** NASA Exoplanet Archive: confirmed planets, queried once and cached in-memory. */
+/**
+ * Minimal quote-aware CSV parser for the archive's TAP output: returns
+ * objects keyed by the header row, with numeric fields converted.
+ */
+export function parseExoCsv(text) {
+  const lines = text.split(/\r?\n/).filter(l => l.length);
+  if (lines.length < 2) return [];
+  const splitLine = (line) => {
+    const out = [];
+    let cur = '', inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (inQ) {
+        if (ch === '"') { if (line[i + 1] === '"') { cur += '"'; i++; } else inQ = false; }
+        else cur += ch;
+      } else if (ch === '"') inQ = true;
+      else if (ch === ',') { out.push(cur); cur = ''; }
+      else cur += ch;
+    }
+    out.push(cur);
+    return out;
+  };
+  const header = splitLine(lines[0]).map(h => h.trim().toLowerCase());
+  const numeric = new Set(['ra', 'dec', 'sy_dist', 'disc_year']);
+  return lines.slice(1).map(line => {
+    const cells = splitLine(line);
+    const row = {};
+    header.forEach((h, i) => {
+      const v = cells[i] ?? '';
+      row[h] = numeric.has(h) ? (v === '' ? null : Number(v)) : v;
+    });
+    return row;
+  });
+}
+
+/**
+ * NASA Exoplanet Archive: confirmed planets, queried once and cached
+ * in-memory. The full pscomppars table is a slow, multi-hundred-KB response,
+ * so: (1) a fast one-row probe first distinguishes "archive unreachable"
+ * from "big query needs time", (2) the real download uses CSV (~4× smaller
+ * than TAP JSON) with a 90 s budget and no auto-retry, (3) the user sees
+ * progress instead of a spinner-less wait.
+ */
 export async function loadExoplanets(aladin) {
   if (!exoplanetCache) {
-    const query =
-      'SELECT pl_name, hostname, ra, dec, discoverymethod, disc_year, sy_dist FROM pscomppars ' +
-      'WHERE ra IS NOT NULL AND dec IS NOT NULL';
-    const url = `${EXOPLANET_TAP_URL}?query=${encodeURIComponent(query)}&format=json`;
+    const probeQuery = 'select top 1 pl_name from pscomppars';
     try {
-      exoplanetCache = await fetchJSON(url);
+      await fetchText(`${EXOPLANET_TAP_URL}?query=${encodeURIComponent(probeQuery)}&format=csv`, { timeoutMs: 12000 });
     } catch (err) {
-      showToast('NASA Exoplanet Archive is unreachable; exoplanet layer disabled.', 'error');
+      showToast('The NASA Exoplanet Archive is not reachable from your network right now. The toggle will retry when switched on again.', 'error', 9000);
+      return { catalog: null, count: 0 };
+    }
+    showToast('Downloading ~6,000 confirmed exoplanets from the NASA archive — this can take up to a minute…', 'info', 9000);
+    const query =
+      'select pl_name,hostname,ra,dec,discoverymethod,disc_year,sy_dist from pscomppars ' +
+      'where ra is not null and dec is not null';
+    try {
+      const csv = await fetchText(`${EXOPLANET_TAP_URL}?query=${encodeURIComponent(query)}&format=csv`, { timeoutMs: 90000, retries: 0 });
+      exoplanetCache = parseExoCsv(csv);
+    } catch (err) {
+      showToast('The archive responded but the full catalog download did not finish (slow connection or busy archive). Toggle the layer again to retry.', 'error', 9000);
       return { catalog: null, count: 0 };
     }
   }

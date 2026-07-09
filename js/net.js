@@ -3,7 +3,7 @@
 
 const DEFAULT_TIMEOUT_MS = 10000;
 
-export async function fetchText(url, { timeoutMs = DEFAULT_TIMEOUT_MS, attempt = 1 } = {}) {
+export async function fetchText(url, { timeoutMs = DEFAULT_TIMEOUT_MS, retries = 1, attempt = 1 } = {}) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -11,7 +11,9 @@ export async function fetchText(url, { timeoutMs = DEFAULT_TIMEOUT_MS, attempt =
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return await res.text();
   } catch (err) {
-    if (attempt < 2) return fetchText(url, { timeoutMs, attempt: attempt + 1 });
+    // retries: 0 disables the retry for requests where a repeat would just
+    // double the pain (e.g. a 90-second full-catalog download).
+    if (attempt <= retries) return fetchText(url, { timeoutMs, retries, attempt: attempt + 1 });
     throw err;
   } finally {
     clearTimeout(timer);
