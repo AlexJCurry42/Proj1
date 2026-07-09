@@ -19,8 +19,9 @@ import { loadStellarBlackHoles, loadFlagshipSupermassive, initMilliquasLayer, lo
 import { computePlanetPositions, computeSunPosition, computeMoonPosition, PLANET_LABELS } from './planets.js';
 import { makePlanetIcon, makeGlowDot } from './markers.js';
 import { initWarpEffect } from './warp.js';
-import { loadConstellations } from './constellations.js';
+import { loadConstellations, loadConstellationBorders } from './constellations.js';
 import { querySuggestions, suggestionCoords } from './suggest.js';
+import { initSkyNow } from './skynow.js';
 
 const SGR_A_STAR = { ra: 266.41683, dec: -29.007811 };
 
@@ -271,6 +272,7 @@ async function main() {
   });
 
   initTours(aladin);
+  initSkyNow(aladin);
 
   // Floating zoom controls (Aladin's own chrome is disabled for a clean sky).
   function zoomBy(factor) {
@@ -461,6 +463,21 @@ async function main() {
     constRef.catalogs = catalogs;
     constToggle.setCount(count);
     setCatalogVisible(catalogs, constToggle.isChecked());
+  });
+
+  const bordersRef = { loading: false };
+  addToggle(catalogList, {
+    label: 'Constellation boundaries', color: '#39496b', checked: false,
+    onToggle: async (v) => {
+      if (v && !bordersRef.catalogs && !bordersRef.loading) {
+        bordersRef.loading = true;
+        const { catalogs } = await loadConstellationBorders(aladin);
+        bordersRef.catalogs = catalogs;
+        bordersRef.loading = false;
+      } else {
+        setCatalogVisible(bordersRef.catalogs, v);
+      }
+    }
   });
 
   const messierRef = {};

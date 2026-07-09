@@ -1,0 +1,66 @@
+# Fetches the full-88 IAU constellation dataset (figures, names, boundaries)
+# from the d3-celestial project (Olaf Frohn, BSD-3-Clause; based on Stellarium
+# sky-culture data and IAU boundary data) and commits it into data/.
+#
+# Same rationale as the exoplanet snapshot: the app must stay a static site
+# with no backend, so its own repo fetches heavyweight data server-side.
+# One-shot on arrival of this file, and re-runnable on demand.
+
+name: Fetch constellation data
+
+on:
+  push:
+    paths:
+      - '.github/workflows/constellation-data.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download from d3-celestial
+        run: |
+          BASE='https://raw.githubusercontent.com/ofrohn/d3-celestial/master/data'
+          curl -fsS --retry 3 --retry-delay 15 "$BASE/constellations.lines.json"   -o data/constellations_lines.json
+          curl -fsS --retry 3 --retry-delay 15 "$BASE/constellations.json"         -o data/constellations_names.json
+          curl -fsS --retry 3 --retry-delay 15 "$BASE/constellations.borders.json" -o data/constellations_borders.json
+
+      - name: Validate structure before committing
+        run: |
+          python3 - <<'EOF'
+          import json
+
+          lines = json.load(open('data/constellations_lines.json'))
+          assert lines.get('type') == 'FeatureCollection'
+          assert len(lines['features']) >= 85, f"only {len(lines['features'])} line features"
+          f0 = lines['features'][0]
+          assert f0['geometry']['type'] == 'MultiLineString'
+          seg = f0['geometry']['coordinates'][0][0]
+          assert len(seg) == 2 and -360 <= seg[0] <= 360 and -90 <= seg[1] <= 90
+
+          names = json.load(open('data/constellations_names.json'))
+          assert len(names['features']) >= 85
+          n0 = names['features'][0]
+          assert 'name' in n0['properties']
+          assert n0['geometry']['type'] == 'Point'
+
+          borders = json.load(open('data/constellations_borders.json'))
+          assert len(borders['features']) >= 48
+          print('all constellation files valid:',
+                len(lines['features']), 'figures,',
+                len(names['features']), 'names,',
+                len(borders['features']), 'border features')
+          EOF
+
+      - name: Commit if changed
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add data/constellations_lines.json data/constellations_names.json data/constellations_borders.json
+          git diff --cached --quiet || git commit -m "Fetch full-88 constellation dataset (d3-celestial) [skip ci]"
+          git push

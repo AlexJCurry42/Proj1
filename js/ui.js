@@ -419,6 +419,7 @@ export function initAboutModal() {
       <li><strong>Gaia</strong> DR3 &mdash; ESA / Gaia Data Processing and Analysis Consortium</li>
       <li><strong>NASA Exoplanet Archive</strong> &mdash; NASA/IPAC, operated by Caltech</li>
       <li>Messier &amp; NGC/IC positions curated from standard published (SEDS/OpenNGC-derived) coordinates</li>
+      <li>Constellation figures, names and IAU boundaries from the <strong>d3-celestial</strong> project (Olaf Frohn, BSD-3-Clause), based on Stellarium sky-culture data</li>
     </ul>
     <h3>Black holes &amp; gravitational waves</h3>
     <ul>
@@ -433,7 +434,7 @@ export function initAboutModal() {
     <h3>Procedural renders</h3>
     <p>Objects without real imagery fall back to <strong>procedural illustrations</strong> generated in-browser from published parameters (planet class, stellar temperature, accretion physics) — never passed off as observations, and labeled as such.</p>
     <h3>Privacy</h3>
-    <p><strong>No tracking, ever.</strong> No analytics, no cookies, no accounts. Preferences (layers, night-vision mode) live only in your browser's local storage.</p>
+    <p><strong>No tracking, ever.</strong> No analytics, no cookies, no accounts. Preferences (layers, night-vision mode) live only in your browser's local storage. The Sky&nbsp;Now feature reads your location on this device solely to compute what's overhead — it is never transmitted anywhere.</p>
     <h3>Open source</h3>
     <p>MIT-licensed. Source, bug reports and suggestions: <a href="https://github.com/AlexJCurry42/Proj1" target="_blank" rel="noopener">github.com/AlexJCurry42/Proj1</a>. Curated data last reviewed July 2026.</p>
     <p class="hint">Every dataset should be cited per its provider's own guidelines in any derived publication. This tool is for exploration and education, not a substitute for primary catalogs. Planet/Moon positions are geocentric and approximate (±arcminutes; Moon up to ~1° due to parallax).</p>

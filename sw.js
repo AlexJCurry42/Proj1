@@ -7,7 +7,10 @@
 // next load) with cache fallback for offline; same-origin assets are served
 // stale-while-revalidate.
 
-const VERSION = 'dsa-shell-v1';
+// NOTE: never list Action-generated data files (exoplanets_snapshot,
+// constellations_lines/names/borders) here — they may not exist on a fresh
+// deploy and one 404 fails the entire install. Runtime caching covers them.
+const VERSION = 'dsa-shell-v2';
 
 const SHELL = [
   './',
@@ -23,6 +26,7 @@ const SHELL = [
   'js/planets.js',
   'js/render3d.js',
   'js/search.js',
+  'js/skynow.js',
   'js/suggest.js',
   'js/ui.js',
   'js/warp.js',

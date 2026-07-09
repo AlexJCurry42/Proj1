@@ -392,6 +392,20 @@ input[type="range"]::-moz-range-thumb{
   display: flex; flex-direction: column; gap: 8px;
 }
 
+/* ================= Sky Now ================= */
+#skynow-btn{
+  position: fixed; z-index: 45;
+  left: calc(12px + var(--safe-left));
+  bottom: calc(12px + var(--safe-bottom));
+  width: auto; padding: 0 16px; gap: 8px;
+  font-size: 14px; font-weight: 600;
+}
+#skynow-btn .icon{ width: 15px; height: 15px; }
+@media (max-width: 640px){
+  /* Sits above the collapsed sheet edge; label kept — it's the hero action */
+  #skynow-btn{ bottom: calc(14px + var(--safe-bottom)); }
+}
+
 /* ================= Readout pill ================= */
 #readouts{
   position: fixed; z-index: 40;
