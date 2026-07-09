@@ -179,33 +179,49 @@ export function parseExoCsv(text) {
   });
 }
 
+const EXO_SNAPSHOT_URL = 'data/exoplanets_snapshot.csv';
+let exoplanetFromSnapshot = false;
+
+/** Direct TAP query — works only where the archive permits it (no CORS from browsers today). */
+async function fetchLiveExoplanets() {
+  const probeQuery = 'select top 1 pl_name from pscomppars';
+  await fetchText(`${EXOPLANET_TAP_URL}?query=${encodeURIComponent(probeQuery)}&format=csv`, { timeoutMs: 12000 });
+  const query =
+    'select pl_name,hostname,ra,dec,discoverymethod,disc_year,sy_dist from pscomppars ' +
+    'where ra is not null and dec is not null';
+  const csv = await fetchText(`${EXOPLANET_TAP_URL}?query=${encodeURIComponent(query)}&format=csv`, { timeoutMs: 90000, retries: 0 });
+  return parseExoCsv(csv);
+}
+
 /**
- * NASA Exoplanet Archive: confirmed planets, queried once and cached
- * in-memory. The full pscomppars table is a slow, multi-hundred-KB response,
- * so: (1) a fast one-row probe first distinguishes "archive unreachable"
- * from "big query needs time", (2) the real download uses CSV (~4× smaller
- * than TAP JSON) with a 90 s budget and no auto-retry, (3) the user sees
- * progress instead of a spinner-less wait.
+ * NASA Exoplanet Archive: confirmed planets, cached in-memory for the session.
+ * The archive's TAP sends no CORS headers, so browsers cannot query it
+ * directly — the primary source is a repo-bundled snapshot that a GitHub
+ * Action refreshes weekly (see .github/workflows/exoplanet-snapshot.yml).
+ * A silent live-TAP attempt still runs in the background so the app
+ * self-heals to live data if the archive ever enables browser access.
  */
 export async function loadExoplanets(aladin) {
   if (!exoplanetCache) {
-    const probeQuery = 'select top 1 pl_name from pscomppars';
     try {
-      await fetchText(`${EXOPLANET_TAP_URL}?query=${encodeURIComponent(probeQuery)}&format=csv`, { timeoutMs: 12000 });
+      exoplanetCache = parseExoCsv(await fetchText(EXO_SNAPSHOT_URL, { timeoutMs: 15000 }));
+      exoplanetFromSnapshot = true;
+      // Background upgrade path — expected to fail today, so completely silent.
+      fetchLiveExoplanets().then(rows => {
+        if (rows.length >= exoplanetCache.length) {
+          exoplanetCache = rows;
+          exoplanetFromSnapshot = false;
+        }
+      }).catch(() => { /* no CORS from the archive: the snapshot stands */ });
     } catch (err) {
-      showToast('The NASA Exoplanet Archive is not reachable from your network right now. The toggle will retry when switched on again.', 'error', 9000);
-      return { catalog: null, count: 0 };
-    }
-    showToast('Downloading ~6,000 confirmed exoplanets from the NASA archive — this can take up to a minute…', 'info', 9000);
-    const query =
-      'select pl_name,hostname,ra,dec,discoverymethod,disc_year,sy_dist from pscomppars ' +
-      'where ra is not null and dec is not null';
-    try {
-      const csv = await fetchText(`${EXOPLANET_TAP_URL}?query=${encodeURIComponent(query)}&format=csv`, { timeoutMs: 90000, retries: 0 });
-      exoplanetCache = parseExoCsv(csv);
-    } catch (err) {
-      showToast('The archive responded but the full catalog download did not finish (slow connection or busy archive). Toggle the layer again to retry.', 'error', 9000);
-      return { catalog: null, count: 0 };
+      // Snapshot missing (first deploy before the Action has run): try live.
+      showToast('Downloading confirmed exoplanets from the NASA archive — this can take up to a minute…', 'info', 9000);
+      try {
+        exoplanetCache = await fetchLiveExoplanets();
+      } catch (liveErr) {
+        showToast('The exoplanet catalog is not available right now (the archive blocks direct browser access and the bundled snapshot has not been generated yet). Try again after the next site update.', 'error', 10000);
+        return { catalog: null, count: 0 };
+      }
     }
   }
 
@@ -230,7 +246,9 @@ export async function loadExoplanets(aladin) {
           ['Discovery method', row.discoverymethod],
           ['Discovery year', row.disc_year]
         ],
-        source: 'NASA Exoplanet Archive (pscomppars table), NASA/IPAC'
+        source: exoplanetFromSnapshot
+          ? 'NASA Exoplanet Archive (pscomppars), NASA/IPAC — bundled snapshot, refreshed weekly'
+          : 'NASA Exoplanet Archive (pscomppars table), NASA/IPAC'
       }
     }));
   }
