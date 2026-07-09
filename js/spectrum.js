@@ -122,9 +122,9 @@ export function initSpectrumBar(aladin, { onSettle, collapsed = false, onCollaps
       }
       return;
     }
-    // Critically-damped approach: stiffer under the finger so the thumb
-    // feels attached, softer on released glides so arrivals feather in.
-    value += delta * (dragging ? 0.34 : 0.2);
+    // Under the finger the thumb tracks 1:1 — any easing here reads as lag.
+    // The glide is reserved for taps, keyboard steps and the release snap.
+    value += dragging ? delta : delta * 0.2;
     applyEngine(value);
     paint(value);
     raf = requestAnimationFrame(tick);
@@ -138,6 +138,19 @@ export function initSpectrumBar(aladin, { onSettle, collapsed = false, onCollaps
     return Math.max(0, Math.min(MAX_VALUE, t * MAX_VALUE));
   }
 
+  function thumbClientY() {
+    const rect = track.getBoundingClientRect();
+    return rect.top + PAD + (value / MAX_VALUE) * (rect.height - 2 * PAD);
+  }
+
+  function startDrag(clientY) {
+    dragging = true;
+    track.classList.add('dragging');
+    showChip();
+    target = valueFromPointer(clientY);
+    animate();
+  }
+
   function release() {
     if (!dragging) return;
     dragging = false;
@@ -148,22 +161,57 @@ export function initSpectrumBar(aladin, { onSettle, collapsed = false, onCollaps
     animate();
   }
 
+  // Pointer model, tuned to coexist with sky navigation. A touch landing on
+  // the thumb scrubs immediately, 1:1. A touch elsewhere on the track is
+  // NOT acted on at pointerdown — it becomes a jump on release if it stays a
+  // tap, becomes a scrub if it travels vertically, and is discarded entirely
+  // if it travels mostly sideways (that's a sky pan brushing the rail, and
+  // it used to yank the survey).
+  const THUMB_GRAB = 26; // px above/below the thumb that scrub instantly
+  const SLOP = 8;        // px of travel before a touch declares its intent
+  let gesture = null;    // 'drag' | 'pending' | 'dead'
+  let startX = 0, startY = 0;
+
   track.addEventListener('pointerdown', (e) => {
     e.preventDefault();
     try { track.setPointerCapture(e.pointerId); } catch (err) { /* synthetic events */ }
-    dragging = true;
-    track.classList.add('dragging');
-    showChip();
-    target = valueFromPointer(e.clientY);
-    animate();
+    startX = e.clientX; startY = e.clientY;
+    if (Math.abs(e.clientY - thumbClientY()) <= THUMB_GRAB) {
+      gesture = 'drag';
+      startDrag(e.clientY);
+    } else {
+      gesture = 'pending';
+    }
   });
   track.addEventListener('pointermove', (e) => {
-    if (!dragging) return;
-    target = valueFromPointer(e.clientY);
-    animate();
+    if (gesture === 'drag') {
+      target = valueFromPointer(e.clientY);
+      animate();
+    } else if (gesture === 'pending') {
+      const dx = Math.abs(e.clientX - startX), dy = Math.abs(e.clientY - startY);
+      if (dy > SLOP && dy >= dx) {
+        gesture = 'drag';
+        startDrag(e.clientY);
+      } else if (dx > SLOP && dx > dy) {
+        gesture = 'dead'; // sideways: a navigation gesture, not slider input
+      }
+    }
   });
-  track.addEventListener('pointerup', release);
-  track.addEventListener('pointercancel', release);
+  track.addEventListener('pointerup', (e) => {
+    if (gesture === 'pending') {
+      // A clean tap: glide to the tapped point.
+      showChip();
+      target = valueFromPointer(e.clientY);
+      settlePending = true;
+      animate();
+    }
+    gesture = null;
+    release();
+  });
+  track.addEventListener('pointercancel', () => {
+    gesture = null;
+    release();
+  });
 
   track.addEventListener('keydown', (e) => {
     const stopIdx = Math.round(target / STOP);
