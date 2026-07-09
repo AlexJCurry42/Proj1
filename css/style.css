@@ -6,6 +6,11 @@
    ============================================================ */
 
 :root{
+  /* Native form controls (select popups, pickers, scrollbars) must render
+     dark too — otherwise option lists show white text on the OS's default
+     white popup background. */
+  color-scheme: dark;
+
   /* Materials */
   --material: rgba(24, 24, 30, 0.62);
   --material-thick: rgba(22, 22, 28, 0.82);
@@ -65,6 +70,13 @@ html, body{
 .skip-link:focus{ left: 12px; top: calc(12px + var(--safe-top)); }
 
 button, select, input{ font-family: inherit; color: inherit; }
+
+/* Explicit option styling for engines that ignore color-scheme on popups
+   (older Chrome/Windows): dark rows, readable text. */
+select option, select optgroup{
+  background-color: #16161c;
+  color: #f2f2f7;
+}
 
 :focus-visible{ outline: 2px solid var(--blue); outline-offset: 2px; border-radius: 4px; }
 
