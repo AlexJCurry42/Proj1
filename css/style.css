@@ -149,21 +149,35 @@ body.redlight #warp-canvas{ filter: sepia(1) saturate(6) hue-rotate(-50deg) brig
   top: calc(10px + var(--safe-top));
   left: calc(12px + var(--safe-left));
   right: calc(12px + var(--safe-right));
-  display: flex; align-items: center; gap: 8px;
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
   pointer-events: none;
 }
 #top-bar > *{ pointer-events: auto; }
 
+/* Bottom bar: Sky Now left, search dead-center — the iOS Safari address-bar
+   position, where the thumb already lives. Grid keeps the search field
+   centered on the *screen* regardless of Sky Now's width. */
+#bottom-bar{
+  position: fixed; z-index: 60;
+  left: calc(12px + var(--safe-left));
+  right: calc(12px + var(--safe-right));
+  bottom: calc(12px + var(--safe-bottom));
+  display: grid; grid-template-columns: 1fr minmax(0, 520px) 1fr;
+  align-items: center; gap: 8px;
+  pointer-events: none;
+}
+#bottom-bar > *{ pointer-events: auto; }
+
 #search-form{
-  position: relative; flex: 1; min-width: 0; max-width: 520px;
-  height: 40px; margin: 0 auto;
+  position: relative; grid-column: 2; min-width: 0; width: 100%;
+  height: 44px;
   display: flex; align-items: center; gap: 8px;
   padding: 0 14px;
   border-radius: 999px; border: 0.5px solid var(--hairline);
   background: var(--sheen), var(--material);
   -webkit-backdrop-filter: var(--blur);
   backdrop-filter: var(--blur);
-  box-shadow: var(--liquid-edge);
+  box-shadow: var(--shadow-card), var(--liquid-edge);
 }
 .search-icon{ color: var(--text-secondary); flex-shrink: 0; width: 16px; height: 16px; }
 #search-input{
@@ -179,8 +193,9 @@ body.redlight #warp-canvas{ filter: sepia(1) saturate(6) hue-rotate(-50deg) brig
   box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.15);
 }
 
+/* Search lives at the bottom now, so its lists open upward, like iOS. */
 .dropdown-list{
-  position: absolute; top: 48px; left: 0; right: 0; z-index: 70;
+  position: absolute; bottom: 52px; left: 0; right: 0; z-index: 70;
   list-style: none; margin: 0; padding: 6px;
   background: var(--material-thick);
   -webkit-backdrop-filter: var(--blur);
@@ -188,10 +203,10 @@ body.redlight #warp-canvas{ filter: sepia(1) saturate(6) hue-rotate(-50deg) brig
   border: 0.5px solid var(--hairline); border-radius: 16px;
   box-shadow: var(--shadow-card);
   max-height: 40vh; overflow-y: auto;
-  transform-origin: top center;
+  transform-origin: bottom center;
   animation: pop-in 0.2s cubic-bezier(0.32, 0.72, 0, 1);
 }
-@keyframes pop-in{ from{ opacity: 0; transform: scale(0.97) translateY(-4px); } }
+@keyframes pop-in{ from{ opacity: 0; transform: scale(0.97) translateY(4px); } }
 .dropdown-list li{
   padding: 10px 12px; border-radius: 10px; cursor: pointer;
   font-size: 14px; color: var(--text-primary);
@@ -203,6 +218,7 @@ body.redlight #warp-canvas{ filter: sepia(1) saturate(6) hue-rotate(-50deg) brig
 
 .glass-select{
   height: 40px; padding: 0 30px 0 14px;
+  max-width: 150px; text-overflow: ellipsis; white-space: nowrap; overflow: hidden;
   border-radius: 999px; border: 0.5px solid var(--hairline);
   background-color: var(--material);
   -webkit-backdrop-filter: var(--blur);
@@ -239,7 +255,10 @@ body.redlight #warp-canvas{ filter: sepia(1) saturate(6) hue-rotate(-50deg) brig
   transition: width 0.42s cubic-bezier(0.32, 0.72, 0, 1),
               max-height 0.42s cubic-bezier(0.32, 0.72, 0, 1);
 }
-#layer-dock .fold-btn{ margin-left: -10px; }
+#layer-dock .fold-btn{
+  margin-left: -10px;
+  transition: margin-left 0.42s cubic-bezier(0.32, 0.72, 0, 1);
+}
 #layer-dock-list{
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
@@ -250,8 +269,9 @@ body.redlight #warp-canvas{ filter: sepia(1) saturate(6) hue-rotate(-50deg) brig
 }
 #layer-dock-list::-webkit-scrollbar{ width: 0; }
 /* Collapsed: the dock folds into a single pill, mirroring the spectrum rail. */
-#layer-dock.collapsed{ width: 56px; max-height: 48px; padding-bottom: 4px; }
+#layer-dock.collapsed{ width: 56px; max-height: 78px; padding-bottom: 8px; }
 #layer-dock.collapsed #layer-dock-list{ opacity: 0; pointer-events: none; }
+#layer-dock.collapsed .fold-btn{ margin-left: -4px; } /* centered in the pill */
 #layer-dock.collapsed .fold-btn .icon{ transform: rotate(180deg); }
 
 /* iOS-style slider */
@@ -420,7 +440,7 @@ input[type="range"]::-moz-range-thumb{
 #zoom-stack{
   position: fixed; z-index: 45;
   right: calc(12px + var(--safe-right));
-  bottom: calc(12px + var(--safe-bottom));
+  bottom: calc(68px + var(--safe-bottom)); /* clears the bottom search bar */
   display: flex; flex-direction: column; gap: 8px;
 }
 
@@ -438,8 +458,8 @@ input[type="range"]::-moz-range-thumb{
   transition: right 0.34s cubic-bezier(0.32, 0.72, 0, 1),
               height 0.42s cubic-bezier(0.32, 0.72, 0, 1);
 }
-/* Collapsed: the rail folds into a single pill; the chevron becomes expand. */
-#spectrum-rail.collapsed{ height: 48px; padding-bottom: 4px; }
+/* Collapsed: the rail folds into a single pill (chevron + identity glyph). */
+#spectrum-rail.collapsed{ height: 78px; padding-bottom: 8px; }
 #spectrum-rail.collapsed :is(.spectrum-end, #spectrum-track){ opacity: 0; pointer-events: none; }
 #spectrum-rail :is(.spectrum-end, #spectrum-track){ transition: opacity 0.22s ease; }
 #spectrum-rail.collapsed #spectrum-collapse .icon{ transform: rotate(180deg); }
@@ -473,10 +493,34 @@ input[type="range"]::-moz-range-thumb{
 .fold-btn:active{ transform: scale(0.9); }
 #spectrum-rail.collapsed .fold-btn .icon{ transform: rotate(180deg); }
 
-/* The detail panel shares the right edge on desktop: the rail glides aside. */
+/* Identity glyph on each collapsed pill: out of flow and invisible while the
+   panel is open, fading in under the chevron once it folds — so a closed
+   pill still says what it is. */
+.pill-glyph{
+  position: absolute; opacity: 0; pointer-events: none;
+  align-self: center; flex-shrink: 0;
+  margin-top: 2px;
+  transition: opacity 0.25s ease;
+}
+#layer-dock.collapsed .pill-glyph,
+#spectrum-rail.collapsed .pill-glyph{
+  position: static; opacity: 1;
+  transition-delay: 0.2s;
+}
+.dock-glyph{ width: 17px; height: 17px; color: var(--text-secondary); }
+.spectrum-glyph{
+  width: 5px; height: 20px; border-radius: 3px;
+  background: linear-gradient(180deg,
+    #a58bff 0%, #e9eef6 38%, #ffd9a0 68%, #c96a4a 100%);
+}
+
+/* The detail panel shares the right edge on desktop: the rail and the
+   bottom bar glide aside so nothing sits under the panel. */
 @media (min-width: 641px){
   #detail-panel:not([hidden]) ~ #spectrum-rail{ right: calc(362px + var(--safe-right)); }
   #detail-panel:not([hidden]) ~ #spectrum-chip{ right: calc(428px + var(--safe-right)); }
+  #detail-panel:not([hidden]) ~ #bottom-bar{ right: calc(362px + var(--safe-right)); }
+  #bottom-bar{ transition: right 0.34s cubic-bezier(0.32, 0.72, 0, 1); }
 }
 .spectrum-end{
   font-size: 8.5px; font-weight: 650; text-transform: uppercase; letter-spacing: 0.05em;
@@ -546,9 +590,7 @@ input[type="range"]::-moz-range-thumb{
 
 /* ================= Sky Now ================= */
 #skynow-btn{
-  position: fixed; z-index: 45;
-  left: calc(12px + var(--safe-left));
-  bottom: calc(12px + var(--safe-bottom));
+  grid-column: 1; justify-self: start;
   width: auto; padding: 0 16px; gap: 8px;
   font-size: 14px; font-weight: 600;
 }
@@ -743,7 +785,7 @@ body.redlight .render-canvas{ filter: sepia(1) saturate(4) hue-rotate(-50deg) br
 /* ================= Phones (bottom sheets) ================= */
 @media (max-width: 640px){
   #top-bar{ gap: 6px; }
-  .glass-select{ padding: 0 26px 0 10px; font-size: 13px; }
+  .glass-select{ padding: 0 26px 0 10px; font-size: 13px; max-width: 104px; }
 
   /* Full-width grabber = a generous drag/tap target for dismissing sheets */
   .sheet-grabber{
@@ -779,6 +821,17 @@ body.redlight .render-canvas{ filter: sepia(1) saturate(4) hue-rotate(-50deg) br
   #detail-close{ top: 14px; }
 
   #readouts{ height: 26px; font-size: 10.5px; padding: 0 12px; gap: 8px; }
+
+  /* Phone bottom bar: Sky Now + search share one row, search takes the rest */
+  #bottom-bar{
+    display: flex;
+    transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  #search-form{ flex: 1; }
+  /* The detail sheet owns the bottom of a phone screen: the bar steps aside */
+  #detail-panel:not([hidden]) ~ #bottom-bar{
+    opacity: 0; pointer-events: none; transform: translateY(16px);
+  }
 
   #zoom-stack{ display: none; } /* pinch is the natural gesture on phones */
 

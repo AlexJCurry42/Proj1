@@ -41,14 +41,6 @@
     <span class="brand-name">Pocket&nbsp;Planetarium</span>
   </button>
 
-  <form id="search-form" role="search" autocomplete="off">
-    <svg class="icon search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><line x1="15.8" y1="15.8" x2="20" y2="20"/></svg>
-    <label for="search-input" class="visually-hidden">Search an object or coordinates</label>
-    <input id="search-input" type="search" placeholder="Search the sky" aria-label="Search an object or coordinates" enterkeyhint="search" role="combobox" aria-expanded="false" aria-autocomplete="list" />
-    <ul id="search-history" class="dropdown-list" role="listbox" aria-label="Recent searches" hidden></ul>
-    <ul id="search-suggestions" class="dropdown-list" role="listbox" aria-label="Suggestions" hidden></ul>
-  </form>
-
   <div id="top-bar-right">
     <button id="view-toggle" class="glass-btn" aria-pressed="false" aria-label="Switch between globe view and inside-the-sky view" title="Globe / inside view">
       <svg class="icon icon-globe" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><ellipse cx="12" cy="12" rx="3.8" ry="8.5"/><line x1="3.5" y1="12" x2="20.5" y2="12"/></svg>
@@ -75,6 +67,7 @@
   <button id="dock-collapse" class="fold-btn" aria-label="Collapse the layers menu" aria-expanded="true">
     <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5-5 5 5"/><path d="M7 19l5-5 5 5"/></svg>
   </button>
+  <svg class="pill-glyph icon dock-glyph" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4.5l8 4.4-8 4.4-8-4.4z"/><path d="M4 14.2l8 4.4 8-4.4"/></svg>
   <ul id="layer-dock-list" class="toggle-list"></ul>
 </nav>
 
@@ -92,6 +85,7 @@
   <button id="spectrum-collapse" class="fold-btn" aria-label="Collapse the spectrum control" aria-expanded="true">
     <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5-5 5 5"/><path d="M7 19l5-5 5 5"/></svg>
   </button>
+  <span class="pill-glyph spectrum-glyph" aria-hidden="true"></span>
   <span class="spectrum-end" aria-hidden="true">γ-ray</span>
   <div id="spectrum-track" role="slider" tabindex="0" aria-orientation="vertical"
        aria-valuemin="0" aria-valuemax="600" aria-valuenow="300"
@@ -107,11 +101,20 @@
   <span id="spectrum-band">Optical — the classic all-sky view</span>
 </div>
 
-<!-- Sky Now: fly to the user's zenith -->
-<button id="skynow-btn" class="glass-btn wide" aria-label="Show my sky right now">
-  <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5l18-8-8 18-2.2-7.8L3 11.5z"/></svg>
-  <span class="skynow-label">Sky&nbsp;Now</span>
-</button>
+<!-- Bottom bar: Sky Now on the left, search front-and-center (iOS Safari style) -->
+<div id="bottom-bar">
+  <button id="skynow-btn" class="glass-btn wide" aria-label="Show my sky right now">
+    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5l18-8-8 18-2.2-7.8L3 11.5z"/></svg>
+    <span class="skynow-label">Sky&nbsp;Now</span>
+  </button>
+  <form id="search-form" role="search" autocomplete="off">
+    <svg class="icon search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><line x1="15.8" y1="15.8" x2="20" y2="20"/></svg>
+    <label for="search-input" class="visually-hidden">Search an object or coordinates</label>
+    <input id="search-input" type="search" placeholder="Search the sky" aria-label="Search an object or coordinates" enterkeyhint="search" role="combobox" aria-expanded="false" aria-autocomplete="list" />
+    <ul id="search-history" class="dropdown-list" role="listbox" aria-label="Recent searches" hidden></ul>
+    <ul id="search-suggestions" class="dropdown-list" role="listbox" aria-label="Suggestions" hidden></ul>
+  </form>
+</div>
 
 <!-- Zoom controls -->
 <div id="zoom-stack">
