@@ -135,8 +135,12 @@ drifts, the UI degrades to the procedural render without a broken image.
   precise coordinates.
 - **Planet positions are geometric, not apparent.** The self-contained
   ephemeris (`js/planets.js`) uses the standard JPL low-precision Keplerian
-  elements table (1800–2050 AD validity), accurate to a few arcminutes, with
-  no light-time, aberration, or nutation correction.
+  elements table (1800–2050 AD validity) with no light-time, aberration, or
+  nutation correction. Cross-validated against the VSOP87-based
+  `astronomy-engine`: Sun and most planets agree to ≲1′, Jupiter/Saturn to
+  ~10′ worst-case (the table's documented weakness), the Moon to ~5′ typical
+  after correcting its of-date series to J2000. Positions recompute every
+  minute and immediately when the tab returns to the foreground.
 - **Messier/NGC/IC layer is a curated subset, not the full NGC/IC catalogs.**
   It includes all 110 Messier objects plus roughly 30 additional famous
   NGC/IC objects — not the complete ~13,000-object NGC/IC catalogs.

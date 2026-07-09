@@ -195,9 +195,16 @@ export function computeMoonPosition(date = new Date()) {
     + 0.0028 * c(269.9 + 954397.70 * T);
   const distanceKm = 6378.14 / Math.sin(pi * DEG2RAD);
 
+  // The Almanac series yields ecliptic-of-DATE coordinates, but the atlas
+  // works in J2000/ICRS like everything else on the sky. Rotate the longitude
+  // back by the accumulated general precession (5029.1"/century): without
+  // this the marker leads the real Moon by ~0.4° by the mid-2020s — more
+  // than a full Moon diameter (measured against a VSOP87-class ephemeris).
+  const lambdaJ2000 = lambda - 1.3969713 * T;
+
   // Ecliptic lon/lat -> unit rectangular -> equatorial RA/Dec
-  const x = c(beta) * c(lambda);
-  const y = c(beta) * s(lambda);
+  const x = c(beta) * c(lambdaJ2000);
+  const y = c(beta) * s(lambdaJ2000);
   const z = s(beta);
   const { ra, dec } = eclipticToEquatorial(x, y, z);
   return { ra, dec, distanceKm };
