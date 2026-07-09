@@ -9,8 +9,8 @@
 <link rel="manifest" href="manifest.webmanifest" />
 <link rel="apple-touch-icon" href="assets/icon-180.png" />
 <link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png" />
-<title>Deep Sky Atlas</title>
-<meta name="description" content="An interactive atlas of the night sky — stars, galaxies, nebulae, exoplanets and black holes, powered by Aladin Lite and CDS/NASA data." />
+<title>Pocket Planetarium</title>
+<meta name="description" content="A planetarium in your pocket — stars, galaxies, nebulae, exoplanets and black holes across the whole sky, powered by Aladin Lite and CDS/NASA data." />
 
 <!-- Warm up the critical origins: the engine CDN and the HiPS tile server
      get full preconnects; everything queried later gets cheap DNS prefetch. -->
@@ -36,8 +36,9 @@
 
 <!-- Floating top controls -->
 <header id="top-bar">
-  <button id="rail-toggle" class="glass-btn" aria-label="Toggle layers panel" aria-expanded="true" aria-controls="left-rail">
-    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4.5" width="18" height="15" rx="3.5"/><line x1="9.5" y1="4.5" x2="9.5" y2="19.5"/></svg>
+  <button id="brand-btn" class="glass-btn" aria-label="About Pocket Planetarium">
+    <img src="assets/icon-192.png" alt="" class="brand-logo" width="24" height="24" />
+    <span class="brand-name">Pocket&nbsp;Planetarium</span>
   </button>
 
   <form id="search-form" role="search" autocomplete="off">
@@ -69,23 +70,10 @@
   </div>
 </header>
 
-<!-- Layers panel (floating card on desktop, bottom sheet on phones) -->
-<aside id="left-rail" class="glass-panel" aria-label="Layers">
-  <div class="sheet-grabber" aria-hidden="true"></div>
-  <div class="rail-scroll">
-    <h1 class="rail-title">Deep Sky Atlas</h1>
-
-    <section class="rail-section">
-      <h2>Catalogs</h2>
-      <ul id="catalog-toggle-list" class="toggle-list"></ul>
-    </section>
-
-    <section class="rail-section">
-      <h2>Black Holes</h2>
-      <ul id="blackhole-toggle-list" class="toggle-list"></ul>
-    </section>
-  </div>
-</aside>
+<!-- Layer dock: always-visible overlay along the left, one switch per celestial family -->
+<nav id="layer-dock" class="glass-panel" aria-label="Celestial layers">
+  <ul id="layer-dock-list" class="toggle-list"></ul>
+</nav>
 
 <!-- Object detail panel -->
 <aside id="detail-panel" class="glass-panel" aria-label="Object details" hidden>
@@ -139,9 +127,9 @@
 </div>
 
 <!-- First-run onboarding -->
-<div id="onboarding" role="dialog" aria-label="Welcome to Deep Sky Atlas" hidden>
+<div id="onboarding" role="dialog" aria-label="Welcome to Pocket Planetarium" hidden>
   <div id="onboarding-card" class="glass-panel">
-    <h2>Deep Sky Atlas</h2>
+    <h2>Pocket Planetarium</h2>
     <div id="onboarding-steps"></div>
     <div id="onboarding-dots" aria-hidden="true"></div>
     <div class="onboarding-actions">

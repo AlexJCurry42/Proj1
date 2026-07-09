@@ -1,4 +1,4 @@
-// Deep Sky Atlas — service worker: caches the app shell (HTML/CSS/JS/data/
+// Pocket Planetarium — service worker: caches the app shell (HTML/CSS/JS/data/
 // icons) so revisits and the installed PWA start instantly. All sky data —
 // HiPS tiles, TAP queries, photographs — is cross-origin and passes straight
 // through to the network, always live.
@@ -13,7 +13,7 @@
 // NOTE: never list Action-generated data files (exoplanets_snapshot,
 // constellations_lines/names/borders) here — they may not exist on a fresh
 // deploy and one 404 fails the entire install. Runtime caching covers them.
-const VERSION = 'dsa-shell-v6';
+const VERSION = 'dsa-shell-v7';
 
 const SHELL = [
   './',

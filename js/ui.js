@@ -405,8 +405,8 @@ export function initOnboarding() {
 export function initAboutModal() {
   const modal = document.getElementById('about-modal');
   document.getElementById('about-content').innerHTML = `
-    <h2>About &amp; Credits</h2>
-    <p>Deep Sky Atlas is a browser-based sky atlas built with <a href="https://aladin.cds.unistra.fr/AladinLite/" target="_blank" rel="noopener">Aladin Lite v3</a>, streaming imagery and catalog data live from public astronomical archives. No accounts, no backend, no tracking.</p>
+    <h2>Pocket Planetarium</h2>
+    <p>A planetarium in your pocket: a browser-based sky atlas built with <a href="https://aladin.cds.unistra.fr/AladinLite/" target="_blank" rel="noopener">Aladin Lite v3</a>, streaming imagery and catalog data live from public astronomical archives. No accounts, no backend, no tracking.</p>
     <h3>Imagery &amp; sky rendering</h3>
     <ul>
       <li><strong>Aladin Lite</strong> &mdash; CDS, Observatoire de Strasbourg &amp; CNRS</li>
@@ -440,11 +440,13 @@ export function initAboutModal() {
     <p class="hint">Every dataset should be cited per its provider's own guidelines in any derived publication. This tool is for exploration and education, not a substitute for primary catalogs. Planet/Moon positions are geocentric and approximate (±arcminutes; Moon up to ~1° due to parallax).</p>
   `;
   let aboutReturnFocus = null;
-  document.getElementById('about-toggle').addEventListener('click', () => {
+  const open = () => {
     aboutReturnFocus = document.activeElement;
     modal.hidden = false;
     document.getElementById('about-close').focus();
-  });
+  };
+  document.getElementById('about-toggle').addEventListener('click', open);
+  document.getElementById('brand-btn')?.addEventListener('click', open);
   const close = () => {
     modal.hidden = true;
     aboutReturnFocus?.focus?.({ preventScroll: true });
@@ -472,21 +474,3 @@ export function initRedlightToggle() {
 
 // --------------------------------------------------------------- Rail toggle ---
 
-export function initRailToggle() {
-  const btn = document.getElementById('rail-toggle');
-  const rail = document.getElementById('left-rail');
-
-  function setCollapsed(collapsed) {
-    rail.classList.toggle('collapsed', collapsed);
-    btn.setAttribute('aria-expanded', String(!collapsed));
-  }
-
-  btn.addEventListener('click', () => setCollapsed(!rail.classList.contains('collapsed')));
-
-  // On phones the layers sheet must never trap the sky: swipe it down, tap
-  // its grabber, or simply touch the sky to clear the view.
-  makeSheetDraggable(rail, rail.querySelector('.rail-scroll'), () => setCollapsed(true));
-  document.getElementById('sky-wrap').addEventListener('pointerdown', () => {
-    if (isPhone() && !rail.classList.contains('collapsed')) setCollapsed(true);
-  });
-}

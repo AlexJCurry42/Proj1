@@ -10,7 +10,7 @@
 import {
   showToast, renderDetailPanel, showDetailLoading, closeDetailPanel,
   fetchSimbadNear, humanObjectType, toSexagesimalRA, toSexagesimalDec,
-  initTours, initOnboarding, initAboutModal, initRedlightToggle, initRailToggle,
+  initTours, initOnboarding, initAboutModal, initRedlightToggle,
   initDetailPanelClose, initKeyboard
 } from './ui.js';
 import { runSearch, getHistory, addToHistory, flyTo } from './search.js';
@@ -44,15 +44,16 @@ function writePref(key, value) {
 const savedLayers = readPref('layers', {});
 
 let toggleSeq = 0;
-function addToggle(listEl, { label, color, checked = true, onToggle }) {
+function addToggle(listEl, { label, color, checked = true, sub = false, onToggle }) {
   const saved = Object.prototype.hasOwnProperty.call(savedLayers, label) ? savedLayers[label] : undefined;
   const initial = saved ?? checked;
   const id = `tgl-${++toggleSeq}`;
   const li = document.createElement('li');
+  if (sub) li.className = 'toggle-sub';
   li.innerHTML =
     `<span class="legend-dot" style="background:${color};color:${color}"></span>` +
-    `<label class="toggle-label" for="${id}">${label}<span class="toggle-count"></span></label>` +
-    `<input type="checkbox" role="switch" id="${id}" ${initial ? 'checked' : ''}/>`;
+    `<label class="toggle-label" for="${id}"><span class="toggle-text">${label}</span><span class="toggle-count"></span></label>` +
+    `<input type="checkbox" ${sub ? 'class="sub"' : 'role="switch"'} id="${id}" ${initial ? 'checked' : ''}/>`;
   listEl.appendChild(li);
   const input = li.querySelector('input');
   input.addEventListener('change', () => {
@@ -64,7 +65,8 @@ function addToggle(listEl, { label, color, checked = true, onToggle }) {
   if (initial && !checked) queueMicrotask(() => onToggle(true));
   return {
     setCount: (n) => { li.querySelector('.toggle-count').textContent = n; },
-    isChecked: () => input.checked
+    isChecked: () => input.checked,
+    setDisabled: (d) => { input.disabled = d; li.classList.toggle('disabled', d); }
   };
 }
 
@@ -100,19 +102,12 @@ function parseViewHash() {
 
 async function main() {
   // Aladin-independent chrome first, so a sky-engine failure still leaves a
-  // working shell (rail, about modal, red-light mode, onboarding).
-  initRailToggle();
+  // working shell (dock, about modal, red-light mode, onboarding).
   initRedlightToggle();
   initAboutModal();
   initDetailPanelClose();
   initKeyboard();
   initOnboarding();
-
-  // Phones start with the layers sheet tucked away so the sky is unobstructed.
-  if (window.matchMedia('(max-width: 640px)').matches) {
-    document.getElementById('left-rail').classList.add('collapsed');
-    document.getElementById('rail-toggle').setAttribute('aria-expanded', 'false');
-  }
 
   // Spectrum position priority: shared link > saved position > legacy survey
   // preference > default (DSS2 optical).
@@ -206,7 +201,7 @@ async function main() {
     const url = currentViewUrl();
     history.replaceState(null, '', url);
     if (navigator.share) {
-      try { await navigator.share({ title: 'Deep Sky Atlas', url }); return; }
+      try { await navigator.share({ title: 'Pocket Planetarium', url }); return; }
       catch (err) { if (err.name === 'AbortError') return; }
     }
     try {
@@ -417,40 +412,51 @@ async function main() {
     }
   });
 
-  // ------------------------------------------------ Catalog layers (rail) ---
-  const catalogList = document.getElementById('catalog-toggle-list');
-  const bhList = document.getElementById('blackhole-toggle-list');
+  // ------------------------------------------------ Layer dock (left) ---
+  // One flat overlay menu, a switch per celestial family; heavyweight layers
+  // still lazy-create on first enable.
+  const catalogList = document.getElementById('layer-dock-list');
+  const bhList = catalogList;
 
   // On by default: small, curated, high-signal.
   const constRef = {};
+  const bordersRef = { loading: false };
+
+  // Boundaries live as a sub-checkbox of Constellations: visible only when
+  // its parent is on, and following the parent off/on.
+  function syncBorders() {
+    const parentOn = constToggle.isChecked();
+    bordersToggle.setDisabled(!parentOn);
+    const show = parentOn && bordersToggle.isChecked();
+    if (show && !bordersRef.catalogs && !bordersRef.loading) {
+      bordersRef.loading = true;
+      loadConstellationBorders(aladin).then(({ catalogs }) => {
+        bordersRef.catalogs = catalogs;
+        bordersRef.loading = false;
+        setCatalogVisible(catalogs, constToggle.isChecked() && bordersToggle.isChecked());
+      });
+      return;
+    }
+    setCatalogVisible(bordersRef.catalogs, show);
+  }
   const constToggle = addToggle(catalogList, {
     label: 'Constellations', color: '#7aa0ff', checked: true,
-    onToggle: v => setCatalogVisible(constRef.catalogs, v)
+    onToggle: (v) => { setCatalogVisible(constRef.catalogs, v); syncBorders(); }
+  });
+  const bordersToggle = addToggle(catalogList, {
+    label: 'Boundaries', color: '#39496b', checked: false, sub: true,
+    onToggle: () => syncBorders()
   });
   loadConstellations(aladin).then(({ catalogs, count }) => {
     constRef.catalogs = catalogs;
     constToggle.setCount(count);
     setCatalogVisible(catalogs, constToggle.isChecked());
   });
-
-  const bordersRef = { loading: false };
-  addToggle(catalogList, {
-    label: 'Constellation boundaries', color: '#39496b', checked: false,
-    onToggle: async (v) => {
-      if (v && !bordersRef.catalogs && !bordersRef.loading) {
-        bordersRef.loading = true;
-        const { catalogs } = await loadConstellationBorders(aladin);
-        bordersRef.catalogs = catalogs;
-        bordersRef.loading = false;
-      } else {
-        setCatalogVisible(bordersRef.catalogs, v);
-      }
-    }
-  });
+  syncBorders();
 
   const messierRef = {};
   const messierToggle = addToggle(catalogList, {
-    label: 'Messier & bright NGC/IC', color: '#ffd60a', checked: true,
+    label: 'Messier & NGC', color: '#ffd60a', checked: true,
     onToggle: v => setCatalogVisible(messierRef.catalogs, v)
   });
   loadMessierNgc(aladin, onZoom).then(({ catalogs, count }) => {
@@ -473,7 +479,7 @@ async function main() {
   // Off by default, created lazily on first enable: heavy/bulk layers.
   let simbadCat = null;
   addToggle(catalogList, {
-    label: 'SIMBAD database', color: '#0a84ff', checked: false,
+    label: 'SIMBAD sources', color: '#0a84ff', checked: false,
     onToggle: (v) => {
       if (v && !simbadCat) simbadCat = initSimbadHips(aladin);
       else setCatalogVisible(simbadCat, v);
@@ -482,7 +488,7 @@ async function main() {
 
   let gaiaCat = null;
   addToggle(catalogList, {
-    label: 'Gaia DR3 stars', color: '#ffffff', checked: false,
+    label: 'Gaia stars', color: '#ffffff', checked: false,
     onToggle: (v) => {
       if (v && !gaiaCat) gaiaCat = initGaiaHips(aladin);
       else setCatalogVisible(gaiaCat, v);
@@ -509,7 +515,7 @@ async function main() {
   // ----------------------------------------------------------- Black holes ---
   const stellarRef = {};
   const stellarToggle = addToggle(bhList, {
-    label: 'Stellar-mass black holes', color: '#ff9f0a', checked: true,
+    label: 'Black holes', color: '#ff9f0a', checked: true,
     onToggle: v => setCatalogVisible(stellarRef.catalog, v)
   });
   loadStellarBlackHoles(aladin).then(({ catalog, count }) => {
@@ -520,7 +526,7 @@ async function main() {
 
   const flagshipRef = {};
   const flagshipToggle = addToggle(bhList, {
-    label: 'EHT-imaged supermassive', color: '#ffd60a', checked: true,
+    label: 'Supermassive', color: '#ffd60a', checked: true,
     onToggle: v => setCatalogVisible(flagshipRef.catalog, v)
   });
   loadFlagshipSupermassive(aladin).then(({ catalog, count }) => {
@@ -531,7 +537,7 @@ async function main() {
 
   let milliquasCat = null;
   addToggle(bhList, {
-    label: 'AGN & quasars (Milliquas)', color: '#ff453a', checked: false,
+    label: 'AGN & quasars', color: '#ff453a', checked: false,
     onToggle: (v) => {
       if (v && !milliquasCat) {
         milliquasCat = initMilliquasLayer(aladin, onZoom, onPosition);
@@ -544,7 +550,7 @@ async function main() {
 
   const gwRef = { loading: false };
   const gwToggle = addToggle(bhList, {
-    label: 'Gravitational-wave mergers', color: '#bf5af2', checked: false,
+    label: 'GW mergers', color: '#bf5af2', checked: false,
     onToggle: async (v) => {
       if (v && !gwRef.catalog && !gwRef.loading) {
         gwRef.loading = true;
@@ -688,7 +694,7 @@ function initDebugConsole() {
 // Persistent (non-toast) failure banner: if the sky engine can't start there
 // is no app to speak of, so the user must see why, not a 15-second toast.
 function showFatalError(message) {
-  console.error('Deep Sky Atlas failed to start:', message);
+  console.error('Pocket Planetarium failed to start:', message);
   document.getElementById('fatal-banner')?.remove();
   const banner = document.createElement('div');
   banner.id = 'fatal-banner';

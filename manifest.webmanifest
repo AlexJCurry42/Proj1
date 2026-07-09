@@ -1,6 +1,6 @@
 {
-  "name": "Deep Sky Atlas",
-  "short_name": "Sky Atlas",
+  "name": "Pocket Planetarium",
+  "short_name": "Planetarium",
   "description": "An interactive atlas of the night sky — stars, galaxies, nebulae, exoplanets and black holes.",
   "start_url": "./",
   "scope": "./",

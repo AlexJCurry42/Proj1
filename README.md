@@ -1,6 +1,6 @@
-# Deep Sky Atlas
+# Pocket Planetarium
 
-An interactive, browser-based atlas of the entire sky — imagery across the
+**Pocket Planetarium** (formerly Deep Sky Atlas): an interactive, browser-based atlas of the entire sky — imagery across the
 electromagnetic spectrum, stars, galaxies, nebulae, exoplanets, Solar System
 planets, and a dedicated **black holes** layer covering stellar-mass X-ray
 binaries, supermassive/AGN & quasars (including the two EHT-imaged flagships,
