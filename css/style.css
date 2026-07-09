@@ -401,6 +401,10 @@ input[type="range"]::-moz-range-thumb{
   font-size: 14px; font-weight: 600;
 }
 #skynow-btn .icon{ width: 15px; height: 15px; }
+#skynow-btn[aria-pressed="true"]{
+  background: rgba(10, 132, 255, 0.30);
+  border-color: rgba(10, 132, 255, 0.55);
+}
 @media (max-width: 640px){
   /* Sits above the collapsed sheet edge; label kept — it's the hero action */
   #skynow-btn{ bottom: calc(14px + var(--safe-bottom)); }
