@@ -70,6 +70,25 @@ function addToggle(listEl, { label, color, checked = true, sub = false, onToggle
   };
 }
 
+// The layer dock folds the same way the spectrum rail does: one chevron,
+// one sprung animation down to a lone pill. State persists across visits.
+function initDockCollapse() {
+  const dock = document.getElementById('layer-dock');
+  const btn = document.getElementById('dock-collapse');
+  function setCollapsed(c) {
+    dock.classList.toggle('collapsed', c);
+    btn.setAttribute('aria-expanded', String(!c));
+    btn.setAttribute('aria-label', c ? 'Expand the layers menu' : 'Collapse the layers menu');
+    writePref('dockcollapsed', c);
+  }
+  btn.addEventListener('click', () => setCollapsed(!dock.classList.contains('collapsed')));
+  if (readPref('dockcollapsed', false) === true) {
+    dock.classList.add('collapsed');
+    btn.setAttribute('aria-expanded', 'false');
+    btn.setAttribute('aria-label', 'Expand the layers menu');
+  }
+}
+
 function setCatalogVisible(catalogOrList, visible) {
   if (!catalogOrList) return;
   const list = Array.isArray(catalogOrList) ? catalogOrList : [catalogOrList];
@@ -108,6 +127,7 @@ async function main() {
   initDetailPanelClose();
   initKeyboard();
   initOnboarding();
+  initDockCollapse();
 
   // Spectrum position priority: shared link > saved position > legacy survey
   // preference > default (DSS2 optical).

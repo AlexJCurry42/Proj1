@@ -117,8 +117,8 @@ export function initSpectrumBar(aladin, { onSettle, collapsed = false, onCollaps
       raf = null;
       if (settlePending) {
         settlePending = false;
-        onSettle?.(value);
         scheduleChipHide(); // the adjustment is finished: 2s grace, then fade
+        onSettle?.(value);
       }
       return;
     }
