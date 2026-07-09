@@ -72,21 +72,6 @@
     <h1 class="rail-title">Deep Sky Atlas</h1>
 
     <section class="rail-section">
-      <h2>Imagery</h2>
-      <label for="base-layer-select">Base survey</label>
-      <select id="base-layer-select" aria-label="Base imagery survey"></select>
-
-      <label for="overlay-layer-select">Overlay survey</label>
-      <select id="overlay-layer-select" aria-label="Overlay imagery survey">
-        <option value="">None</option>
-      </select>
-
-      <label for="overlay-opacity">Overlay blend</label>
-      <input type="range" id="overlay-opacity" min="0" max="100" value="0" aria-label="Overlay blend opacity" />
-      <p id="overlay-note" class="hint" hidden></p>
-    </section>
-
-    <section class="rail-section">
       <h2>Catalogs</h2>
       <ul id="catalog-toggle-list" class="toggle-list"></ul>
     </section>
@@ -106,6 +91,24 @@
   </button>
   <div id="detail-content"></div>
 </aside>
+
+<!-- Spectrum slider: every survey on one track, gamma-ray to radio -->
+<div id="spectrum-bar" class="glass-panel" role="group" aria-label="Sky imagery across the electromagnetic spectrum">
+  <div id="spectrum-label" aria-live="off">
+    <span id="spectrum-name">DSS2</span>
+    <span id="spectrum-band">Optical — the classic all-sky view</span>
+  </div>
+  <div id="spectrum-track-wrap">
+    <span class="spectrum-end" aria-hidden="true">γ-ray</span>
+    <div id="spectrum-track">
+      <div id="spectrum-gradient" aria-hidden="true"></div>
+      <div id="spectrum-dots" aria-hidden="true"></div>
+      <label for="spectrum-slider" class="visually-hidden">Blend between sky surveys, from gamma-ray to radio wavelengths</label>
+      <input type="range" id="spectrum-slider" min="0" max="600" value="300" step="1" />
+    </div>
+    <span class="spectrum-end" aria-hidden="true">Radio</span>
+  </div>
+</div>
 
 <!-- Sky Now: fly to the user's zenith -->
 <button id="skynow-btn" class="glass-btn wide" aria-label="Show my sky right now">

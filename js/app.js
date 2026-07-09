@@ -22,20 +22,9 @@ import { initWarpEffect } from './warp.js';
 import { loadConstellations, loadConstellationBorders } from './constellations.js';
 import { querySuggestions, suggestionCoords } from './suggest.js';
 import { initSkyNow } from './skynow.js';
+import { SURVEYS, STOP, MAX_VALUE, DEFAULT_VALUE, initSpectrumBar } from './spectrum.js';
 
 const SGR_A_STAR = { ra: 266.41683, dec: -29.007811 };
-
-const BASE_SURVEYS = [
-  { id: 'P/DSS2/color', label: 'DSS2 color (optical)' },
-  { id: 'P/PanSTARRS/DR1/color-z-zg-g', label: 'Pan-STARRS DR1 (deepest optical)' },
-  { id: 'P/SDSS9/color', label: 'SDSS9 (optical)' },
-  { id: 'P/2MASS/color', label: '2MASS (near-infrared)' },
-  { id: 'P/allWISE/color', label: 'AllWISE (mid-infrared)' },
-  { id: 'P/Fermi/color', label: 'Fermi (gamma-ray)' },
-  { id: 'P/NVSS', label: 'NVSS (radio)' }
-];
-
-const ALLWISE_HINT = 'Mid-infrared: dusty star-forming regions and AGN/quasar accretion glow show up strongly here.';
 
 function debounce(fn, ms) {
   let t = null;
@@ -91,40 +80,6 @@ function setCatalogVisible(catalogOrList, visible) {
   }
 }
 
-function setBaseSurvey(aladin, id) {
-  try {
-    if (typeof aladin.setBaseImageLayer === 'function') { aladin.setBaseImageLayer(id); return; }
-  } catch (err) { /* fall through to legacy API */ }
-  try {
-    if (typeof aladin.setImageSurvey === 'function') { aladin.setImageSurvey(id); return; }
-  } catch (err) {
-    showToast(`Could not switch imagery to ${id}.`, 'error');
-  }
-}
-
-let overlayLayer = null;
-function setOverlaySurvey(aladin, id) {
-  overlayLayer = null;
-  if (!id) return;
-  try {
-    if (typeof aladin.setOverlayImageLayer === 'function') {
-      overlayLayer = aladin.setOverlayImageLayer(id, 'dsa-overlay');
-    }
-  } catch (err) {
-    showToast('Overlay blending is unavailable in this Aladin Lite build; base-layer switching still works.', 'info');
-  }
-}
-
-function updateSurveyHint(baseId, overlayId) {
-  const hint = document.getElementById('overlay-note');
-  if (baseId === 'P/allWISE/color' || overlayId === 'P/allWISE/color') {
-    hint.textContent = ALLWISE_HINT;
-    hint.hidden = false;
-  } else {
-    hint.hidden = true;
-  }
-}
-
 // -------------------------------------------------- Shareable view URLs ---
 function parseViewHash() {
   try {
@@ -158,17 +113,16 @@ async function main() {
     document.getElementById('rail-toggle').setAttribute('aria-expanded', 'false');
   }
 
-  const baseSelect = document.getElementById('base-layer-select');
-  const overlaySelect = document.getElementById('overlay-layer-select');
-  for (const s of BASE_SURVEYS) {
-    baseSelect.appendChild(new Option(s.label, s.id));
-    overlaySelect.appendChild(new Option(s.label, s.id));
-  }
-  // Survey priority: shared link > saved preference > default.
+  // Spectrum position priority: shared link > saved position > legacy survey
+  // preference > default (DSS2 optical).
   const linkedView = parseViewHash();
-  const validSurvey = (id) => BASE_SURVEYS.some(s => s.id === id) ? id : null;
-  const startSurvey = validSurvey(linkedView?.survey) || validSurvey(readPref('survey', null)) || BASE_SURVEYS[0].id;
-  baseSelect.value = startSurvey;
+  const linkedIdx = SURVEYS.findIndex(s => s.id === linkedView?.survey);
+  const legacyIdx = SURVEYS.findIndex(s => s.id === readPref('survey', null));
+  const prefSpectrum = readPref('spectrum', null);
+  const initialSpectrum = linkedIdx >= 0 ? linkedIdx * STOP
+    : (typeof prefSpectrum === 'number' ? Math.max(0, Math.min(MAX_VALUE, prefSpectrum))
+      : (legacyIdx >= 0 ? legacyIdx * STOP : DEFAULT_VALUE));
+  const startSurvey = SURVEYS[Math.round(initialSpectrum / STOP)].id;
 
   // ----------------------------------------------------------- Sky engine ---
   if (typeof window.A === 'undefined') {
@@ -219,13 +173,19 @@ async function main() {
 
   initWarpEffect(aladin, onZoom);
 
+  // One slider, the whole spectrum: settles persist position + permalink.
+  const spectrum = initSpectrumBar(aladin, {
+    onSettle: (v) => { writePref('spectrum', v); updateHash(); }
+  });
+  spectrum.setValue(initialSpectrum);
+
   // Keep the URL hash in sync with the view (debounced, replaceState so the
   // back button isn't spammed) — every view is a shareable permalink.
   function currentViewUrl() {
     try {
       const [ra, dec] = aladin.getRaDec();
       const fov = aladin.getFov()[0];
-      const hash = `#ra=${ra.toFixed(5)}&dec=${dec.toFixed(5)}&fov=${fov.toFixed(3)}&survey=${encodeURIComponent(baseSelect.value)}`;
+      const hash = `#ra=${ra.toFixed(5)}&dec=${dec.toFixed(5)}&fov=${fov.toFixed(3)}&survey=${encodeURIComponent(spectrum.nearestSurveyId())}`;
       return location.origin + location.pathname + hash;
     } catch (err) { return location.href; }
   }
@@ -246,29 +206,6 @@ async function main() {
     } catch (err) {
       showToast(url, 'info', 12000);
     }
-  });
-
-  // ---------------------------------------------------------- Imagery UI ---
-  baseSelect.addEventListener('change', () => {
-    setBaseSurvey(aladin, baseSelect.value);
-    writePref('survey', baseSelect.value);
-    updateSurveyHint(baseSelect.value, overlaySelect.value);
-    updateHash();
-  });
-  overlaySelect.addEventListener('change', () => {
-    setOverlaySurvey(aladin, overlaySelect.value);
-    const opacity = document.getElementById('overlay-opacity');
-    if (overlayLayer && typeof overlayLayer.setOpacity === 'function') {
-      overlayLayer.setOpacity(Number(opacity.value) / 100);
-    }
-    updateSurveyHint(baseSelect.value, overlaySelect.value);
-  });
-  document.getElementById('overlay-opacity').addEventListener('input', (e) => {
-    const alpha = Number(e.target.value) / 100;
-    try {
-      if (overlayLayer?.setOpacity) overlayLayer.setOpacity(alpha);
-      else if (overlayLayer?.setAlpha) overlayLayer.setAlpha(alpha);
-    } catch (err) { /* non-critical visual feature */ }
   });
 
   initTours(aladin);

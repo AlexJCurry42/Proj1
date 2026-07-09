@@ -392,6 +392,74 @@ input[type="range"]::-moz-range-thumb{
   display: flex; flex-direction: column; gap: 8px;
 }
 
+/* ================= Spectrum bar ================= */
+#spectrum-bar{
+  position: fixed; z-index: 46;
+  bottom: calc(12px + var(--safe-bottom));
+  left: 50%; transform: translateX(-50%);
+  width: min(540px, calc(100vw - 24px));
+  padding: 10px 18px 14px;
+  border-radius: 22px;
+}
+#spectrum-label{
+  display: flex; align-items: baseline; justify-content: center; gap: 10px;
+  margin-bottom: 8px; white-space: nowrap; overflow: hidden;
+}
+#spectrum-name{
+  font-size: 14.5px; font-weight: 650; letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+#spectrum-band{
+  font-size: 11.5px; color: var(--text-secondary);
+  overflow: hidden; text-overflow: ellipsis;
+}
+#spectrum-track-wrap{ display: flex; align-items: center; gap: 12px; }
+.spectrum-end{
+  font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--text-tertiary); flex-shrink: 0; user-select: none;
+}
+#spectrum-track{ position: relative; flex: 1; height: 28px; }
+/* The electromagnetic spectrum itself: violet (short λ) → white (optical) → deep red (radio) */
+#spectrum-gradient{
+  position: absolute; left: 11px; right: 11px; top: 50%; transform: translateY(-50%);
+  height: 4px; border-radius: 2px;
+  background: linear-gradient(90deg,
+    #a58bff 0%, #7fa8ff 16.7%, #e9eef6 33.3%, #f2ede2 50%,
+    #ffd9a0 66.7%, #ff9d6b 83.3%, #c96a4a 100%);
+  opacity: 0.85;
+}
+#spectrum-dots{ position: absolute; left: 11px; right: 11px; top: 0; bottom: 0; }
+.spectrum-dot{
+  position: absolute; top: 50%; width: 7px; height: 7px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%; background: rgba(10, 12, 18, 0.85);
+  border: 1.5px solid rgba(255, 255, 255, 0.55);
+  transition: transform 0.2s cubic-bezier(0.32, 0.72, 0, 1), border-color 0.2s ease;
+}
+.spectrum-dot.active{
+  transform: translate(-50%, -50%) scale(1.35);
+  border-color: #fff;
+}
+#spectrum-slider{
+  -webkit-appearance: none; appearance: none;
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  margin: 0; background: transparent; cursor: pointer;
+}
+#spectrum-slider::-webkit-slider-runnable-track{ background: transparent; height: 28px; }
+#spectrum-slider::-webkit-slider-thumb{
+  -webkit-appearance: none; appearance: none;
+  width: 22px; height: 22px; margin-top: 3px;
+  border-radius: 50%; background: #fff; border: none;
+  box-shadow: 0 1px 5px rgba(0,0,0,0.5), 0 0 0 0.5px rgba(0,0,0,0.15);
+}
+#spectrum-slider::-moz-range-track{ background: transparent; height: 28px; }
+#spectrum-slider::-moz-range-thumb{
+  width: 22px; height: 22px; border-radius: 50%; background: #fff; border: none;
+  box-shadow: 0 1px 5px rgba(0,0,0,0.5);
+}
+#spectrum-slider:focus-visible{ outline: none; }
+#spectrum-slider:focus-visible::-webkit-slider-thumb{ box-shadow: 0 1px 5px rgba(0,0,0,0.5), 0 0 0 3px rgba(10,132,255,0.6); }
+
 /* ================= Sky Now ================= */
 #skynow-btn{
   position: fixed; z-index: 45;
@@ -405,15 +473,17 @@ input[type="range"]::-moz-range-thumb{
   background: rgba(10, 132, 255, 0.30);
   border-color: rgba(10, 132, 255, 0.55);
 }
-@media (max-width: 640px){
-  /* Sits above the collapsed sheet edge; label kept — it's the hero action */
-  #skynow-btn{ bottom: calc(14px + var(--safe-bottom)); }
+/* Below this width the centered spectrum bar owns the bottom edge:
+   Sky Now and zoom float up above it. */
+@media (max-width: 860px){
+  #skynow-btn{ bottom: calc(76px + var(--safe-bottom)); }
+  #zoom-stack{ bottom: calc(76px + var(--safe-bottom)); }
 }
 
 /* ================= Readout pill ================= */
 #readouts{
   position: fixed; z-index: 40;
-  bottom: calc(12px + var(--safe-bottom));
+  top: calc(58px + var(--safe-top));
   left: 50%; transform: translateX(-50%);
   display: flex; align-items: center; gap: 10px;
   height: 30px; padding: 0 16px;
@@ -624,7 +694,7 @@ body.redlight .render-canvas{ filter: sepia(1) saturate(4) hue-rotate(-50deg) br
   #detail-close{ top: 14px; }
   .rail-scroll{ overscroll-behavior-y: contain; }
 
-  #readouts{ bottom: auto; top: calc(58px + var(--safe-top)); height: 26px; font-size: 10.5px; padding: 0 12px; gap: 8px; }
+  #readouts{ height: 26px; font-size: 10.5px; padding: 0 12px; gap: 8px; }
 
   #zoom-stack{ display: none; } /* pinch is the natural gesture on phones */
 
