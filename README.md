@@ -139,8 +139,9 @@ drifts, the UI degrades to the procedural render without a broken image.
   nutation correction. Cross-validated against the VSOP87-based
   `astronomy-engine`: Sun and most planets agree to ≲1′, Jupiter/Saturn to
   ~10′ worst-case (the table's documented weakness), the Moon to ~5′ typical
-  after correcting its of-date series to J2000. Positions recompute every
-  minute and immediately when the tab returns to the foreground.
+  after correcting its of-date series to J2000. Positions are computed once,
+  at app launch; a long-lived tab will slowly drift (Moon ~0.5°/hour) until
+  reloaded.
 - **Messier/NGC/IC layer is a curated subset, not the full NGC/IC catalogs.**
   It includes all 110 Messier objects plus roughly 30 additional famous
   NGC/IC objects — not the complete ~13,000-object NGC/IC catalogs.

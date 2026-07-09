@@ -636,7 +636,7 @@ async function initPlanetsLayer(aladin) {
     onClick: null
   });
 
-  const EPHEMERIS_NOTE = 'Computed client-side from truncated orbital formulae and refreshed every minute. Validated against a VSOP87-class ephemeris: typically within 1′ (Saturn up to ~9′), 1800–2050.';
+  const EPHEMERIS_NOTE = 'Computed client-side for the moment the app opened. Validated against a VSOP87-class ephemeris: typically within 1′ (Saturn up to ~9′), 1800–2050.';
   const EPHEMERIS_SOURCE = 'Self-contained ephemeris (see js/planets.js); JPL approximate elements / Astronomical Almanac low-precision formulae.';
 
   function build() {
@@ -681,21 +681,17 @@ async function initPlanetsLayer(aladin) {
         dec: moon.dec,
         distanceText: `${Math.round(moon.distanceKm).toLocaleString()} km from Earth's center (today)`,
         extraRows: [['Position computed', now.toUTCString()]],
-        approxNote: 'Geocentric position from the Astronomical Almanac lunar formulae, refreshed every minute (validated: typically ~5′). From your location on Earth’s surface the Moon can appear up to ~1° away from this point (parallax).',
+        approxNote: 'Geocentric position from the Astronomical Almanac lunar formulae, computed when the app opened (validated: typically ~5′). From your location on Earth’s surface the Moon can appear up to ~1° away from this point (parallax).',
         source: EPHEMERIS_SOURCE
       }
     })]);
   }
 
+  // Positions are computed once, for the moment the app launches — each
+  // marker's detail panel records that timestamp. (The Moon moves ~0.5°/hour,
+  // so a long-lived tab will drift; reloading recomputes.)
   build();
   for (const c of [catPlanets, catSun, catMoon]) aladin.addCatalog(c);
-  // Real-time motion: recompute every minute (the Moon moves ~0.5°/hour, so
-  // a minute keeps it within ~0.01°). Background tabs get throttled or
-  // suspended — especially on iOS — so also rebuild the instant the tab
-  // becomes visible again: a phone waking from overnight sleep must not
-  // show yesterday's Moon.
-  setInterval(() => { if (!document.hidden) build(); }, 60 * 1000);
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) build(); });
   return { catalogs: [catPlanets, catSun, catMoon], count: 11 };
 }
 
