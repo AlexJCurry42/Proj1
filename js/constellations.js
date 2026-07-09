@@ -114,17 +114,45 @@ export async function loadConstellations(aladin) {
     return { catalogs: [], count: 0 };
   }
 
-  try {
-    const overlay = A.graphicOverlay({ color: FIGURE_COLOR, lineWidth: 1.3 });
-    aladin.addOverlay(overlay);
+  // Lines and labels are built INDEPENDENTLY with per-figure guards, so a
+  // failure in one engine call degrades that one piece — never the layer.
+  const catalogs = [];
+  let firstError = null;
+  const note = (err) => { if (!firstError) firstError = err; };
 
-    // Invisible 2×2 marker per figure, used purely to carry the name label.
+  // ---- figure lines ----
+  let drawnFigures = 0;
+  try {
+    const overlay = A.graphicOverlay({ color: FIGURE_COLOR, lineWidth: 1 });
+    aladin.addOverlay(overlay);
+    const polylines = [];
+    for (const fig of figures) {
+      try {
+        for (const line of fig.lines) {
+          const pl = A.polyline(line);
+          polylines.push(pl);
+          overlay.add(pl);
+        }
+        drawnFigures++;
+      } catch (err) {
+        console.error(`Constellation figure "${fig.name}" failed:`, err);
+        note(err);
+      }
+    }
+    if (drawnFigures > 0) catalogs.push(overlayController(overlay, polylines));
+  } catch (err) {
+    console.error('Constellation line overlay failed:', err);
+    note(err);
+  }
+
+  // ---- name labels ----
+  try {
     const blank = document.createElement('canvas');
-    blank.width = blank.height = 2;
+    blank.width = blank.height = 8; // transparent carrier for the text label
     const labels = A.catalog({
       name: 'Constellation names',
       shape: blank,
-      sourceSize: 2,
+      sourceSize: 8,
       displayLabel: true,
       labelColumn: 'name',
       labelColor: LABEL_COLOR,
@@ -132,40 +160,50 @@ export async function loadConstellations(aladin) {
       onClick: null
     });
     aladin.addCatalog(labels);
-
-    const polylines = [];
     const D2R = Math.PI / 180, R2D = 180 / Math.PI;
     for (const fig of figures) {
-      let x = 0, y = 0, z = 0, n = 0;
-      for (const line of fig.lines) {
-        const pl = A.polyline(line);
-        polylines.push(pl);
-        overlay.add(pl);
-        for (const [ra, dec] of line) {
-          x += Math.cos(dec * D2R) * Math.cos(ra * D2R);
-          y += Math.cos(dec * D2R) * Math.sin(ra * D2R);
-          z += Math.sin(dec * D2R);
-          n++;
+      try {
+        // Official IAU-style label position when the names file provides one;
+        // spherical centroid of the figure otherwise (safe across the RA seam).
+        let pos = fig.labelPos;
+        if (!pos) {
+          let x = 0, y = 0, z = 0, n = 0;
+          for (const line of fig.lines) {
+            for (const [ra, dec] of line) {
+              x += Math.cos(dec * D2R) * Math.cos(ra * D2R);
+              y += Math.cos(dec * D2R) * Math.sin(ra * D2R);
+              z += Math.sin(dec * D2R);
+              n++;
+            }
+          }
+          if (n) {
+            let ra = Math.atan2(y, x) * R2D;
+            if (ra < 0) ra += 360;
+            pos = [ra, Math.atan2(z, Math.hypot(x, y)) * R2D];
+          }
         }
+        if (pos) labels.addSources([A.source(pos[0], pos[1], { name: fig.name })]);
+      } catch (err) {
+        console.error(`Constellation label "${fig.name}" failed:`, err);
+        note(err);
       }
-      // Official IAU-style label position when the names file provides one;
-      // spherical centroid of the figure otherwise (safe across the RA seam).
-      let pos = fig.labelPos;
-      if (!pos && n) {
-        let ra = Math.atan2(y, x) * R2D;
-        if (ra < 0) ra += 360;
-        pos = [ra, Math.atan2(z, Math.hypot(x, y)) * R2D];
-      }
-      if (pos) labels.addSources([A.source(pos[0], pos[1], { name: fig.name })]);
     }
-
-    return { catalogs: [overlayController(overlay, polylines), labels], count: figures.length };
+    catalogs.push(labels);
   } catch (err) {
-    // A drawing-API mismatch must be visible, not a silent dead toggle.
-    console.error('Constellation layer failed to build:', err);
-    showToast('Constellation layer failed to initialize on this engine build.', 'error');
+    console.error('Constellation labels failed:', err);
+    note(err);
+  }
+
+  if (catalogs.length === 0) {
+    // Include the real message: a screenshot of this toast identifies the
+    // failing engine call without needing devtools on a phone.
+    showToast(`Constellation layer failed: ${firstError?.message || firstError || 'unknown error'}`, 'error', 12000);
     return { catalogs: [], count: 0 };
   }
+  if (firstError) {
+    console.warn('Constellation layer partially degraded; first error above.');
+  }
+  return { catalogs, count: drawnFigures || figures.length };
 }
 
 /** IAU constellation boundaries — the faint property lines of the sky. */
@@ -181,18 +219,25 @@ export async function loadConstellationBorders(aladin) {
     const overlay = A.graphicOverlay({ color: BORDER_COLOR, lineWidth: 1 });
     aladin.addOverlay(overlay);
     const polylines = [];
+    let drawn = 0;
     for (const f of data.features) {
-      // Polygon rings and MultiLineString lines share the [line][point] shape.
-      for (const line of normalizeMulti(f.geometry.coordinates)) {
-        const pl = A.polyline(line);
-        polylines.push(pl);
-        overlay.add(pl);
+      try {
+        // Polygon rings and MultiLineString lines share the [line][point] shape.
+        for (const line of normalizeMulti(f.geometry.coordinates)) {
+          const pl = A.polyline(line);
+          polylines.push(pl);
+          overlay.add(pl);
+        }
+        drawn++;
+      } catch (err) {
+        console.error(`Boundary feature "${f.id}" failed:`, err);
       }
     }
-    return { catalogs: [overlayController(overlay, polylines)], count: data.features.length };
+    if (!drawn) throw new Error('no boundary features drawable');
+    return { catalogs: [overlayController(overlay, polylines)], count: drawn };
   } catch (err) {
     console.error('Constellation boundaries failed to build:', err);
-    showToast('Constellation boundaries failed to initialize on this engine build.', 'error');
+    showToast(`Constellation boundaries failed: ${err.message}`, 'error', 10000);
     return { catalogs: [], count: 0 };
   }
 }
