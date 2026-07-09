@@ -7,21 +7,31 @@ binaries, supermassive/AGN & quasars (including the two EHT-imaged flagships,
 Sgr A* and M87*), and notable gravitational-wave mergers.
 
 Designed for the general public with scientific-tool standards: an
-Apple-native frosted-glass UI floats over a full-bleed sky, only
-high-signal layers are on by default (heavier catalogs lazy-load when
-toggled), and famous objects — the Sun, Moon and every planet,
-well-studied exoplanets, bright stars, and all black holes — open with
-real photographs, official artist impressions, or an animated **3-D
-render** generated in-browser from published parameters. Renders are
-explicitly labeled as illustrations, never passed off as observations.
+Apple-native liquid-glass UI floats over a full-bleed sky — search bar
+bottom-center like iOS Safari, a collapsible layers dock on the left, a
+vertical **spectrum rail** on the right that scrubs the imagery from
+gamma-ray to radio with live cross-fades. First load starts calm (only
+the Solar System layer on; everything else one switch away), and famous
+objects — the Sun, Moon and every planet, well-studied exoplanets,
+bright stars, and all black holes — open with real photographs,
+official artist impressions, or an animated **3-D render** generated
+in-browser from published parameters. Renders are explicitly labeled as
+illustrations, never passed off as observations.
 
-Launch features: constellation stick figures for orientation, instant
-search suggestions from the curated catalogs, shareable permalinks for
-any view (plus a native share button), installable as a PWA with an
-offline-cached shell, and preferences (layers, night-vision mode) that
-persist locally. **No tracking, no analytics, no accounts — ever.**
-MIT licensed (code); all data and imagery remain under their providers'
-licenses, credited in-app.
+For stargazers: all 88 constellations (figures, names, optional
+boundaries), guided **tours** that fly three-act flights to the sky's
+greatest hits, and **Sky Now** — one tap flies to your zenith, and with
+the compass toggle on, the view tracks the phone live (sensor-smoothed
+gyro + compass, computed entirely on-device). Two projections: orbit
+the celestial sphere from outside, or stand inside it, planetarium
+style.
+
+Also: instant search suggestions from the curated catalogs, shareable
+permalinks for any view (plus a native share button), installable as a
+PWA with an offline-cached shell, red-light night-vision mode, and
+preferences that persist locally. **No tracking, no analytics, no
+accounts — ever.** MIT licensed (code); all data and imagery remain
+under their providers' licenses, credited in-app.
 
 Built with [Aladin Lite v3](https://aladin.cds.unistra.fr/AladinLite/) as the
 sky-rendering engine. No build step, no framework, no backend, no API keys —
@@ -42,17 +52,25 @@ file server (`npx serve`, `php -S`, etc.) works equally well.
 ## File structure
 
 ```
-index.html          Page shell: top bar, layer rail, sky view, detail panel
-css/style.css        Dark theme, responsive layout, red-light mode
-js/app.js            App entry point: wires up Aladin, layers, readouts, search
+index.html           Page shell: top bar, layer dock, spectrum rail, bottom bar
+css/style.css        Liquid-glass design system, responsive layout, red-light mode
+js/app.js            App entry point: engine init, layer dock, readouts, permalinks
+js/spectrum.js       Vertical spectrum rail: scrub imagery gamma-ray → radio
+js/skynow.js         Sky Now + gyro/compass tracking (all math on-device)
+js/constellations.js 88 constellations: figures, names, boundaries (Action data)
 js/catalogs.js       SIMBAD/Gaia HiPS catalogs, Messier/NGC-IC, exoplanets
-js/blackholes.js      Stellar-mass BHs, supermassive/AGN & quasars, GW mergers
-js/planets.js         Self-contained Solar System ephemeris (no external calls)
-js/search.js          CDS Sesame name resolver + coordinate parsing
-js/ui.js              Detail panel, toasts, tours, onboarding, about modal
-js/render3d.js        WebGL procedural 3-D renders (planets, stars, black holes)
-js/net.js             Shared fetch-with-timeout-and-retry helper
-data/*.json           Curated black hole, GW merger, tour, render and catalog data
+js/blackholes.js     Stellar-mass BHs, supermassive/AGN & quasars, GW mergers
+js/planets.js        Self-contained Solar System ephemeris (no external calls)
+js/search.js         CDS Sesame name resolver + coordinate parsing
+js/suggest.js        Instant search suggestions from the curated catalogs
+js/ui.js             Detail panel, toasts, tours, onboarding, about modal
+js/render3d.js       WebGL procedural 3-D renders (planets, stars, black holes)
+js/warp.js           Star-streak warp feedback on zoom, fed by the live view
+js/markers.js        Shared catalog-marker helpers
+js/net.js            Shared fetch-with-timeout-and-retry helper
+sw.js                Service worker: network-first shell cache (offline PWA)
+data/*.json|csv      Curated + Action-refreshed data (black holes, tours, ...)
+.github/workflows/   Weekly exoplanet snapshot + constellation data pipelines
 ```
 
 ## Data sources & attribution
