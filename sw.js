@@ -13,7 +13,7 @@
 // NOTE: never list Action-generated data files (exoplanets_snapshot,
 // constellations_lines/names/borders) here — they may not exist on a fresh
 // deploy and one 404 fails the entire install. Runtime caching covers them.
-const VERSION = 'dsa-shell-v10';
+const VERSION = 'dsa-shell-v11';
 
 const SHELL = [
   './',
@@ -49,7 +49,9 @@ const SHELL = [
 
 self.addEventListener('install', (e) => {
   e.waitUntil(
-    caches.open(VERSION).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting())
+    caches.open(VERSION)
+      .then((c) => c.addAll(SHELL.map((u) => new Request(u, { cache: 'no-cache' }))))
+      .then(() => self.skipWaiting())
   );
 });
 
@@ -66,8 +68,16 @@ self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET' || url.origin !== location.origin) return; // sky data: always live
 
   const cacheKey = e.request.mode === 'navigate' ? './' : e.request;
+  // cache:'no-cache' forces an etag revalidation instead of trusting the HTTP
+  // cache. Without it, GitHub Pages' max-age=600 lets "network-first" hand
+  // back files cached at different moments — a stale index.html alongside a
+  // fresh app.js crashes boot right after every deploy. (Navigations must be
+  // re-requested by URL: fetch() rejects init options on mode:'navigate'.)
+  const fresh = e.request.mode === 'navigate'
+    ? fetch(e.request.url, { cache: 'no-cache' })
+    : fetch(e.request, { cache: 'no-cache' });
   e.respondWith(
-    fetch(e.request)
+    fresh
       .then((res) => {
         if (res.ok) {
           const copy = res.clone();

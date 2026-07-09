@@ -75,6 +75,7 @@ function addToggle(listEl, { label, color, checked = true, sub = false, onToggle
 function initDockCollapse() {
   const dock = document.getElementById('layer-dock');
   const btn = document.getElementById('dock-collapse');
+  if (!dock || !btn) return; // stale HTML mid-deploy: skip, never crash boot
   function setCollapsed(c) {
     dock.classList.toggle('collapsed', c);
     btn.setAttribute('aria-expanded', String(!c));
@@ -121,13 +122,14 @@ function parseViewHash() {
 
 async function main() {
   // Aladin-independent chrome first, so a sky-engine failure still leaves a
-  // working shell (dock, about modal, red-light mode, onboarding).
-  initRedlightToggle();
-  initAboutModal();
-  initDetailPanelClose();
-  initKeyboard();
-  initOnboarding();
-  initDockCollapse();
+  // working shell (dock, about modal, red-light mode, onboarding). Each piece
+  // is fault-isolated: right after a deploy the HTTP cache can briefly pair a
+  // stale index.html with fresh JS, and a missing element in one widget must
+  // cost that widget, not the sky.
+  for (const initChrome of [initRedlightToggle, initAboutModal, initDetailPanelClose,
+                            initKeyboard, initOnboarding, initDockCollapse]) {
+    try { initChrome(); } catch (err) { console.error('chrome init failed:', err); }
+  }
 
   // Spectrum position priority: shared link > saved position > legacy survey
   // preference > default (DSS2 optical).
