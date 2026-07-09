@@ -91,8 +91,9 @@ function parseViewHash() {
     return {
       ra: ((ra % 360) + 360) % 360,
       dec: Math.min(90, Math.max(-90, dec)),
-      fov: Number.isFinite(fov) ? Math.min(180, Math.max(0.02, fov)) : null,
-      survey: p.get('survey')
+      fov: Number.isFinite(fov) ? Math.min(320, Math.max(0.02, fov)) : null,
+      survey: p.get('survey'),
+      view: p.get('view') === 'inside' ? 'inside' : null
     };
   } catch (err) { return null; }
 }
@@ -124,6 +125,13 @@ async function main() {
       : (legacyIdx >= 0 ? legacyIdx * STOP : DEFAULT_VALUE));
   const startSurvey = SURVEYS[Math.round(initialSpectrum / STOP)].id;
 
+  // View mode: 'globe' looks AT the celestial sphere (orthographic, ≤180°);
+  // 'inside' stands WITHIN it (stereographic — the planetarium projection,
+  // where the sky wraps around you and the view can open past 180°).
+  let viewMode = linkedView?.view || readPref('viewmode', 'globe');
+  const projectionFor = (mode) => mode === 'inside' ? 'STG' : 'SIN';
+  const maxFovFor = (mode) => mode === 'inside' ? 300 : 180;
+
   // ----------------------------------------------------------- Sky engine ---
   if (typeof window.A === 'undefined') {
     throw new Error('the Aladin Lite script never loaded from aladin.cds.unistra.fr — a content blocker, DNS filter, or captive network is the usual cause.');
@@ -139,8 +147,8 @@ async function main() {
 
   const aladin = A.aladin('#aladin-lite-div', {
     survey: startSurvey,
-    fov: 180,
-    projection: 'SIN',
+    fov: viewMode === 'inside' ? 240 : 180,
+    projection: projectionFor(viewMode),
     showFullscreenControl: false,
     showCooGridControl: false,
     showLayersControl: false,
@@ -185,7 +193,8 @@ async function main() {
     try {
       const [ra, dec] = aladin.getRaDec();
       const fov = aladin.getFov()[0];
-      const hash = `#ra=${ra.toFixed(5)}&dec=${dec.toFixed(5)}&fov=${fov.toFixed(3)}&survey=${encodeURIComponent(spectrum.nearestSurveyId())}`;
+      const view = viewMode === 'inside' ? '&view=inside' : '';
+      const hash = `#ra=${ra.toFixed(5)}&dec=${dec.toFixed(5)}&fov=${fov.toFixed(3)}&survey=${encodeURIComponent(spectrum.nearestSurveyId())}${view}`;
       return location.origin + location.pathname + hash;
     } catch (err) { return location.href; }
   }
@@ -211,11 +220,33 @@ async function main() {
   initTours(aladin);
   initSkyNow(aladin);
 
+  // ------------------------------------------------------- View mode toggle ---
+  const viewBtn = document.getElementById('view-toggle');
+  function applyViewMode(mode, { announce = true } = {}) {
+    viewMode = mode;
+    try { aladin.setProjection(projectionFor(mode)); } catch (err) { /* engine hiccup */ }
+    try {
+      const fov = aladin.getFov()[0];
+      if (mode === 'inside' && fov >= 150) aladin.setFoV(240); // reveal the wraparound
+      if (mode === 'globe' && fov > 180) aladin.setFoV(180);   // globe caps at a hemisphere
+    } catch (err) { /* keep current FoV */ }
+    viewBtn.setAttribute('aria-pressed', String(mode === 'inside'));
+    writePref('viewmode', mode);
+    updateHash();
+    if (announce) {
+      showToast(mode === 'inside'
+        ? 'Inside view: you are standing within the celestial sphere — the sky wraps around you. Zoom out past 180° to feel it.'
+        : 'Globe view: the celestial sphere seen from outside.', 'info', 6000);
+    }
+  }
+  viewBtn.setAttribute('aria-pressed', String(viewMode === 'inside'));
+  viewBtn.addEventListener('click', () => applyViewMode(viewMode === 'inside' ? 'globe' : 'inside'));
+
   // Floating zoom controls (Aladin's own chrome is disabled for a clean sky).
   function zoomBy(factor) {
     try {
       const fov = aladin.getFov()[0];
-      aladin.setFoV(Math.min(180, Math.max(0.02, fov * factor)));
+      aladin.setFoV(Math.min(maxFovFor(viewMode), Math.max(0.02, fov * factor)));
     } catch (err) { /* engine mid-animation; ignore */ }
   }
   document.getElementById('zoom-in').addEventListener('click', () => zoomBy(0.5));

@@ -129,6 +129,15 @@ body.redlight #warp-canvas{ filter: sepia(1) saturate(6) hue-rotate(-50deg) brig
 }
 .icon-red{ color: var(--red); }
 
+/* View-mode toggle: globe icon by default, dome icon while inside the sky */
+#view-toggle .icon-dome{ display: none; }
+#view-toggle[aria-pressed="true"] .icon-globe{ display: none; }
+#view-toggle[aria-pressed="true"] .icon-dome{ display: block; }
+#view-toggle[aria-pressed="true"]{
+  background: rgba(10, 132, 255, 0.28);
+  border-color: rgba(10, 132, 255, 0.5);
+}
+
 /* ================= Top bar ================= */
 #top-bar{
   position: fixed; z-index: 60;
