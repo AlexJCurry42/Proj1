@@ -35,7 +35,11 @@
   --radius-control: 12px;
   --shadow-card: 0 12px 40px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.3);
 
-  --blur: saturate(180%) blur(22px);
+  --blur: saturate(200%) blur(26px) brightness(1.06);
+  /* Liquid glass: a diagonal specular sheen + hairline top highlight that
+     make panels read as curved, light-catching glass rather than flat tint */
+  --sheen: linear-gradient(158deg, rgba(255,255,255,0.10), rgba(255,255,255,0.02) 34%, rgba(255,255,255,0) 62%, rgba(255,255,255,0.04) 100%);
+  --liquid-edge: inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -1px 0 rgba(255,255,255,0.035);
 
   --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 
@@ -98,21 +102,22 @@ body.redlight #warp-canvas{ filter: sepia(1) saturate(6) hue-rotate(-50deg) brig
 
 /* ================= Shared materials ================= */
 .glass-panel{
-  background: var(--material);
+  background: var(--sheen), var(--material);
   -webkit-backdrop-filter: var(--blur);
   backdrop-filter: var(--blur);
   border: 0.5px solid var(--hairline);
   border-radius: var(--radius-card);
-  box-shadow: var(--shadow-card);
+  box-shadow: var(--shadow-card), var(--liquid-edge);
 }
 
 .glass-btn{
   display: inline-flex; align-items: center; justify-content: center;
   width: 40px; height: 40px; flex-shrink: 0;
   border-radius: 999px; border: 0.5px solid var(--hairline);
-  background: var(--material);
+  background: var(--sheen), var(--material);
   -webkit-backdrop-filter: var(--blur);
   backdrop-filter: var(--blur);
+  box-shadow: var(--liquid-edge);
   cursor: pointer;
   color: var(--text-primary);
   transition: transform 0.15s ease, background 0.2s ease;
@@ -155,9 +160,10 @@ body.redlight #warp-canvas{ filter: sepia(1) saturate(6) hue-rotate(-50deg) brig
   display: flex; align-items: center; gap: 8px;
   padding: 0 14px;
   border-radius: 999px; border: 0.5px solid var(--hairline);
-  background: var(--material);
+  background: var(--sheen), var(--material);
   -webkit-backdrop-filter: var(--blur);
   backdrop-filter: var(--blur);
+  box-shadow: var(--liquid-edge);
 }
 .search-icon{ color: var(--text-secondary); flex-shrink: 0; width: 16px; height: 16px; }
 #search-input{
@@ -201,6 +207,7 @@ body.redlight #warp-canvas{ filter: sepia(1) saturate(6) hue-rotate(-50deg) brig
   background-color: var(--material);
   -webkit-backdrop-filter: var(--blur);
   backdrop-filter: var(--blur);
+  box-shadow: var(--liquid-edge);
   color: var(--text-primary); font-size: 14px; font-weight: 500;
   -webkit-appearance: none; appearance: none;
   background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23ebebf5' stroke-opacity='0.5' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
@@ -407,17 +414,39 @@ input[type="range"]::-moz-range-thumb{
   position: fixed; z-index: 46;
   top: calc(64px + var(--safe-top));
   right: calc(12px + var(--safe-right));
-  width: 46px;
-  height: min(460px, calc(100vh - 220px));
-  padding: 10px 0 10px;
-  display: flex; flex-direction: column; align-items: center; gap: 6px;
-  border-radius: 23px;
-  transition: right 0.34s cubic-bezier(0.32, 0.72, 0, 1);
+  width: 56px;
+  height: min(480px, calc(100vh - 220px));
+  padding: 4px 0 12px;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  border-radius: 28px;
+  overflow: hidden;
+  transition: right 0.34s cubic-bezier(0.32, 0.72, 0, 1),
+              height 0.42s cubic-bezier(0.32, 0.72, 0, 1);
 }
+/* Collapsed: the rail folds into a single pill; the chevron becomes expand. */
+#spectrum-rail.collapsed{ height: 48px; padding-bottom: 4px; }
+#spectrum-rail.collapsed :is(.spectrum-end, #spectrum-track){ opacity: 0; pointer-events: none; }
+#spectrum-rail :is(.spectrum-end, #spectrum-track){ transition: opacity 0.22s ease; }
+#spectrum-rail.collapsed #spectrum-collapse .icon{ transform: rotate(180deg); }
+#spectrum-chip.collapsed{ opacity: 0; pointer-events: none; }
+#spectrum-chip{ transition: right 0.34s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.2s ease; }
+
+#spectrum-collapse{
+  width: 40px; height: 40px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: transparent; border: none; border-radius: 999px;
+  color: var(--text-secondary); cursor: pointer;
+}
+#spectrum-collapse .icon{
+  width: 15px; height: 15px;
+  transition: transform 0.42s cubic-bezier(0.32, 0.72, 0, 1);
+}
+#spectrum-collapse:active{ transform: scale(0.9); }
+
 /* The detail panel shares the right edge on desktop: the rail glides aside. */
 @media (min-width: 641px){
   #detail-panel:not([hidden]) ~ #spectrum-rail{ right: calc(362px + var(--safe-right)); }
-  #detail-panel:not([hidden]) ~ #spectrum-chip{ right: calc(418px + var(--safe-right)); }
+  #detail-panel:not([hidden]) ~ #spectrum-chip{ right: calc(428px + var(--safe-right)); }
 }
 .spectrum-end{
   font-size: 8.5px; font-weight: 650; text-transform: uppercase; letter-spacing: 0.05em;
@@ -455,19 +484,22 @@ input[type="range"]::-moz-range-thumb{
 }
 #spectrum-thumb{
   position: absolute; left: 50%; top: 15px;
-  width: 24px; height: 24px;
+  width: 30px; height: 30px;
   transform: translate(-50%, -50%);
-  border-radius: 50%; background: #fff;
-  box-shadow: 0 1px 5px rgba(0,0,0,0.5), 0 0 0 0.5px rgba(0,0,0,0.15);
+  border-radius: 50%;
+  background: radial-gradient(circle at 34% 30%, #ffffff, #dfe4ee 78%);
+  box-shadow: 0 2px 7px rgba(0,0,0,0.55), 0 0 0 0.5px rgba(0,0,0,0.15),
+              inset 0 1px 0 rgba(255,255,255,0.9);
   pointer-events: none;
+  transition: width 0.15s ease, height 0.15s ease;
 }
+#spectrum-track.dragging #spectrum-thumb{ width: 34px; height: 34px; }
 
 /* Floating label chip: rides alongside the thumb */
 #spectrum-chip{
   position: fixed; z-index: 46;
-  right: calc(12px + 46px + 10px + var(--safe-right));
+  right: calc(12px + 56px + 10px + var(--safe-right));
   transform: translateY(-50%);
-  transition: right 0.34s cubic-bezier(0.32, 0.72, 0, 1);
   padding: 7px 12px; border-radius: 13px;
   display: flex; flex-direction: column; align-items: flex-end; gap: 1px;
   text-align: right; pointer-events: none;
@@ -511,6 +543,7 @@ input[type="range"]::-moz-range-thumb{
   backdrop-filter: var(--blur);
   font-size: 11.5px; color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
+  box-shadow: var(--liquid-edge);
   pointer-events: none; white-space: nowrap;
 }
 .dot-sep{ width: 3px; height: 3px; border-radius: 50%; background: var(--text-tertiary); }
@@ -598,7 +631,7 @@ input[type="range"]::-moz-range-thumb{
   color: var(--text-primary);
   padding: 11px 18px; border-radius: 16px;
   font-size: 13.5px; line-height: 1.45; max-width: 100%;
-  box-shadow: var(--shadow-card);
+  box-shadow: var(--shadow-card), var(--liquid-edge);
   animation: toast-in 0.28s cubic-bezier(0.32, 0.72, 0, 1);
 }
 .toast.toast-error{ border-color: rgba(255, 69, 58, 0.5); }

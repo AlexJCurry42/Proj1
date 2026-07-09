@@ -178,7 +178,9 @@ async function main() {
 
   // One slider, the whole spectrum: settles persist position + permalink.
   const spectrum = initSpectrumBar(aladin, {
-    onSettle: (v) => { writePref('spectrum', v); updateHash(); }
+    onSettle: (v) => { writePref('spectrum', v); updateHash(); },
+    collapsed: readPref('spectrumcollapsed', false) === true,
+    onCollapse: (c) => writePref('spectrumcollapsed', c)
   });
   spectrum.setValue(initialSpectrum);
 

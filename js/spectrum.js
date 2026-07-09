@@ -30,13 +30,15 @@ export const DEFAULT_VALUE = SURVEYS.findIndex(s => s.name === 'DSS2') * STOP;
 const PAD = 15; // px of thumb-travel inset at each end of the track
 const smoothstep = (t) => t * t * (3 - 2 * t);
 
-export function initSpectrumBar(aladin, { onSettle } = {}) {
+export function initSpectrumBar(aladin, { onSettle, collapsed = false, onCollapse } = {}) {
+  const rail = document.getElementById('spectrum-rail');
   const track = document.getElementById('spectrum-track');
   const thumb = document.getElementById('spectrum-thumb');
   const chip = document.getElementById('spectrum-chip');
   const nameEl = document.getElementById('spectrum-name');
   const bandEl = document.getElementById('spectrum-band');
   const dotsEl = document.getElementById('spectrum-dots');
+  const collapseBtn = document.getElementById('spectrum-collapse');
 
   for (let i = 0; i < SURVEYS.length; i++) {
     const dot = document.createElement('span');
@@ -106,8 +108,9 @@ export function initSpectrumBar(aladin, { onSettle } = {}) {
       }
       return;
     }
-    // Critically-damped approach: fast when far, feather-soft on arrival.
-    value += delta * 0.18;
+    // Critically-damped approach: stiffer under the finger so the thumb
+    // feels attached, softer on released glides so arrivals feather in.
+    value += delta * (dragging ? 0.34 : 0.2);
     applyEngine(value);
     paint(value);
     raf = requestAnimationFrame(tick);
@@ -124,6 +127,7 @@ export function initSpectrumBar(aladin, { onSettle } = {}) {
   function release() {
     if (!dragging) return;
     dragging = false;
+    track.classList.remove('dragging');
     const near = Math.round(target / STOP) * STOP;
     if (Math.abs(target - near) <= 15) target = near; // magnetic snap
     settlePending = true;
@@ -132,8 +136,9 @@ export function initSpectrumBar(aladin, { onSettle } = {}) {
 
   track.addEventListener('pointerdown', (e) => {
     e.preventDefault();
-    track.setPointerCapture(e.pointerId);
+    try { track.setPointerCapture(e.pointerId); } catch (err) { /* synthetic events */ }
     dragging = true;
+    track.classList.add('dragging');
     target = valueFromPointer(e.clientY);
     animate();
   });
@@ -160,6 +165,25 @@ export function initSpectrumBar(aladin, { onSettle } = {}) {
   });
 
   window.addEventListener('resize', () => paint(value));
+
+  // ---- collapse / expand ----
+  function setCollapsed(c) {
+    rail.classList.toggle('collapsed', c);
+    chip.classList.toggle('collapsed', c);
+    collapseBtn.setAttribute('aria-expanded', String(!c));
+    collapseBtn.setAttribute('aria-label', c ? 'Expand the spectrum control' : 'Collapse the spectrum control');
+    onCollapse?.(c);
+    // The track's geometry changes as the fold animates: repaint on arrival.
+    if (!c) setTimeout(() => paint(value), 450);
+  }
+  collapseBtn.addEventListener('click', () => setCollapsed(!rail.classList.contains('collapsed')));
+  if (collapsed) {
+    rail.classList.add('collapsed');
+    chip.classList.add('collapsed');
+    collapseBtn.setAttribute('aria-expanded', 'false');
+    collapseBtn.setAttribute('aria-label', 'Expand the spectrum control');
+  }
+  rail.querySelector('#spectrum-track').addEventListener('transitionend', () => paint(value));
 
   return {
     setValue(v, { settle = false } = {}) {
