@@ -428,8 +428,14 @@ input[type="range"]::-moz-range-thumb{
 #spectrum-rail.collapsed :is(.spectrum-end, #spectrum-track){ opacity: 0; pointer-events: none; }
 #spectrum-rail :is(.spectrum-end, #spectrum-track){ transition: opacity 0.22s ease; }
 #spectrum-rail.collapsed #spectrum-collapse .icon{ transform: rotate(180deg); }
-#spectrum-chip.collapsed{ opacity: 0; pointer-events: none; }
-#spectrum-chip{ transition: right 0.34s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.2s ease; }
+/* The chip is transient feedback: hidden at rest, shown while adjusting,
+   faded out 2 s after the adjustment settles (spectrum.js drives .visible). */
+#spectrum-chip{
+  opacity: 0;
+  transition: right 0.34s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.3s ease;
+}
+#spectrum-chip.visible{ opacity: 1; }
+#spectrum-chip.collapsed{ opacity: 0 !important; }
 
 #spectrum-collapse{
   width: 40px; height: 40px; flex-shrink: 0;

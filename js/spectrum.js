@@ -56,6 +56,19 @@ export function initSpectrumBar(aladin, { onSettle, collapsed = false, onCollaps
 
   let curBase = -1, curOver = -1, overlayLayer = null;
 
+  // The label chip is feedback, not furniture: visible while the user is
+  // adjusting, then gone two seconds after the adjustment settles.
+  let chipTimer = null;
+  function showChip() {
+    clearTimeout(chipTimer);
+    chipTimer = null;
+    chip.classList.add('visible');
+  }
+  function scheduleChipHide() {
+    clearTimeout(chipTimer);
+    chipTimer = setTimeout(() => chip.classList.remove('visible'), 2000);
+  }
+
   function applyEngine(v) {
     const idx = Math.min(Math.floor(v / STOP), SURVEYS.length - 2);
     const frac = (v - idx * STOP) / STOP;
@@ -105,6 +118,7 @@ export function initSpectrumBar(aladin, { onSettle, collapsed = false, onCollaps
       if (settlePending) {
         settlePending = false;
         onSettle?.(value);
+        scheduleChipHide(); // the adjustment is finished: 2s grace, then fade
       }
       return;
     }
@@ -139,6 +153,7 @@ export function initSpectrumBar(aladin, { onSettle, collapsed = false, onCollaps
     try { track.setPointerCapture(e.pointerId); } catch (err) { /* synthetic events */ }
     dragging = true;
     track.classList.add('dragging');
+    showChip();
     target = valueFromPointer(e.clientY);
     animate();
   });
@@ -159,6 +174,7 @@ export function initSpectrumBar(aladin, { onSettle, collapsed = false, onCollaps
     else if (e.key === 'End') next = MAX_VALUE;
     if (next == null) return;
     e.preventDefault();
+    showChip();
     target = next;
     settlePending = true;
     animate();
@@ -170,6 +186,7 @@ export function initSpectrumBar(aladin, { onSettle, collapsed = false, onCollaps
   function setCollapsed(c) {
     rail.classList.toggle('collapsed', c);
     chip.classList.toggle('collapsed', c);
+    if (c) { clearTimeout(chipTimer); chip.classList.remove('visible'); }
     collapseBtn.setAttribute('aria-expanded', String(!c));
     collapseBtn.setAttribute('aria-label', c ? 'Expand the spectrum control' : 'Collapse the spectrum control');
     onCollapse?.(c);
