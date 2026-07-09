@@ -84,6 +84,20 @@
       "localization_area_deg2": 765,
       "notes": "Merger remnant of ~142 solar masses is the first robust intermediate-mass black hole detected by any means; progenitor masses fall partly in the 'pair-instability mass gap', suggesting a hierarchical (black-hole-merger-product) formation channel.",
       "source": "Abbott et al. 2020, PRL 125, 101102 and ApJL 900, L13 (LIGO/Virgo GWTC-2)"
+    },
+    {
+      "name": "GW170817",
+      "date": "2017-08-17",
+      "ra": 197.4487,
+      "dec": -23.3839,
+      "approx": false,
+      "mass1_solar": 1.46,
+      "mass2_solar": 1.27,
+      "remnant_mass_solar": 2.7,
+      "distance_mpc": 40,
+      "localization_area_deg2": 16,
+      "notes": "A neutron-star merger, not a black hole binary — but its ~2.7-solar-mass remnant most likely collapsed into the lightest black hole known. The only merger pinpointed exactly: its kilonova was seen in the galaxy NGC 4993, so this marker is a real position, not an illustrative centroid.",
+      "source": "Abbott et al. 2017, PRL 119, 161101; ApJL 848, L12 (multi-messenger)"
     }
   ]
 }

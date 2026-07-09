@@ -103,18 +103,24 @@ export async function loadStellarBlackHoles(aladin) {
   return { catalog: cat, count: data.objects.length };
 }
 
-/** Flagship EHT-imaged supermassive black holes: Sgr A* and M87*. */
+/**
+ * Curated supermassive black holes with direct or well-known mass
+ * measurements — the EHT-imaged pair plus the classic dynamical set
+ * (megamaser disks, stellar/gas dynamics, reverberation mapping) and the
+ * famous record-holders. The full AGN/quasar population (every one of them
+ * a supermassive black hole) loads live from Milliquas below.
+ */
 export async function loadFlagshipSupermassive(aladin) {
   let data;
   try {
     data = await fetchJSON('data/blackholes_supermassive.json');
   } catch (err) {
-    showToast('Could not load flagship supermassive black hole entries.', 'error');
+    showToast('Could not load the supermassive black hole catalog.', 'error');
     return { catalog: null, count: 0 };
   }
 
   const cat = A.catalog({
-    name: 'EHT-imaged supermassive black holes',
+    name: 'Supermassive black holes (measured)',
     shape: makeBlackHoleIcon(FLAGSHIP_COLOR, 26, 1.25),
     sourceSize: 26,
     displayLabel: true,
@@ -123,8 +129,15 @@ export async function loadFlagshipSupermassive(aladin) {
     labelFont: '12px -apple-system, sans-serif',
     onClick: null
   });
+  const massText = (m, approx) => (m >= 1e9
+    ? `${(m / 1e9).toLocaleString(undefined, { maximumFractionDigits: 2 })} billion M☉`
+    : `${(m / 1e6).toLocaleString(undefined, { maximumFractionDigits: 2 })} million M☉`)
+    + (approx ? ' (approx.)' : '');
   for (const bh of data.objects) {
-    const massText = `${(bh.mass_solar / 1e6).toLocaleString(undefined, { maximumFractionDigits: 2 })} million M☉`;
+    // Per-object render seeded from the name so each hole looks distinct;
+    // radio-loud systems get their jets. The EHT pair keeps its real
+    // photographs (renders.json) — the render is the live fallback.
+    const seed = String(bh.name).split('').reduce((a, c) => a + c.charCodeAt(0), 0);
     const source = A.source(bh.ra, bh.dec, {
       name: bh.name,
       _detail: {
@@ -135,7 +148,21 @@ export async function loadFlagshipSupermassive(aladin) {
         dec: bh.dec,
         distanceText: `${bh.distance_kpc.toLocaleString()} kpc${bh.distance_approx ? ' (approx.)' : ''}`,
         badges: bh.eht_imaged ? [`EHT imaged ${bh.eht_year}`] : [],
-        extraRows: [['Mass', massText]],
+        extraRows: [
+          ['Mass', massText(bh.mass_solar, bh.approx)],
+          ...(bh.method ? [['Measured by', bh.method]] : [])
+        ],
+        render: {
+          type: 'black_hole',
+          title: bh.name,
+          params: {
+            inclinationDeg: 18 + (seed % 55),
+            spin: 0.35 + (seed % 55) / 100,
+            jet: bh.jets ? 1 : 0,
+            dim: 1
+          }
+        },
+        approxNote: bh.notes || null,
         source: bh.source
       }
     });

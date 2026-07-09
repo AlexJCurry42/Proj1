@@ -14,7 +14,7 @@ import {
   initDetailPanelClose, initKeyboard
 } from './ui.js';
 import { runSearch, getHistory, addToHistory, flyTo } from './search.js';
-import { initSimbadHips, initGaiaHips, initGalaxiesLayer, loadMessierNgc, loadExoplanets } from './catalogs.js';
+import { initSimbadHips, initGaiaHips, initGalaxiesLayer, initSimbadBlackHolesLayer, loadMessierNgc, loadExoplanets } from './catalogs.js';
 import { loadStellarBlackHoles, loadFlagshipSupermassive, initMilliquasLayer, loadGwMergers } from './blackholes.js';
 import { computePlanetPositions, computeSunPosition, computeMoonPosition, PLANET_LABELS } from './planets.js';
 import { makePlanetIcon, makeGlowDot } from './markers.js';
@@ -552,10 +552,23 @@ async function main() {
   });
 
   // ----------------------------------------------------------- Black holes ---
+  // Two sources under one switch: the curated stellar-mass list (rich
+  // physics-driven renders, literature citations) plus a live SIMBAD layer
+  // of everything catalogued as a (candidate) black hole, so the toggle
+  // genuinely means "all known".
   const stellarRef = {};
+  let simbadBhCat = null;
   const stellarToggle = addToggle(bhList, {
     label: 'Black holes', color: '#ff9f0a', checked: false,
-    onToggle: v => setCatalogVisible(stellarRef.catalog, v)
+    onToggle: (v) => {
+      setCatalogVisible(stellarRef.catalog, v);
+      if (v && !simbadBhCat) {
+        simbadBhCat = initSimbadBlackHolesLayer(aladin, onZoom, onPosition);
+      } else {
+        simbadBhCat?.dsaSetEnabled?.(v); // stop/restart live SIMBAD queries
+        setCatalogVisible(simbadBhCat, v);
+      }
+    }
   });
   loadStellarBlackHoles(aladin).then(({ catalog, count }) => {
     stellarRef.catalog = catalog;

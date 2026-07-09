@@ -75,22 +75,18 @@ export function initGaiaHips(aladin) {
 }
 
 /**
- * All known galaxies — a live cone-search of SIMBAD's TAP service, which
- * aggregates every major galaxy catalog (LEDA, 2MASS XSC, SDSS, 6dF, …:
- * millions of objects). Galaxies load around the view center as you pan and
- * zoom, following the same live-query pattern as the AGN/quasar layer.
- * otype = 'G..' is SIMBAD's hierarchical wildcard: galaxies and every galaxy
- * subtype (interacting, Seyfert, LINER, …).
+ * Live SIMBAD cone-search layer factory. SIMBAD aggregates the major
+ * catalogs, so an otype-filtered cone search around the view center gives
+ * "all known X" semantics with progressive loading — the same live-query
+ * pattern as the AGN/quasar layer. The ADQL keeps the parser-safe shape the
+ * detail panel already uses in production: no joins, no ORDER BY on
+ * expressions, coordinates pre-validated and fixed-point.
  */
-export function initGalaxiesLayer(
-  aladin,
-  onZoom = (fn) => aladin.on('zoomChanged', fn),
-  onPosition = (fn) => aladin.on('positionChanged', fn)
-) {
+function makeSimbadConeLayer(aladin, onZoom, onPosition, opts) {
   const cat = A.catalog({
-    name: 'Galaxies (SIMBAD)',
-    shape: makeGlowDot('#ffcc66', 9),
-    sourceSize: 9,
+    name: opts.name,
+    shape: makeGlowDot(opts.color, opts.dotSize ?? 9),
+    sourceSize: opts.dotSize ?? 9,
     onClick: null
   });
   aladin.addCatalog(cat);
@@ -105,20 +101,18 @@ export function initGalaxiesLayer(
     const [ra, dec] = aladin.getRaDec();
     const fov = aladin.getFov()[0];
     if (!Number.isFinite(ra) || !Number.isFinite(dec)) return;
-    const radius = Math.min(Math.max(fov / 2, 0.05), 4);
-    if (!hinted && fov > 60) {
+    const radius = Math.min(Math.max(fov / 2, 0.05), opts.maxRadiusDeg ?? 4);
+    if (!hinted && fov > 60 && opts.hint) {
       hinted = true;
-      showToast('Galaxies load around the view center — zoom or pan to fetch more of the sky.', 'info', 6000);
+      showToast(opts.hint, 'info', 6000);
     }
     const key = `${ra.toFixed(2)},${dec.toFixed(2)},${radius.toFixed(2)}`;
     if (key === lastKey) return;
     lastKey = key;
 
-    // Same parser-safe ADQL shape as the proven detail-panel query: no joins,
-    // no ORDER BY on expressions, coordinates pre-validated and fixed-point.
     const query =
-      `SELECT TOP 800 main_id, otype, ra, dec FROM basic ` +
-      `WHERE otype = 'G..' AND ra IS NOT NULL AND dec IS NOT NULL ` +
+      `SELECT TOP ${opts.top ?? 800} main_id, otype, ra, dec FROM basic ` +
+      `WHERE ${opts.where} AND ra IS NOT NULL AND dec IS NOT NULL ` +
       `AND CONTAINS(POINT('ICRS', ra, dec), CIRCLE('ICRS', ${ra.toFixed(6)}, ${dec.toFixed(6)}, ${radius.toFixed(4)})) = 1`;
     const url = `${SIMBAD_TAP_URL}?request=doQuery&lang=adql&format=json&query=${encodeURIComponent(query)}`;
 
@@ -129,21 +123,22 @@ export function initGalaxiesLayer(
       if (typeof cat.removeAll === 'function') cat.removeAll();
       cat.addSources(rows.map(r => {
         const get = (name) => r[cols.indexOf(name)];
-        const gname = get('main_id') || 'galaxy';
+        const oname = get('main_id') || opts.fallbackName;
         return A.source(get('ra'), get('dec'), {
           _detail: {
-            name: gname,
-            typeLabel: 'Galaxy',
+            name: oname,
+            typeLabel: opts.typeLabel,
             ra: get('ra'),
             dec: get('dec'),
             extraRows: [['SIMBAD type', get('otype')]],
-            source: 'SIMBAD (CDS) via TAP — union of the major galaxy catalogs'
+            ...(opts.detailExtras ? opts.detailExtras(oname, get('otype')) : {}),
+            source: opts.sourceNote
           }
         });
       }));
     } catch (err) {
       failed = true;
-      showToast('The SIMBAD galaxy service is unreachable right now; the layer will retry next session.', 'error');
+      showToast(`The SIMBAD ${opts.fallbackName} service is unreachable right now; the layer will retry next session.`, 'error');
     }
   }
 
@@ -156,6 +151,60 @@ export function initGalaxiesLayer(
     if (v) { lastKey = ''; refresh(); }
   };
   return cat;
+}
+
+/**
+ * All known galaxies: SIMBAD unions LEDA, 2MASS XSC, SDSS, 6dF, … — millions
+ * of objects. otype = 'G..' is SIMBAD's hierarchical wildcard: galaxies and
+ * every galaxy subtype (interacting, Seyfert, LINER, …).
+ */
+export function initGalaxiesLayer(
+  aladin,
+  onZoom = (fn) => aladin.on('zoomChanged', fn),
+  onPosition = (fn) => aladin.on('positionChanged', fn)
+) {
+  return makeSimbadConeLayer(aladin, onZoom, onPosition, {
+    name: 'Galaxies (SIMBAD)',
+    color: '#ffcc66',
+    where: `otype = 'G..'`,
+    typeLabel: 'Galaxy',
+    fallbackName: 'galaxy',
+    hint: 'Galaxies load around the view center — zoom or pan to fetch more of the sky.',
+    sourceNote: 'SIMBAD (CDS) via TAP — union of the major galaxy catalogs'
+  });
+}
+
+/**
+ * Every object SIMBAD classifies as a black hole or black hole candidate —
+ * the live "all known" complement to the curated stellar-mass list (which
+ * keeps its rich physics-driven renders and literature citations).
+ */
+export function initSimbadBlackHolesLayer(
+  aladin,
+  onZoom = (fn) => aladin.on('zoomChanged', fn),
+  onPosition = (fn) => aladin.on('positionChanged', fn)
+) {
+  return makeSimbadConeLayer(aladin, onZoom, onPosition, {
+    name: 'Black holes (SIMBAD)',
+    color: '#ff9f0a',
+    dotSize: 8,
+    top: 500,
+    where: `(otype = 'BH..' OR otype = 'BH?')`,
+    typeLabel: 'Black hole (catalogued)',
+    fallbackName: 'black hole',
+    hint: 'Catalogued black holes load around the view center — zoom or pan to fetch more of the sky.',
+    sourceNote: 'SIMBAD (CDS) via TAP — objects classified as (candidate) black holes',
+    detailExtras: (name) => {
+      const seed = String(name).split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+      return {
+        render: {
+          type: 'black_hole',
+          title: name,
+          params: { inclinationDeg: 20 + (seed % 55), spin: 0.3 + (seed % 60) / 100, jet: seed % 4 === 0 ? 1 : 0, dim: 0.85 }
+        }
+      };
+    }
+  });
 }
 
 /**
