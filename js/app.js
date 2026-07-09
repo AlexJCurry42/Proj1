@@ -90,15 +90,152 @@ function initDockCollapse() {
   }
 }
 
+// ---------------------------------------------- Layer fade on toggle ---
+// The engine's catalog show/hide is a hard cut. Since every marker shape is
+// a canvas we generated, a toggle can fade instead: re-render the shape at
+// decreasing alpha each frame (labels and color-drawn catalogs fade through
+// their rgba alpha), and only hide() once fully transparent.
+const REDUCE_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const FADE_MS = 320;
+const catFade = new WeakMap(); // catalog -> fade state
+
+function parseColor(c) {
+  if (typeof c !== 'string') return null;
+  if (c[0] === '#') {
+    let h = c.slice(1);
+    if (h.length === 3) h = h.split('').map(x => x + x).join('');
+    if (h.length < 6) return null;
+    return {
+      r: parseInt(h.slice(0, 2), 16), g: parseInt(h.slice(2, 4), 16),
+      b: parseInt(h.slice(4, 6), 16), a: h.length >= 8 ? parseInt(h.slice(6, 8), 16) / 255 : 1
+    };
+  }
+  const m = c.match(/rgba?\(([^)]+)\)/);
+  if (!m) return null;
+  const p = m[1].split(',').map(Number);
+  return { r: p[0], g: p[1], b: p[2], a: p[3] ?? 1 };
+}
+const withAlpha = (c, a) => `rgba(${c.r},${c.g},${c.b},${(c.a * a).toFixed(3)})`;
+
+// The engine bakes marker bitmaps when sources are added (setShape has no
+// visual effect afterwards — verified empirically), so fading happens on OUR
+// side: the engine catalog is hidden for the whole transition while faded
+// copies of its markers are drawn on an overlay canvas, projected through
+// world2pix each frame — the same machinery the constellation layer uses.
+let fadeAladin = null;   // set once the engine is up
+let fadeCanvas = null, fadeCtx = null;
+const fadeJobs = new Set();
+let fadeRaf = null;
+
+function ensureFadeCanvas() {
+  if (fadeCanvas) return;
+  fadeCanvas = document.createElement('canvas');
+  fadeCanvas.id = 'fade-canvas';
+  document.getElementById('sky-wrap').appendChild(fadeCanvas);
+  fadeCtx = fadeCanvas.getContext('2d');
+}
+
+function fadeFrame(now) {
+  fadeRaf = null;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const wrap = document.getElementById('sky-wrap').getBoundingClientRect();
+  if (fadeCanvas.width !== Math.round(wrap.width * dpr)) {
+    fadeCanvas.width = Math.round(wrap.width * dpr);
+    fadeCanvas.height = Math.round(wrap.height * dpr);
+  }
+  fadeCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  fadeCtx.clearRect(0, 0, wrap.width, wrap.height);
+
+  for (const job of [...fadeJobs]) {
+    const u = Math.min(1, (now - job.t0) / FADE_MS);
+    const e = u * u * (3 - 2 * u); // smoothstep
+    const a = job.from + (job.to - job.from) * e;
+    fadeCtx.globalAlpha = a;
+    for (const s of job.sources) {
+      let p;
+      try { p = fadeAladin.world2pix(s.ra, s.dec); } catch (err) { continue; }
+      if (!p || !Number.isFinite(p[0])) continue;
+      fadeCtx.drawImage(job.shape, p[0] - job.shape.width / 2, p[1] - job.shape.height / 2);
+      if (job.label && s.name) {
+        fadeCtx.font = job.labelFont;
+        fadeCtx.textAlign = 'left';
+        fadeCtx.textBaseline = 'middle';
+        fadeCtx.fillStyle = job.label;
+        fadeCtx.fillText(s.name, p[0] + job.shape.width / 2 + 2, p[1]);
+      }
+    }
+    if (u >= 1) {
+      if (job.to === 1) {
+        // Hand back to the engine, but keep our full-alpha copy up for a
+        // few more frames — the engine redraws asynchronously, and clearing
+        // in the same frame leaves a visible blink between the two.
+        if (!job.handed) {
+          job.handed = true;
+          job.linger = 3;
+          try { job.cat.show(); } catch (err) { /* best effort */ }
+        }
+        if (--job.linger > 0) continue;
+      }
+      fadeJobs.delete(job);
+      job.state.job = null;
+      job.state.alpha = job.to;
+    }
+  }
+  fadeCtx.globalAlpha = 1;
+  if (fadeJobs.size) fadeRaf = requestAnimationFrame(fadeFrame);
+  else fadeCtx.clearRect(0, 0, wrap.width, wrap.height);
+}
+
+function fadeCatalog(cat, visible) {
+  const shape = cat.shape && typeof cat.shape === 'object' && typeof cat.shape.getContext === 'function' ? cat.shape : null;
+  let sources = null;
+  try { sources = cat.getSources?.() || cat.sources || null; } catch (err) { /* progressive cat */ }
+  // Only fade what we can faithfully mirror: canvas-shaped catalogs of
+  // reasonable size, once the engine is up. Everything else (progressive
+  // HiPS cats, custom controllers like the constellation canvas — which
+  // fades itself) toggles directly.
+  if (REDUCE_MOTION || !fadeAladin || !shape || !sources || !sources.length || sources.length > 1200) {
+    try { visible ? cat.show?.() : cat.hide?.(); } catch (err) { /* best effort */ }
+    return;
+  }
+
+  let state = catFade.get(cat);
+  if (!state) { state = { alpha: cat.isShowing === false ? 0 : 1, job: null }; catFade.set(cat, state); }
+  if (state.job) { fadeJobs.delete(state.job); state.alpha = currentJobAlpha(state.job); state.job = null; }
+  if (visible && state.alpha >= 1 && cat.isShowing !== false) return;
+  if (!visible && state.alpha <= 0 && cat.isShowing === false) return;
+
+  // The engine catalog is hidden during BOTH directions of the transition;
+  // our overlay owns the pixels until the fade lands.
+  try { cat.hide(); } catch (err) { /* best effort */ }
+
+  ensureFadeCanvas();
+  const labelColor = cat.displayLabel && typeof cat.labelColor === 'string' ? parseColor(cat.labelColor) : null;
+  const job = {
+    cat, shape, state,
+    sources: sources.map(s => ({ ra: s.ra, dec: s.dec, name: s.data?.name || null })),
+    from: state.alpha, to: visible ? 1 : 0,
+    t0: performance.now(),
+    label: labelColor ? withAlpha(labelColor, 1) : null,
+    labelFont: cat.labelFont || '11px -apple-system, sans-serif'
+  };
+  state.job = job;
+  fadeJobs.add(job);
+  if (!fadeRaf) fadeRaf = requestAnimationFrame(fadeFrame);
+}
+
+function currentJobAlpha(job) {
+  const u = Math.min(1, (performance.now() - job.t0) / FADE_MS);
+  const e = u * u * (3 - 2 * u);
+  return job.from + (job.to - job.from) * e;
+}
+
 function setCatalogVisible(catalogOrList, visible) {
   if (!catalogOrList) return;
   const list = Array.isArray(catalogOrList) ? catalogOrList : [catalogOrList];
   for (const catalog of list) {
     if (!catalog) continue;
-    try {
-      if (visible && typeof catalog.show === 'function') catalog.show();
-      else if (!visible && typeof catalog.hide === 'function') catalog.hide();
-    } catch (err) { /* best-effort; visibility toggling is not essential to correctness */ }
+    fadeCatalog(catalog, visible);
   }
 }
 
@@ -178,6 +315,7 @@ async function main() {
     backgroundColor: '#000000'
   });
   try { aladin.setBackgroundColor?.('#000000'); } catch (err) { /* option above covers newer builds */ }
+  fadeAladin = aladin; // layer toggles can now cross-fade markers
 
   if (linkedView) {
     aladin.gotoRaDec(linkedView.ra, linkedView.dec);
