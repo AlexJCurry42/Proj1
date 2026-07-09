@@ -70,12 +70,12 @@ button, select, input{ font-family: inherit; color: inherit; }
 
 /* ================= Sky (full bleed, zero chrome) ================= */
 #sky-wrap{ position: fixed; inset: 0; }
+/* The div behind the sky is black so the void reads as space, but Aladin's
+   own canvases must NOT get a background: they are stacked transparent
+   layers (imagery below, markers above) and an opaque background on the
+   upper ones blacks out the sky imagery underneath. The engine option
+   backgroundColor handles the void around the sphere. */
 #aladin-lite-div{ width: 100%; height: 100%; background: #000; }
-/* Belt-and-suspenders: every Aladin internal surface stays pure black so the
-   void around the celestial sphere reads as infinite space, not a gray card. */
-#aladin-lite-div .aladin-imageCanvas,
-#aladin-lite-div canvas,
-.aladin-container{ background-color: #000 !important; }
 
 /* Warp-streak zoom feedback overlay */
 #warp-canvas{
