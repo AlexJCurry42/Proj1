@@ -696,29 +696,32 @@ input[type="range"]::-moz-range-thumb{
 #about-content ul{ padding-left: 18px; margin: 6px 0; }
 #about-content a{ color: var(--blue); text-decoration: none; }
 
-/* ================= Toasts ================= */
+/* ================= Toasts =================
+   Small and peripheral: a quiet caption that rises from the bottom-left,
+   just above the Sky Now button, never a banner across the sky. */
 #toast-container{
   position: fixed; z-index: 300;
-  top: calc(62px + var(--safe-top)); left: 50%; transform: translateX(-50%);
-  display: flex; flex-direction: column; gap: 8px; align-items: center;
-  pointer-events: none; width: min(420px, calc(100% - 32px));
+  bottom: calc(66px + var(--safe-bottom));
+  left: calc(12px + var(--safe-left));
+  display: flex; flex-direction: column; gap: 8px; align-items: flex-start;
+  pointer-events: none; width: min(320px, calc(100% - 24px));
 }
 .toast{
   pointer-events: auto;
   background: var(--material-thick);
   -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur);
   border: 0.5px solid var(--hairline);
-  color: var(--text-primary);
-  padding: 11px 18px; border-radius: 16px;
-  font-size: 13.5px; line-height: 1.45; max-width: 100%;
-  box-shadow: var(--shadow-card), var(--liquid-edge);
+  color: var(--text-secondary);
+  padding: 8px 13px; border-radius: 12px;
+  font-size: 12px; line-height: 1.4; max-width: 100%;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4), var(--liquid-edge);
   animation: toast-in 0.28s cubic-bezier(0.32, 0.72, 0, 1);
 }
-.toast.toast-error{ border-color: rgba(255, 69, 58, 0.5); }
+.toast.toast-error{ border-color: rgba(255, 69, 58, 0.5); color: var(--text-primary); }
 .toast.toast-info{ border-color: var(--hairline); }
-@keyframes toast-in{ from{ opacity: 0; transform: translateY(-10px) scale(0.97); } to{ opacity: 1; transform: none; } }
+@keyframes toast-in{ from{ opacity: 0; transform: translateY(10px) scale(0.97); } to{ opacity: 1; transform: none; } }
 .toast.toast-out{ animation: toast-out 0.28s ease forwards; }
-@keyframes toast-out{ to{ opacity: 0; transform: translateY(-8px) scale(0.97); } }
+@keyframes toast-out{ to{ opacity: 0; transform: translateY(8px) scale(0.97); } }
 
 /* ================= Fatal banner & debug console ================= */
 #fatal-banner{
@@ -842,5 +845,4 @@ body.redlight .render-canvas{ filter: sepia(1) saturate(4) hue-rotate(-50deg) br
 
   #zoom-stack{ display: none; } /* pinch is the natural gesture on phones */
 
-  #toast-container{ top: calc(92px + var(--safe-top)); }
 }
