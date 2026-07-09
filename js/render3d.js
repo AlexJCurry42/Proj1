@@ -7,7 +7,7 @@
 
 import { fetchJSON } from './net.js';
 
-const TYPE_IDS = { rocky: 0, gas_giant: 1, ice_giant: 2, lava: 3, star: 4, black_hole: 5, cloudy: 6 };
+const TYPE_IDS = { rocky: 0, gas_giant: 1, ice_giant: 2, lava: 3, star: 4, black_hole: 5, cloudy: 6, black_hole_binary: 7 };
 
 let rendersPromise = null;
 function loadRenders() {
@@ -86,6 +86,12 @@ export async function attachRenderIfFamous(containerEl, detailObj) {
       startRender(canvas, entry);
     }
 
+    // Insert into the DOM before mounting: the render loop stops itself when
+    // its canvas is disconnected, so a canvas started pre-insertion dies on
+    // its first frame.
+    const anchor = containerEl.querySelector('.drows');
+    containerEl.insertBefore(wrap, anchor || null);
+
     if (entry.photo) {
       const img = document.createElement('img');
       img.className = 'render-photo';
@@ -96,14 +102,11 @@ export async function attachRenderIfFamous(containerEl, detailObj) {
       img.addEventListener('error', mountProcedural, { once: true });
       media.appendChild(img);
       cap.textContent = `${entry.photo.kind === 'art' ? "Artist's impression" : 'Photograph'} — ${entry.photo.credit}. Via Wikimedia Commons.`;
-    } else {
+    } else if (entry.type) {
       mountProcedural();
-      if (!entry.type) return; // nothing to show at all
+    } else {
+      wrap.remove(); // nothing to show at all
     }
-
-    // Place the media between the type chip and the data rows.
-    const anchor = containerEl.querySelector('.drows');
-    containerEl.insertBefore(wrap, anchor || null);
   } catch (err) {
     // A failed render must never break the detail panel.
     console.warn('Object media skipped:', err.message);
@@ -130,6 +133,11 @@ uniform vec3 uColB;
 uniform float uRings;
 uniform float uCaps;
 uniform float uSeed;
+uniform float uInclK;  // disk foreshortening: 1/cos(inclination), 1=face-on
+uniform float uInner;  // disk inner-edge radius (smaller for high spin)
+uniform float uJet;    // 0/1: relativistic jets documented for this system
+uniform float uDim;    // overall disk brightness (quiescent systems are dim)
+uniform float uQ;      // binary mass ratio m2/m1 (black_hole_binary only)
 
 float hash(vec2 p) {
   p = fract(p * vec2(123.34, 456.21));
@@ -161,34 +169,76 @@ void main() {
   float alpha = 0.0;
 
   if (uType == 5) {
-    // ---- Black hole: accretion disk + shadow + photon ring + lensed arcs ----
+    // ---- Black hole: accretion disk + shadow + photon ring + lensed arcs.
+    // Shaped by this system's measured physics: inclination tilts the disk,
+    // spin pulls the inner edge closer, quiescence dims it, and documented
+    // jet sources get relativistic beams perpendicular to the disk. ----
     float r = length(p);
-    // Disk plane tilted ~74 deg toward the viewer.
-    vec2 dp = vec2(p.x, p.y * 3.6);
+    vec2 dp = vec2(p.x, p.y * uInclK);
     float dr = length(dp);
     float ang = atan(dp.y, dp.x);
-    float disk = smoothstep(0.40, 0.48, dr) * (1.0 - smoothstep(0.85, 1.15, dr));
+    float edge = clamp((uInclK - 1.15) * 0.45, 0.0, 1.0); // 0 face-on, 1 edge-on
+    float disk = smoothstep(uInner, uInner + 0.09, dr) * (1.0 - smoothstep(0.85, 1.2, dr));
     // Turbulent streaks spiraling inward with time.
     float swirl = fbm(vec2(dr * 9.0 - uTime * 0.6, ang * 2.5 + uSeed));
-    // Relativistic doppler beaming: the side rotating toward us is brighter.
-    float doppler = 1.0 + 0.8 * (-dp.x / max(dr, 0.001));
-    float diskGlow = disk * (0.55 + 0.6 * swirl) * doppler;
+    // Relativistic doppler beaming, stronger the more edge-on we view the disk.
+    float doppler = 1.0 + (0.25 + 0.75 * edge) * (-dp.x / max(dr, 0.001));
+    float diskGlow = disk * (0.55 + 0.6 * swirl) * max(doppler, 0.12);
     vec3 diskCol = mix(uColA, uColB, clamp(swirl, 0.0, 1.0));
-    col += diskCol * diskGlow * 1.4;
-    // Lensed image of the disk's far side, bent above and below the shadow.
-    float arc = exp(-abs(r - 0.40) * 26.0) * smoothstep(0.0, 0.35, abs(p.y));
-    col += uColB * arc * 0.8;
+    col += diskCol * diskGlow * 1.5 * uDim;
+    // Lensed image of the disk's far side, bent above and below the shadow —
+    // prominent only when the disk is seen edge-on (the 'Interstellar' look).
+    float arc = exp(-abs(r - 0.40) * 26.0) * smoothstep(0.02, 0.32, abs(p.y)) * (0.15 + 0.85 * edge);
+    col += uColB * arc * 0.9 * uDim;
+    // Relativistic jets along the spin axis, one beamed toward us.
+    if (uJet > 0.5) {
+      float ay = abs(p.y);
+      float wj = 0.035 + 0.15 * ay;
+      float xr = p.x / wj; // squared manually: GLSL pow() is undefined for x<0
+      float beam = exp(-xr * xr) * smoothstep(1.15, 0.3, ay) * smoothstep(0.26, 0.44, r);
+      float asym = p.y > 0.0 ? 1.3 : 0.65;
+      col += mix(uColB, vec3(0.72, 0.84, 1.0), 0.55) * beam * 0.55 * asym * max(uDim, 0.5);
+    }
     // Event-horizon shadow swallows everything inside.
     float shadow = smoothstep(0.335, 0.30, r);
     col *= (1.0 - shadow);
-    // Thin bright photon ring at the shadow's edge.
+    // Thin bright photon ring at the shadow's edge; high spin brightens it.
     float pr = exp(-abs(r - 0.345) * 70.0);
-    col += uColB * pr * 1.6;
+    col += uColB * pr * (1.2 + 0.8 * (0.55 - uInner) * 5.0) * max(uDim, 0.55);
     // Sparse background stars, cleared near the hole as if lensed away.
     float st = step(0.9975, hash(floor(vUv * 180.0) + uSeed));
     col += vec3(st) * 0.35 * smoothstep(0.5, 1.0, r);
     alpha = clamp(max(max(col.r, col.g), col.b) * 1.3, 0.0, 1.0);
     alpha = max(alpha, shadow);
+  } else if (uType == 7) {
+    // ---- Binary black hole inspiral (gravitational-wave merger source).
+    // Deliberately disk-free: BBH mergers are gas-poor, so what you'd see is
+    // two shadows against lensed starlight. Sizes follow the real mass ratio. ----
+    float th = uTime * 0.4;
+    float q = clamp(uQ, 0.1, 1.0);
+    float sep = 0.34;
+    vec2 orbit = vec2(cos(th), sin(th) * 0.38); // mildly inclined orbital plane
+    vec2 c1 = -orbit * sep * (q / (1.0 + q));        // heavier hole, tighter circle
+    vec2 c2 = orbit * sep * (1.0 / (1.0 + q));       // lighter hole, wider circle
+    float R1 = 0.15;
+    float R2 = max(0.055, 0.15 * pow(q, 0.6));
+    // Dense starfield: the visual interest is the lensing against it.
+    float st = step(0.996, hash(floor(vUv * 150.0) + uSeed));
+    col += vec3(st) * 0.5;
+    float d1 = length(p - c1);
+    float d2 = length(p - c2);
+    // Faint gravitational glow warping between the pair.
+    float mid = exp(-length(p) * 3.0) * 0.08;
+    col += uColB * mid;
+    // Shadows swallow background light...
+    col *= smoothstep(R1 * 0.92, R1 * 1.02, d1);
+    col *= smoothstep(R2 * 0.92, R2 * 1.02, d2);
+    // ...wrapped in thin photon rings.
+    col += uColB * exp(-abs(d1 - R1 * 1.06) * 60.0) * 1.1;
+    col += uColB * exp(-abs(d2 - R2 * 1.06) * 60.0) * 1.0;
+    alpha = clamp(max(max(col.r, col.g), col.b) * 1.3, 0.0, 1.0);
+    alpha = max(alpha, smoothstep(R1, R1 * 0.9, d1));
+    alpha = max(alpha, smoothstep(R2, R2 * 0.9, d2));
   } else {
     // ---- Sphere-shaded bodies ----
     float R = 0.74;
@@ -329,7 +379,7 @@ function startRender(canvas, entry) {
   if (entry.type === 'star') {
     colA = params.colorA ? hexToVec3(params.colorA) : kelvinToRGB(params.tempK || 5800);
     colB = colA;
-  } else if (entry.type === 'black_hole') {
+  } else if (entry.type === 'black_hole' || entry.type === 'black_hole_binary') {
     colA = hexToVec3(params.colorA || '#ff7a1a');
     colB = hexToVec3(params.colorB || '#ffe0b0');
   } else {
@@ -337,12 +387,24 @@ function startRender(canvas, entry) {
     colB = hexToVec3(params.colorB || '#555555');
   }
 
+  // Black hole physics → shader shape: inclination foreshortens the disk,
+  // spin moves the inner disk edge (smaller ISCO for higher a*).
+  const inclDeg = params.inclinationDeg ?? 74;
+  const inclK = 1 / Math.max(Math.cos(inclDeg * Math.PI / 180), 0.12);
+  const spin = params.spin ?? 0.5;
+  const inner = 0.55 - 0.15 * Math.min(Math.max(spin, 0), 1);
+
   gl.uniform1i(gl.getUniformLocation(prog, 'uType'), typeId);
   gl.uniform3fv(gl.getUniformLocation(prog, 'uColA'), colA);
   gl.uniform3fv(gl.getUniformLocation(prog, 'uColB'), colB);
   gl.uniform1f(gl.getUniformLocation(prog, 'uRings'), params.rings ? 1 : 0);
   gl.uniform1f(gl.getUniformLocation(prog, 'uCaps'), params.caps ? 1 : 0);
   gl.uniform1f(gl.getUniformLocation(prog, 'uSeed'), seedFrom(entry.title || entry.type));
+  gl.uniform1f(gl.getUniformLocation(prog, 'uInclK'), inclK);
+  gl.uniform1f(gl.getUniformLocation(prog, 'uInner'), inner);
+  gl.uniform1f(gl.getUniformLocation(prog, 'uJet'), params.jet ? 1 : 0);
+  gl.uniform1f(gl.getUniformLocation(prog, 'uDim'), params.dim ?? 1);
+  gl.uniform1f(gl.getUniformLocation(prog, 'uQ'), params.q ?? 0.8);
   const uTime = gl.getUniformLocation(prog, 'uTime');
 
   gl.viewport(0, 0, canvas.width, canvas.height);

@@ -143,8 +143,12 @@ async function main() {
     showGotoControl: false,
     showZoomControl: false,
     showFrame: false,
-    cooFrame: 'ICRS'
+    cooFrame: 'ICRS',
+    // Pure black around the celestial sphere — the sky should feel infinite,
+    // not like a globe floating on a gray card.
+    backgroundColor: '#000000'
   });
+  try { aladin.setBackgroundColor?.('#000000'); } catch (err) { /* option above covers newer builds */ }
   aladin.gotoRaDec(SGR_A_STAR.ra, SGR_A_STAR.dec);
   initWarpEffect(aladin);
 
