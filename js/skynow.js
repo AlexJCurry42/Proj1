@@ -141,8 +141,19 @@ export function initSkyNow(aladin) {
     // 10 Hz gotoRaDec jumps, which is what made tracking feel clunky.
     let target = null;
     let shown = null;
+    // iOS quirk: webkitCompassHeading (absolute yaw) can drop out for single
+    // events — interference, calibration. Falling back to the RELATIVE alpha
+    // for those events flips the whole frame of reference back to wherever
+    // the phone faced when tracking began, so the view snaps to that spot
+    // and back. Once compass-referenced, always compass-referenced: events
+    // without a valid heading are simply skipped.
+    let compassRef = false;
     const handler = (e) => {
-      const heading = typeof e.webkitCompassHeading === 'number' ? e.webkitCompassHeading : null;
+      let heading = (typeof e.webkitCompassHeading === 'number' &&
+                     !Number.isNaN(e.webkitCompassHeading) &&
+                     e.webkitCompassHeading >= 0) ? e.webkitCompassHeading : null;
+      if (heading != null) compassRef = true;
+      else if (compassRef) { gotEvent = true; return; }
       const p = pointingFromOrientation(e.alpha, e.beta, e.gamma, heading);
       if (!p) return;
       gotEvent = true;
@@ -200,13 +211,27 @@ export function initSkyNow(aladin) {
     tracking = true;
     btn.setAttribute('aria-pressed', 'true');
     gyroBtn?.setAttribute('aria-pressed', 'true');
+    // Kill any in-flight fly-to animation (zenith snapshot, tour, search):
+    // a running animator would tug the camera back along its own path every
+    // frame, fighting the tracker. Re-issuing the current position as a
+    // plain goto supersedes it.
+    try { const [r0, d0] = aladin.getRaDec(); aladin.gotoRaDec(r0, d0); } catch (err) { /* fresh view */ }
     try { aladin.setFoV(70); } catch (err) { /* keep current FoV */ }
     showToast('Point your phone at the sky and the view follows. Tap the compass — or drag the sky — to stop.', 'info', 8000);
   }
 
   // Shared entry: permission prompt first (iOS requires it inside the tap
   // gesture, before any other await), then location, then track or snapshot.
+  // Re-entrancy guard: engage() spends seconds awaiting permission and
+  // location, and a second tap in that window must not spin up a competing
+  // tracker loop.
+  let engaging = false;
   async function engage(wantTracking) {
+    if (engaging) return;
+    engaging = true;
+    try { await engageInner(wantTracking); } finally { engaging = false; }
+  }
+  async function engageInner(wantTracking) {
     let motionAllowed = wantTracking;
     if (wantTracking &&
         typeof DeviceOrientationEvent !== 'undefined' &&
