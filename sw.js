@@ -3,14 +3,17 @@
 // HiPS tiles, TAP queries, photographs — is cross-origin and passes straight
 // through to the network, always live.
 //
-// Strategy: navigations are network-first (so a deploy is picked up on the
-// next load) with cache fallback for offline; same-origin assets are served
-// stale-while-revalidate.
+// Strategy: EVERYTHING same-origin is network-first with cache fallback.
+// Stale-while-revalidate was tried first and burned us badly: it serves the
+// previous deploy's JS on the first load after every update, so users test
+// fixes one version behind. Network-first costs a conditional request per
+// asset (cheap 304s via Pages etags) and guarantees fresh code; the cache
+// exists purely to keep the installed PWA working offline.
 
 // NOTE: never list Action-generated data files (exoplanets_snapshot,
 // constellations_lines/names/borders) here — they may not exist on a fresh
 // deploy and one 404 fails the entire install. Runtime caching covers them.
-const VERSION = 'dsa-shell-v2';
+const VERSION = 'dsa-shell-v3';
 
 const SHELL = [
   './',
@@ -61,31 +64,18 @@ self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET' || url.origin !== location.origin) return; // sky data: always live
 
-  if (e.request.mode === 'navigate') {
-    e.respondWith(
-      fetch(e.request)
-        .then((res) => {
-          const copy = res.clone();
-          caches.open(VERSION).then((c) => c.put('./', copy));
-          return res;
-        })
-        .catch(() => caches.match('./'))
-    );
-    return;
-  }
-
+  const cacheKey = e.request.mode === 'navigate' ? './' : e.request;
   e.respondWith(
-    caches.match(e.request).then((hit) => {
-      const refresh = fetch(e.request)
-        .then((res) => {
-          if (res.ok) {
-            const copy = res.clone();
-            caches.open(VERSION).then((c) => c.put(e.request, copy));
-          }
-          return res;
-        })
-        .catch(() => hit);
-      return hit || refresh;
-    })
+    fetch(e.request)
+      .then((res) => {
+        if (res.ok) {
+          const copy = res.clone();
+          caches.open(VERSION).then((c) => c.put(cacheKey, copy));
+        }
+        return res;
+      })
+      .catch(() =>
+        caches.match(cacheKey).then((hit) => hit || Response.error())
+      )
   );
 });
