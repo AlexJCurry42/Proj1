@@ -5,7 +5,7 @@
 // absent for prefers-reduced-motion users. The overlay canvas ignores pointer
 // events, so it never interferes with the sky.
 
-export function initWarpEffect(aladin) {
+export function initWarpEffect(aladin, onZoom = (fn) => aladin.on('zoomChanged', fn)) {
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
   const canvas = document.createElement('canvas');
@@ -39,7 +39,7 @@ export function initWarpEffect(aladin) {
   let raf = null;
   let lastT = 0;
 
-  aladin.on('zoomChanged', () => {
+  onZoom(() => {
     let fov;
     try { fov = aladin.getFov()[0]; } catch (err) { return; }
     if (!(fov > 0)) return;

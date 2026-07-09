@@ -81,7 +81,7 @@ export function initGaiaHips(aladin) {
  * One Aladin catalog per object type so each type carries its own soft
  * glow-dot icon. Returns { catalogs, count }.
  */
-export async function loadMessierNgc(aladin) {
+export async function loadMessierNgc(aladin, onZoom = (fn) => aladin.on('zoomChanged', fn)) {
   let data;
   try {
     data = await fetchJSON('data/messier_ngc.json');
@@ -138,7 +138,7 @@ export async function loadMessierNgc(aladin) {
     }
   }
 
-  aladin.on('zoomChanged', debounce(applyDensity, 250));
+  onZoom(debounce(applyDensity, 250));
   applyDensity();
 
   return { catalogs: Object.values(catalogs), count: all.length };

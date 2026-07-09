@@ -152,7 +152,11 @@ export async function loadFlagshipSupermassive(aladin) {
  * progressive loading, but Milliquas does not, so we approximate the same
  * "load only what's in view" behavior with cone searches.
  */
-export function initMilliquasLayer(aladin) {
+export function initMilliquasLayer(
+  aladin,
+  onZoom = (fn) => aladin.on('zoomChanged', fn),
+  onPosition = (fn) => aladin.on('positionChanged', fn)
+) {
   const cat = A.catalog({
     name: 'AGN & Quasars (Milliquas)',
     shape: makeGlowDot(SUPERMASSIVE_COLOR, 9),
@@ -222,8 +226,8 @@ export function initMilliquasLayer(aladin) {
     }
   }
 
-  aladin.on('positionChanged', debounce(refresh, 250));
-  aladin.on('zoomChanged', debounce(refresh, 250));
+  onPosition(debounce(refresh, 250));
+  onZoom(debounce(refresh, 250));
   refresh();
   // Lets the layer toggle stop live VizieR queries entirely while hidden.
   cat.dsaSetEnabled = (v) => {

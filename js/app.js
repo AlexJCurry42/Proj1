@@ -150,7 +150,20 @@ async function main() {
   });
   try { aladin.setBackgroundColor?.('#000000'); } catch (err) { /* option above covers newer builds */ }
   aladin.gotoRaDec(SGR_A_STAR.ra, SGR_A_STAR.dec);
-  initWarpEffect(aladin);
+
+  // Aladin Lite stores a single callback per event name, so if each module
+  // called aladin.on('zoomChanged', …) they would silently overwrite one
+  // another (FoV readout vs. warp streaks vs. Messier density vs. Milliquas
+  // refresh — only the last registered would run). One dispatcher owns each
+  // event and fans it out to every subscriber.
+  const zoomSubs = new Set();
+  const positionSubs = new Set();
+  aladin.on('zoomChanged', (...args) => { for (const fn of zoomSubs) fn(...args); });
+  aladin.on('positionChanged', (...args) => { for (const fn of positionSubs) fn(...args); });
+  const onZoom = (fn) => zoomSubs.add(fn);
+  const onPosition = (fn) => positionSubs.add(fn);
+
+  initWarpEffect(aladin, onZoom);
 
   // ---------------------------------------------------------- Imagery UI ---
   baseSelect.addEventListener('change', () => {
@@ -205,7 +218,7 @@ async function main() {
       document.getElementById('fov-readout').textContent = `FoV ${fov[0].toFixed(2)}°`;
     } catch (err) { /* ignore transient state during animation */ }
   }, 250);
-  aladin.on('zoomChanged', updateFovReadout);
+  onZoom(updateFovReadout);
   updateFovReadout();
 
   function tickClock() {
@@ -224,8 +237,8 @@ async function main() {
 
   function renderHistory() {
     const items = getHistory();
-    historyList.innerHTML = items.map(h =>
-      `<li data-ra="${h.ra}" data-dec="${h.dec}">${h.label}<div class="item-sub">${h.query}</div></li>`
+    historyList.innerHTML = items.map((h, i) =>
+      `<li data-idx="${i}">${h.label}<div class="item-sub">${h.query}</div></li>`
     ).join('');
   }
   searchInput.addEventListener('focus', () => {
@@ -235,9 +248,12 @@ async function main() {
   searchInput.addEventListener('blur', () => setTimeout(() => { historyList.hidden = true; }, 150));
   historyList.addEventListener('click', (e) => {
     const li = e.target.closest('li');
-    if (!li || li.dataset.ra === 'null') return;
-    searchInput.value = li.textContent.trim();
+    if (!li) return;
+    const h = getHistory()[Number(li.dataset.idx)];
+    if (!h) return;
+    searchInput.value = h.query;
     historyList.hidden = true;
+    searchForm.requestSubmit(); // re-run the search, don't just fill the box
   });
   searchForm.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -301,7 +317,7 @@ async function main() {
     label: 'Messier & bright NGC/IC', color: '#ffd60a', checked: true,
     onToggle: v => setCatalogVisible(messierRef.catalogs, v)
   });
-  loadMessierNgc(aladin).then(({ catalogs, count }) => { messierRef.catalogs = catalogs; messierToggle.setCount(count); });
+  loadMessierNgc(aladin, onZoom).then(({ catalogs, count }) => { messierRef.catalogs = catalogs; messierToggle.setCount(count); });
 
   const planetsRef = {};
   const planetsToggle = addToggle(catalogList, {
@@ -365,7 +381,7 @@ async function main() {
     label: 'AGN & quasars (Milliquas)', color: '#ff453a', checked: false,
     onToggle: (v) => {
       if (v && !milliquasCat) {
-        milliquasCat = initMilliquasLayer(aladin);
+        milliquasCat = initMilliquasLayer(aladin, onZoom, onPosition);
       } else {
         milliquasCat?.dsaSetEnabled?.(v); // stop/restart live VizieR queries
         setCatalogVisible(milliquasCat, v);
