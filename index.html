@@ -9,6 +9,18 @@
 <title>Deep Sky Atlas</title>
 <meta name="description" content="An interactive atlas of the night sky — stars, galaxies, nebulae, exoplanets and black holes, powered by Aladin Lite and CDS/NASA data." />
 
+<!-- Warm up the critical origins: the engine CDN and the HiPS tile server
+     get full preconnects; everything queried later gets cheap DNS prefetch. -->
+<link rel="preconnect" href="https://aladin.cds.unistra.fr" crossorigin />
+<link rel="preconnect" href="https://alasky.cds.unistra.fr" crossorigin />
+<link rel="dns-prefetch" href="https://axel.u-strasbg.fr" />
+<link rel="dns-prefetch" href="https://simbad.cds.unistra.fr" />
+<link rel="dns-prefetch" href="https://cds.unistra.fr" />
+<link rel="dns-prefetch" href="https://tapvizier.cds.unistra.fr" />
+<link rel="dns-prefetch" href="https://exoplanetarchive.ipac.caltech.edu" />
+<link rel="dns-prefetch" href="https://commons.wikimedia.org" />
+<link rel="dns-prefetch" href="https://upload.wikimedia.org" />
+
 <link rel="stylesheet" href="https://aladin.cds.unistra.fr/AladinLite/api/v3/latest/aladin.css" />
 <link rel="stylesheet" href="css/style.css" />
 </head>
@@ -135,7 +147,8 @@
 <!-- Toasts -->
 <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
 
-<script src="https://aladin.cds.unistra.fr/AladinLite/api/v3/latest/aladin.js" charset="utf-8"></script>
+<!-- defer: parse HTML without blocking; executes before the module below. -->
+<script src="https://aladin.cds.unistra.fr/AladinLite/api/v3/latest/aladin.js" charset="utf-8" defer></script>
 <script type="module" src="js/app.js"></script>
 </body>
 </html>

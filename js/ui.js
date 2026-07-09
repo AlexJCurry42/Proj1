@@ -168,10 +168,10 @@ function row(label, value) {
   return `<div class="drow"><span>${escapeHtml(label)}</span><span>${escapeHtml(String(value))}</span></div>`;
 }
 
+const escapeDiv = document.createElement('div');
 function escapeHtml(str) {
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
+  escapeDiv.textContent = str;
+  return escapeDiv.innerHTML;
 }
 
 export function initDetailPanelClose() {

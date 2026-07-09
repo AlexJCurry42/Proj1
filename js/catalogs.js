@@ -94,7 +94,7 @@ export async function loadMessierNgc(aladin) {
     const style = TYPE_STYLE[obj.type] || TYPE_STYLE.galaxy;
     // Tier 0: famous showpiece; tier 1: has a proper name; tier 2: the rest.
     const tier = WIDE_FOV_IDS.has(obj.id) ? 0 : (obj.name !== obj.id ? 1 : 2);
-    return { obj, style, tier };
+    return { obj, style, tier, src: null }; // src: A.source built once, reused across tier rebuilds
   });
 
   const catalogs = {};
@@ -133,7 +133,7 @@ export async function loadMessierNgc(aladin) {
       if (typeof cat.removeAll === 'function') cat.removeAll();
       const sources = all
         .filter(e => e.tier <= maxTier && (e.obj.type in catalogs ? e.obj.type === type : type === 'galaxy'))
-        .map(makeSource);
+        .map(e => (e.src ??= makeSource(e)));
       cat.addSources(sources);
     }
   }

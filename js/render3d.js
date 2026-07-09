@@ -75,15 +75,13 @@ export async function attachRenderIfFamous(containerEl, detailObj) {
 
     function mountProcedural() {
       if (!entry.type) { wrap.remove(); return; }
+      const shared = getSharedRenderer();
+      if (!shared) { wrap.remove(); return; } // no WebGL on this device
       media.innerHTML = '';
-      const canvas = document.createElement('canvas');
-      canvas.width = canvas.height = 640; // 2x for retina crispness
-      canvas.className = 'render-canvas';
-      canvas.setAttribute('role', 'img');
-      canvas.setAttribute('aria-label', `Illustrative render of ${detailObj.name || entry.title || 'object'}`);
-      media.appendChild(canvas);
+      shared.canvas.setAttribute('aria-label', `Illustrative render of ${detailObj.name || entry.title || 'object'}`);
+      media.appendChild(shared.canvas);
       cap.textContent = 'Illustrative render from published parameters — not an observed image.';
-      startRender(canvas, entry);
+      startRender(shared, entry);
     }
 
     // Insert into the DOM before mounting: the render loop stops itself when
@@ -353,9 +351,21 @@ function compile(gl, type, src) {
   return sh;
 }
 
-function startRender(canvas, entry) {
+// One canvas + WebGL context + compiled program for the whole session,
+// re-parented into each new detail panel. Browsers cap live WebGL contexts
+// (~16), so a context per panel-open would eventually start losing contexts —
+// and recompiling the shader on every open is pure waste.
+let sharedRenderer = null;
+
+function getSharedRenderer() {
+  if (sharedRenderer) return sharedRenderer;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 640; // 2x for retina crispness
+  canvas.className = 'render-canvas';
+  canvas.setAttribute('role', 'img');
   const gl = canvas.getContext('webgl', { alpha: true, premultipliedAlpha: true, antialias: true });
-  if (!gl) return; // no WebGL: the detail panel simply shows no render
+  if (!gl) return null;
 
   const prog = gl.createProgram();
   gl.attachShader(prog, compile(gl, gl.VERTEX_SHADER, VERT));
@@ -373,6 +383,20 @@ function startRender(canvas, entry) {
   gl.enableVertexAttribArray(aPos);
   gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
 
+  gl.viewport(0, 0, canvas.width, canvas.height);
+  gl.clearColor(0, 0, 0, 0);
+
+  const U = {};
+  for (const name of ['uTime', 'uType', 'uColA', 'uColB', 'uRings', 'uCaps', 'uSeed', 'uInclK', 'uInner', 'uJet', 'uDim', 'uQ']) {
+    U[name] = gl.getUniformLocation(prog, name);
+  }
+
+  sharedRenderer = { canvas, gl, U, raf: null, t0: 0 };
+  return sharedRenderer;
+}
+
+function startRender(shared, entry) {
+  const { gl, U, canvas } = shared;
   const params = entry.params || {};
   const typeId = TYPE_IDS[entry.type] ?? TYPE_IDS.rocky;
   let colA, colB;
@@ -394,31 +418,28 @@ function startRender(canvas, entry) {
   const spin = params.spin ?? 0.5;
   const inner = 0.55 - 0.15 * Math.min(Math.max(spin, 0), 1);
 
-  gl.uniform1i(gl.getUniformLocation(prog, 'uType'), typeId);
-  gl.uniform3fv(gl.getUniformLocation(prog, 'uColA'), colA);
-  gl.uniform3fv(gl.getUniformLocation(prog, 'uColB'), colB);
-  gl.uniform1f(gl.getUniformLocation(prog, 'uRings'), params.rings ? 1 : 0);
-  gl.uniform1f(gl.getUniformLocation(prog, 'uCaps'), params.caps ? 1 : 0);
-  gl.uniform1f(gl.getUniformLocation(prog, 'uSeed'), seedFrom(entry.title || entry.type));
-  gl.uniform1f(gl.getUniformLocation(prog, 'uInclK'), inclK);
-  gl.uniform1f(gl.getUniformLocation(prog, 'uInner'), inner);
-  gl.uniform1f(gl.getUniformLocation(prog, 'uJet'), params.jet ? 1 : 0);
-  gl.uniform1f(gl.getUniformLocation(prog, 'uDim'), params.dim ?? 1);
-  gl.uniform1f(gl.getUniformLocation(prog, 'uQ'), params.q ?? 0.8);
-  const uTime = gl.getUniformLocation(prog, 'uTime');
-
-  gl.viewport(0, 0, canvas.width, canvas.height);
-  gl.clearColor(0, 0, 0, 0);
+  gl.uniform1i(U.uType, typeId);
+  gl.uniform3fv(U.uColA, colA);
+  gl.uniform3fv(U.uColB, colB);
+  gl.uniform1f(U.uRings, params.rings ? 1 : 0);
+  gl.uniform1f(U.uCaps, params.caps ? 1 : 0);
+  gl.uniform1f(U.uSeed, seedFrom(entry.title || entry.type));
+  gl.uniform1f(U.uInclK, inclK);
+  gl.uniform1f(U.uInner, inner);
+  gl.uniform1f(U.uJet, params.jet ? 1 : 0);
+  gl.uniform1f(U.uDim, params.dim ?? 1);
+  gl.uniform1f(U.uQ, params.q ?? 0.8);
 
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const t0 = performance.now();
+  shared.t0 = performance.now();
 
   function frame() {
-    if (!canvas.isConnected) return; // panel closed or replaced: stop the loop
+    if (!canvas.isConnected) { shared.raf = null; return; } // panel closed: idle until next mount
     gl.clear(gl.COLOR_BUFFER_BIT);
-    gl.uniform1f(uTime, (performance.now() - t0) / 1000 + 20);
+    gl.uniform1f(U.uTime, (performance.now() - shared.t0) / 1000 + 20);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-    if (!reduceMotion) requestAnimationFrame(frame);
+    shared.raf = reduceMotion ? null : requestAnimationFrame(frame);
   }
+  if (shared.raf) cancelAnimationFrame(shared.raf); // don't stack loops across mounts
   frame();
 }

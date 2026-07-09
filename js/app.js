@@ -364,8 +364,12 @@ async function main() {
   addToggle(bhList, {
     label: 'AGN & quasars (Milliquas)', color: '#ff453a', checked: false,
     onToggle: (v) => {
-      if (v && !milliquasCat) milliquasCat = initMilliquasLayer(aladin);
-      else setCatalogVisible(milliquasCat, v);
+      if (v && !milliquasCat) {
+        milliquasCat = initMilliquasLayer(aladin);
+      } else {
+        milliquasCat?.dsaSetEnabled?.(v); // stop/restart live VizieR queries
+        setCatalogVisible(milliquasCat, v);
+      }
     }
   });
 

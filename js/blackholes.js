@@ -163,9 +163,10 @@ export function initMilliquasLayer(aladin) {
 
   let lastKey = '';
   let failed = false;
+  let enabled = true;
 
   async function refresh() {
-    if (failed) return; // don't hammer a dead endpoint all session
+    if (failed || !enabled) return; // dead endpoint or layer toggled off: no queries
     const [ra, dec] = aladin.getRaDec();
     const fov = aladin.getFov()[0];
     const radius = Math.min(Math.max(fov / 2, 0.05), 5);
@@ -224,6 +225,11 @@ export function initMilliquasLayer(aladin) {
   aladin.on('positionChanged', debounce(refresh, 250));
   aladin.on('zoomChanged', debounce(refresh, 250));
   refresh();
+  // Lets the layer toggle stop live VizieR queries entirely while hidden.
+  cat.dsaSetEnabled = (v) => {
+    enabled = v;
+    if (v) { lastKey = ''; refresh(); }
+  };
   return cat;
 }
 
