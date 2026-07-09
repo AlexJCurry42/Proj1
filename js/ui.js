@@ -11,20 +11,42 @@ const simbadCache = new Map(); // "ra,dec" (rounded) -> result
 
 // ---------------------------------------------------------------- Toasts ---
 
+// One notification at a time. Bursts are common here (layer load + engine
+// hint + tour caption can all fire together) and stacked toasts flood the
+// sky, so a new message replaces the current one; repeating the same
+// message just extends its stay instead of re-animating.
+let activeToast = null;
+let activeTimer = null;
+
 export function showToast(message, kind = 'info', timeoutMs = 6000) {
   const container = document.getElementById('toast-container');
+
+  if (activeToast && activeToast.textContent === message && !activeToast.classList.contains('toast-out')) {
+    clearTimeout(activeTimer);
+    activeTimer = setTimeout(activeToast.__dismiss, timeoutMs);
+    return;
+  }
+  if (activeToast) {
+    clearTimeout(activeTimer);
+    activeToast.remove(); // replaced instantly: never two on screen
+  }
+
   const el = document.createElement('div');
   el.className = `toast toast-${kind}`;
   el.setAttribute('role', kind === 'error' ? 'alert' : 'status');
   el.textContent = message;
   container.appendChild(el);
-  setTimeout(() => {
+  activeToast = el;
+
+  el.__dismiss = () => {
+    if (activeToast === el) { activeToast = null; activeTimer = null; }
     // Graceful exit: play the out animation, then remove (with a safety
     // timeout so reduced-motion users aren't left with a stuck toast).
     el.classList.add('toast-out');
     el.addEventListener('animationend', () => el.remove(), { once: true });
     setTimeout(() => el.remove(), 500);
-  }, timeoutMs);
+  };
+  activeTimer = setTimeout(el.__dismiss, timeoutMs);
 }
 
 // ------------------------------------------------------- Object type dict ---
