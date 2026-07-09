@@ -162,16 +162,18 @@ export function initWarpEffect(aladin, onZoom = (fn) => aladin.on('zoomChanged',
     }
     if (mode === 'particles' || !src) drawParticles(dt);
 
-    // A whisper of center bloom sells the acceleration in both modes.
-    const bl = Math.min(0.12, intensity * 0.16);
-    if (bl > 0.015) {
-      const cx = w / 2, cy = h / 2;
-      const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, maxR * 0.24);
-      g.addColorStop(0, `rgba(205,222,255,${bl.toFixed(3)})`);
-      g.addColorStop(1, 'rgba(205,222,255,0)');
-      ctx.fillStyle = g;
-      ctx.fillRect(cx - maxR * 0.24, cy - maxR * 0.24, maxR * 0.48, maxR * 0.48);
-    }
+    // Punch the effect out of the center: the view's focal point must stay
+    // crisp and untouched — no fog, no ghost copies, no wash — with the
+    // streaks feathering in from ~10% of the radius outward.
+    const cx = w / 2, cy = h / 2;
+    const hole = ctx.createRadialGradient(cx, cy, 0, cx, cy, maxR * 0.22);
+    hole.addColorStop(0, 'rgba(0,0,0,1)');
+    hole.addColorStop(0.45, 'rgba(0,0,0,1)');
+    hole.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.fillStyle = hole;
+    ctx.fillRect(cx - maxR * 0.22, cy - maxR * 0.22, maxR * 0.44, maxR * 0.44);
+    ctx.globalCompositeOperation = 'source-over';
 
     raf = requestAnimationFrame(frame);
   }
