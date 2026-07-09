@@ -79,7 +79,7 @@ data/*.json|csv      Curated + Action-refreshed data (black holes, tours, ...)
 |---|---|---|
 | **Aladin Lite** | Sky rendering, HiPS tile streaming, progressive catalogs | CDS, Observatoire astronomique de Strasbourg, CNRS/Université de Strasbourg |
 | **DSS2, SDSS9, 2MASS, AllWISE, Pan-STARRS DR1, Fermi, NVSS** (HiPS) | Imagery layers | Distributed via the CDS HiPS service; see each survey's own citation guidelines |
-| **SIMBAD** | Progressive object catalog + on-demand object detail lookups | CDS, Strasbourg, via SIMBAD TAP (`simbad.cds.unistra.fr/simbad/sim-tap/sync`) |
+| **SIMBAD** | Progressive object catalog, the all-known-galaxies layer, and on-demand object detail lookups | CDS, Strasbourg, via SIMBAD TAP (`simbad.cds.unistra.fr/simbad/sim-tap/sync`) |
 | **Gaia DR3** | Progressive stellar catalog | ESA / Gaia Data Processing and Analysis Consortium (DPAC), via CDS HiPS catalog service |
 | **VizieR / Milliquas (VII/294)** | AGN & quasar cone-search layer | CDS, Strasbourg, via VizieR TAP (`tapvizier.cds.unistra.fr`) |
 | **NASA Exoplanet Archive** | Confirmed exoplanets layer | NASA/IPAC, operated by Caltech, via TAP (`exoplanetarchive.ipac.caltech.edu/TAP`) |

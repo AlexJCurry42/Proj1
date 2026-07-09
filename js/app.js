@@ -14,7 +14,7 @@ import {
   initDetailPanelClose, initKeyboard
 } from './ui.js';
 import { runSearch, getHistory, addToHistory, flyTo } from './search.js';
-import { initSimbadHips, initGaiaHips, loadMessierNgc, loadExoplanets } from './catalogs.js';
+import { initSimbadHips, initGaiaHips, initGalaxiesLayer, loadMessierNgc, loadExoplanets } from './catalogs.js';
 import { loadStellarBlackHoles, loadFlagshipSupermassive, initMilliquasLayer, loadGwMergers } from './blackholes.js';
 import { computePlanetPositions, computeSunPosition, computeMoonPosition, PLANET_LABELS } from './planets.js';
 import { makePlanetIcon, makeGlowDot } from './markers.js';
@@ -518,6 +518,19 @@ async function main() {
     onToggle: (v) => {
       if (v && !gaiaCat) gaiaCat = initGaiaHips(aladin);
       else setCatalogVisible(gaiaCat, v);
+    }
+  });
+
+  let galaxiesCat = null;
+  addToggle(catalogList, {
+    label: 'Galaxies', color: '#ffcc66', checked: false,
+    onToggle: (v) => {
+      if (v && !galaxiesCat) {
+        galaxiesCat = initGalaxiesLayer(aladin, onZoom, onPosition);
+      } else {
+        galaxiesCat?.dsaSetEnabled?.(v); // stop/restart live SIMBAD queries
+        setCatalogVisible(galaxiesCat, v);
+      }
     }
   });
 
