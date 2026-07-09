@@ -6,6 +6,7 @@
 // and are explicitly labeled as illustrations, not observations.
 
 import { fetchJSON } from './net.js';
+import { openLightbox } from './ui.js';
 
 const TYPE_IDS = { rocky: 0, gas_giant: 1, ice_giant: 2, lava: 3, star: 4, black_hole: 5, cloudy: 6, black_hole_binary: 7 };
 
@@ -98,6 +99,10 @@ export async function attachRenderIfFamous(containerEl, detailObj) {
       img.decoding = 'async';
       img.src = commonsUrl(entry.photo.file);
       img.addEventListener('error', mountProcedural, { once: true });
+      // Tap to enlarge: same image at higher resolution in a lightbox.
+      img.style.cursor = 'zoom-in';
+      img.addEventListener('click', () =>
+        openLightbox(commonsUrl(entry.photo.file, 1600), `${entry.title || detailObj.name} — ${entry.photo.credit}`));
       media.appendChild(img);
       cap.textContent = `${entry.photo.kind === 'art' ? "Artist's impression" : 'Photograph'} — ${entry.photo.credit}. Via Wikimedia Commons.`;
     } else if (entry.type) {

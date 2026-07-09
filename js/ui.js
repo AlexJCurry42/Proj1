@@ -88,7 +88,7 @@ export async function fetchSimbadNear(ra, dec, radiusDeg = 0.02) {
   // own TAP examples use. (Magnitude is skipped deliberately; the compound
   // flux join this replaced was 400-ing on the strict grammar.)
   const query =
-    `SELECT TOP 1 main_id, otype, ra, dec, plx_value, ` +
+    `SELECT TOP 1 oid, main_id, otype, ra, dec, plx_value, ` +
     `DISTANCE(POINT('ICRS', ra, dec), POINT('ICRS', ${raQ}, ${decQ})) AS dist ` +
     `FROM basic ` +
     `WHERE CONTAINS(POINT('ICRS', ra, dec), CIRCLE('ICRS', ${raQ}, ${decQ}, ${radiusDeg})) = 1 ` +
@@ -111,6 +111,19 @@ export async function fetchSimbadNear(ra, dec, radiusDeg = 0.02) {
     distancePc: get('plx_value') ? 1000 / get('plx_value') : null,
     mag: null
   };
+
+  // V magnitude via a SEPARATE query so a schema hiccup in the flux table
+  // can never break the main lookup (a compound join here once 400-ed).
+  try {
+    const oid = get('oid');
+    if (oid != null) {
+      const magQuery = `SELECT V FROM allfluxes WHERE oidref = ${oid}`;
+      const magJson = await fetchJSON(`${SIMBAD_TAP_URL}?request=doQuery&lang=adql&format=json&query=${encodeURIComponent(magQuery)}`);
+      const v = magJson.data?.[0]?.[0];
+      if (v != null) result.mag = v;
+    }
+  } catch (err) { /* magnitude is a bonus, never a blocker */ }
+
   simbadCache.set(key, result);
   return result;
 }
@@ -125,6 +138,71 @@ export function closeDetailPanel() {
   detailContent().innerHTML = '';
 }
 
+// ------------------------------------------------------------- Lightbox ---
+
+let lightboxReturnFocus = null;
+
+export function openLightbox(src, caption) {
+  closeLightbox();
+  lightboxReturnFocus = document.activeElement;
+  const lb = document.createElement('div');
+  lb.id = 'lightbox';
+  lb.setAttribute('role', 'dialog');
+  lb.setAttribute('aria-label', caption || 'Enlarged image');
+  const img = document.createElement('img');
+  img.src = src;
+  img.alt = caption || '';
+  const cap = document.createElement('p');
+  cap.textContent = caption || '';
+  const btn = document.createElement('button');
+  btn.className = 'glass-btn small';
+  btn.id = 'lightbox-close';
+  btn.setAttribute('aria-label', 'Close enlarged image');
+  btn.innerHTML = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="7" y1="7" x2="17" y2="17"/><line x1="17" y1="7" x2="7" y2="17"/></svg>';
+  btn.addEventListener('click', closeLightbox);
+  lb.addEventListener('click', (e) => { if (e.target === lb) closeLightbox(); });
+  lb.append(img, cap, btn);
+  document.body.appendChild(lb);
+  btn.focus();
+}
+
+export function closeLightbox() {
+  const lb = document.getElementById('lightbox');
+  if (!lb) return;
+  lb.remove();
+  lightboxReturnFocus?.focus?.({ preventScroll: true });
+  lightboxReturnFocus = null;
+}
+
+// ------------------------------------------------------ Global keyboard ---
+
+/** Escape dismisses the topmost surface; Tab is trapped inside open modals. */
+export function initKeyboard() {
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    // Let the search field's native Escape (clear text) win while focused.
+    if (e.target && e.target.id === 'search-input') return;
+    if (document.getElementById('lightbox')) { closeLightbox(); return; }
+    const onboarding = document.getElementById('onboarding');
+    if (!onboarding.hidden) { document.getElementById('onboarding-skip').click(); return; }
+    const about = document.getElementById('about-modal');
+    if (!about.hidden) { document.getElementById('about-close').click(); return; }
+    if (!detailPanel().hidden) closeDetailPanel();
+  });
+}
+
+function trapFocus(container) {
+  container.addEventListener('keydown', (e) => {
+    if (e.key !== 'Tab') return;
+    const focusables = container.querySelectorAll('button, a[href], select, input, [tabindex]:not([tabindex="-1"])');
+    if (!focusables.length) return;
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  });
+}
+
 export function showDetailLoading() {
   detailPanel().hidden = false;
   detailContent().innerHTML = `<p id="detail-loading">Loading object details…</p>`;
@@ -135,6 +213,7 @@ export function showDetailLoading() {
  * obj: { name, aliases, typeLabel, ra, dec, mag, distanceText, badges, extraRows, source, approxNote }
  */
 export function renderDetailPanel(obj) {
+  const wasHidden = detailPanel().hidden;
   detailPanel().hidden = false;
   const rows = [];
   rows.push(row('RA (ICRS)', `${toSexagesimalRA(obj.ra)} / ${obj.ra.toFixed(5)}°`));
@@ -162,6 +241,9 @@ export function renderDetailPanel(obj) {
   // Famous objects (and every black hole) get a procedural 3-D render,
   // inserted between the type chip and the data rows. Fire-and-forget.
   attachRenderIfFamous(detailContent(), obj);
+  // Move keyboard focus into the freshly-opened panel (a11y), without
+  // yanking it on every re-render while the panel is already open.
+  if (wasHidden) document.getElementById('detail-close').focus({ preventScroll: true });
 }
 
 function row(label, value) {
@@ -273,8 +355,21 @@ const ONBOARDING_STEPS = [
   { title: 'Search the universe', body: 'Try "Cygnus X-1" or "Orion Nebula" — or pick a Tour for a guided flight to the sky’s greatest hits.' }
 ];
 
+function onboardingSeen(set) {
+  // localStorage so a launched tool greets each person once, not once per
+  // tab; sessionStorage fallback keeps private-mode users covered.
+  try {
+    if (set) localStorage.setItem('dsa-onboarding-shown', '1');
+    else return localStorage.getItem('dsa-onboarding-shown');
+  } catch (err) {
+    if (set) sessionStorage.setItem('dsa-onboarding-shown', '1');
+    else return sessionStorage.getItem('dsa-onboarding-shown');
+  }
+  return null;
+}
+
 export function initOnboarding() {
-  if (sessionStorage.getItem('dsa-onboarding-shown')) return;
+  if (onboardingSeen(false)) return;
   const overlay = document.getElementById('onboarding');
   const stepsEl = document.getElementById('onboarding-steps');
   const dotsEl = document.getElementById('onboarding-dots');
@@ -290,7 +385,7 @@ export function initOnboarding() {
 
   function dismiss() {
     overlay.hidden = true;
-    sessionStorage.setItem('dsa-onboarding-shown', '1');
+    onboardingSeen(true);
   }
 
   document.getElementById('onboarding-next').addEventListener('click', () => {
@@ -337,20 +432,40 @@ export function initAboutModal() {
     <p>Object photographs are real mission and observatory images — NASA/JPL-Caltech, NASA/ESA Hubble, ESO, ALMA, MESSENGER, Cassini, Voyager, New Horizons, and the Event Horizon Telescope Collaboration — served via <strong>Wikimedia Commons</strong> and credited individually beneath each image. Famous exoplanets use official NASA/ESO artist impressions.</p>
     <h3>Procedural renders</h3>
     <p>Objects without real imagery fall back to <strong>procedural illustrations</strong> generated in-browser from published parameters (planet class, stellar temperature, accretion physics) — never passed off as observations, and labeled as such.</p>
-    <p class="hint">Every dataset should be cited per its provider's own guidelines in any derived publication. This tool is for exploration and education, not a substitute for primary catalogs.</p>
+    <h3>Privacy</h3>
+    <p><strong>No tracking, ever.</strong> No analytics, no cookies, no accounts. Preferences (layers, night-vision mode) live only in your browser's local storage.</p>
+    <h3>Open source</h3>
+    <p>MIT-licensed. Source, bug reports and suggestions: <a href="https://github.com/AlexJCurry42/Proj1" target="_blank" rel="noopener">github.com/AlexJCurry42/Proj1</a>. Curated data last reviewed July 2026.</p>
+    <p class="hint">Every dataset should be cited per its provider's own guidelines in any derived publication. This tool is for exploration and education, not a substitute for primary catalogs. Planet/Moon positions are geocentric and approximate (±arcminutes; Moon up to ~1° due to parallax).</p>
   `;
-  document.getElementById('about-toggle').addEventListener('click', () => { modal.hidden = false; });
-  document.getElementById('about-close').addEventListener('click', () => { modal.hidden = true; });
-  modal.addEventListener('click', (e) => { if (e.target === modal) modal.hidden = true; });
+  let aboutReturnFocus = null;
+  document.getElementById('about-toggle').addEventListener('click', () => {
+    aboutReturnFocus = document.activeElement;
+    modal.hidden = false;
+    document.getElementById('about-close').focus();
+  });
+  const close = () => {
+    modal.hidden = true;
+    aboutReturnFocus?.focus?.({ preventScroll: true });
+  };
+  document.getElementById('about-close').addEventListener('click', close);
+  modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+  trapFocus(document.getElementById('about-card'));
 }
 
 // ---------------------------------------------------------- Red-light mode ---
 
 export function initRedlightToggle() {
   const btn = document.getElementById('redlight-toggle');
-  btn.addEventListener('click', () => {
-    const active = document.body.classList.toggle('redlight');
+  const apply = (active) => {
+    document.body.classList.toggle('redlight', active);
     btn.setAttribute('aria-pressed', String(active));
+  };
+  try { apply(localStorage.getItem('dsa-redlight') === '1'); } catch (err) { /* private mode */ }
+  btn.addEventListener('click', () => {
+    const active = !document.body.classList.contains('redlight');
+    apply(active);
+    try { localStorage.setItem('dsa-redlight', active ? '1' : '0'); } catch (err) { /* private mode */ }
   });
 }
 

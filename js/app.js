@@ -2,22 +2,25 @@
 // layer manager, readouts, and every catalog/black-hole/planet/search module.
 //
 // Layer philosophy: the sky should feel calm on first load. Only lightweight,
-// high-signal layers (Messier/NGC, Solar System, the black hole sets) are on
-// by default; bulk/progressive layers (SIMBAD, Gaia, exoplanets, Milliquas
-// quasars, GW mergers) are created lazily the first time they're switched on.
+// high-signal layers (constellations, Messier/NGC, Solar System, the black
+// hole sets) are on by default; bulk/progressive layers (SIMBAD, Gaia,
+// exoplanets, Milliquas quasars, GW mergers) are created lazily the first
+// time they're switched on. Layer choices persist in localStorage.
 
 import {
   showToast, renderDetailPanel, showDetailLoading, closeDetailPanel,
   fetchSimbadNear, humanObjectType, toSexagesimalRA, toSexagesimalDec,
   initTours, initOnboarding, initAboutModal, initRedlightToggle, initRailToggle,
-  initDetailPanelClose
+  initDetailPanelClose, initKeyboard
 } from './ui.js';
-import { runSearch, getHistory } from './search.js';
+import { runSearch, getHistory, addToHistory, flyTo } from './search.js';
 import { initSimbadHips, initGaiaHips, loadMessierNgc, loadExoplanets } from './catalogs.js';
 import { loadStellarBlackHoles, loadFlagshipSupermassive, initMilliquasLayer, loadGwMergers } from './blackholes.js';
-import { computePlanetPositions, PLANET_LABELS } from './planets.js';
-import { makePlanetIcon } from './markers.js';
+import { computePlanetPositions, computeSunPosition, computeMoonPosition, PLANET_LABELS } from './planets.js';
+import { makePlanetIcon, makeGlowDot } from './markers.js';
 import { initWarpEffect } from './warp.js';
+import { loadConstellations } from './constellations.js';
+import { querySuggestions, suggestionCoords } from './suggest.js';
 
 const SGR_A_STAR = { ra: 266.41683, dec: -29.007811 };
 
@@ -38,17 +41,41 @@ function debounce(fn, ms) {
   return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
 }
 
+// ------------------------------------------------- Preferences (local) ---
+function readPref(key, fallback) {
+  try {
+    const v = localStorage.getItem('dsa-' + key);
+    return v == null ? fallback : JSON.parse(v);
+  } catch (err) { return fallback; }
+}
+function writePref(key, value) {
+  try { localStorage.setItem('dsa-' + key, JSON.stringify(value)); } catch (err) { /* private mode */ }
+}
+const savedLayers = readPref('layers', {});
+
 let toggleSeq = 0;
 function addToggle(listEl, { label, color, checked = true, onToggle }) {
+  const saved = Object.prototype.hasOwnProperty.call(savedLayers, label) ? savedLayers[label] : undefined;
+  const initial = saved ?? checked;
   const id = `tgl-${++toggleSeq}`;
   const li = document.createElement('li');
   li.innerHTML =
     `<span class="legend-dot" style="background:${color};color:${color}"></span>` +
     `<label class="toggle-label" for="${id}">${label}<span class="toggle-count"></span></label>` +
-    `<input type="checkbox" role="switch" id="${id}" ${checked ? 'checked' : ''}/>`;
+    `<input type="checkbox" role="switch" id="${id}" ${initial ? 'checked' : ''}/>`;
   listEl.appendChild(li);
-  li.querySelector('input').addEventListener('change', (e) => onToggle(e.target.checked));
-  return { setCount: (n) => { li.querySelector('.toggle-count').textContent = n; } };
+  const input = li.querySelector('input');
+  input.addEventListener('change', () => {
+    savedLayers[label] = input.checked;
+    writePref('layers', savedLayers);
+    onToggle(input.checked);
+  });
+  // A lazily-created layer the user had enabled last visit must initialize now.
+  if (initial && !checked) queueMicrotask(() => onToggle(true));
+  return {
+    setCount: (n) => { li.querySelector('.toggle-count').textContent = n; },
+    isChecked: () => input.checked
+  };
 }
 
 function setCatalogVisible(catalogOrList, visible) {
@@ -97,6 +124,23 @@ function updateSurveyHint(baseId, overlayId) {
   }
 }
 
+// -------------------------------------------------- Shareable view URLs ---
+function parseViewHash() {
+  try {
+    const p = new URLSearchParams(location.hash.slice(1));
+    const ra = parseFloat(p.get('ra'));
+    const dec = parseFloat(p.get('dec'));
+    const fov = parseFloat(p.get('fov'));
+    if (!Number.isFinite(ra) || !Number.isFinite(dec)) return null;
+    return {
+      ra: ((ra % 360) + 360) % 360,
+      dec: Math.min(90, Math.max(-90, dec)),
+      fov: Number.isFinite(fov) ? Math.min(180, Math.max(0.02, fov)) : null,
+      survey: p.get('survey')
+    };
+  } catch (err) { return null; }
+}
+
 async function main() {
   // Aladin-independent chrome first, so a sky-engine failure still leaves a
   // working shell (rail, about modal, red-light mode, onboarding).
@@ -104,6 +148,7 @@ async function main() {
   initRedlightToggle();
   initAboutModal();
   initDetailPanelClose();
+  initKeyboard();
   initOnboarding();
 
   // Phones start with the layers sheet tucked away so the sky is unobstructed.
@@ -118,7 +163,11 @@ async function main() {
     baseSelect.appendChild(new Option(s.label, s.id));
     overlaySelect.appendChild(new Option(s.label, s.id));
   }
-  baseSelect.value = BASE_SURVEYS[0].id;
+  // Survey priority: shared link > saved preference > default.
+  const linkedView = parseViewHash();
+  const validSurvey = (id) => BASE_SURVEYS.some(s => s.id === id) ? id : null;
+  const startSurvey = validSurvey(linkedView?.survey) || validSurvey(readPref('survey', null)) || BASE_SURVEYS[0].id;
+  baseSelect.value = startSurvey;
 
   // ----------------------------------------------------------- Sky engine ---
   if (typeof window.A === 'undefined') {
@@ -134,7 +183,7 @@ async function main() {
   ]);
 
   const aladin = A.aladin('#aladin-lite-div', {
-    survey: BASE_SURVEYS[0].id,
+    survey: startSurvey,
     fov: 180,
     projection: 'SIN',
     showFullscreenControl: false,
@@ -149,13 +198,17 @@ async function main() {
     backgroundColor: '#000000'
   });
   try { aladin.setBackgroundColor?.('#000000'); } catch (err) { /* option above covers newer builds */ }
-  aladin.gotoRaDec(SGR_A_STAR.ra, SGR_A_STAR.dec);
+
+  if (linkedView) {
+    aladin.gotoRaDec(linkedView.ra, linkedView.dec);
+    if (linkedView.fov) aladin.setFoV(linkedView.fov);
+  } else {
+    aladin.gotoRaDec(SGR_A_STAR.ra, SGR_A_STAR.dec);
+  }
 
   // Aladin Lite stores a single callback per event name, so if each module
   // called aladin.on('zoomChanged', …) they would silently overwrite one
-  // another (FoV readout vs. warp streaks vs. Messier density vs. Milliquas
-  // refresh — only the last registered would run). One dispatcher owns each
-  // event and fans it out to every subscriber.
+  // another. One dispatcher owns each event and fans it out.
   const zoomSubs = new Set();
   const positionSubs = new Set();
   aladin.on('zoomChanged', (...args) => { for (const fn of zoomSubs) fn(...args); });
@@ -165,10 +218,41 @@ async function main() {
 
   initWarpEffect(aladin, onZoom);
 
+  // Keep the URL hash in sync with the view (debounced, replaceState so the
+  // back button isn't spammed) — every view is a shareable permalink.
+  function currentViewUrl() {
+    try {
+      const [ra, dec] = aladin.getRaDec();
+      const fov = aladin.getFov()[0];
+      const hash = `#ra=${ra.toFixed(5)}&dec=${dec.toFixed(5)}&fov=${fov.toFixed(3)}&survey=${encodeURIComponent(baseSelect.value)}`;
+      return location.origin + location.pathname + hash;
+    } catch (err) { return location.href; }
+  }
+  const updateHash = debounce(() => history.replaceState(null, '', currentViewUrl()), 400);
+  onZoom(updateHash);
+  onPosition(updateHash);
+
+  document.getElementById('share-btn').addEventListener('click', async () => {
+    const url = currentViewUrl();
+    history.replaceState(null, '', url);
+    if (navigator.share) {
+      try { await navigator.share({ title: 'Deep Sky Atlas', url }); return; }
+      catch (err) { if (err.name === 'AbortError') return; }
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      showToast('Link to this view copied to clipboard.', 'info');
+    } catch (err) {
+      showToast(url, 'info', 12000);
+    }
+  });
+
   // ---------------------------------------------------------- Imagery UI ---
   baseSelect.addEventListener('change', () => {
     setBaseSurvey(aladin, baseSelect.value);
+    writePref('survey', baseSelect.value);
     updateSurveyHint(baseSelect.value, overlaySelect.value);
+    updateHash();
   });
   overlaySelect.addEventListener('change', () => {
     setOverlaySurvey(aladin, overlaySelect.value);
@@ -234,6 +318,9 @@ async function main() {
   const searchForm = document.getElementById('search-form');
   const searchInput = document.getElementById('search-input');
   const historyList = document.getElementById('search-history');
+  const suggList = document.getElementById('search-suggestions');
+  let currentSuggs = [];
+  let activeIdx = -1;
 
   function renderHistory() {
     const items = getHistory();
@@ -242,10 +329,14 @@ async function main() {
     ).join('');
   }
   searchInput.addEventListener('focus', () => {
+    if (searchInput.value.trim().length >= 2) return;
     renderHistory();
     historyList.hidden = getHistory().length === 0;
   });
-  searchInput.addEventListener('blur', () => setTimeout(() => { historyList.hidden = true; }, 150));
+  searchInput.addEventListener('blur', () => setTimeout(() => {
+    historyList.hidden = true;
+    suggList.hidden = true;
+  }, 150));
   historyList.addEventListener('click', (e) => {
     const li = e.target.closest('li');
     if (!li) return;
@@ -255,12 +346,61 @@ async function main() {
     historyList.hidden = true;
     searchForm.requestSubmit(); // re-run the search, don't just fill the box
   });
+
+  // Instant suggestions from the app's own curated objects (no network).
+  const runSuggest = debounce(async () => {
+    currentSuggs = await querySuggestions(searchInput.value);
+    activeIdx = -1;
+    if (!currentSuggs.length) { suggList.hidden = true; return; }
+    historyList.hidden = true;
+    suggList.innerHTML = currentSuggs.map((s, i) =>
+      `<li data-i="${i}">${s.name}<div class="item-sub">${s.typeLabel}</div></li>`
+    ).join('');
+    suggList.hidden = false;
+  }, 140);
+  searchInput.addEventListener('input', () => {
+    if (searchInput.value.trim().length >= 2) runSuggest();
+    else { suggList.hidden = true; }
+  });
+
+  function pickSuggestion(s) {
+    const c = suggestionCoords(s);
+    if (!c) return;
+    flyTo(aladin, c.ra, c.dec, s.fov ?? 0.8);
+    addToHistory({ query: s.name, ra: c.ra, dec: c.dec, label: s.name });
+    renderDetailPanel({ name: s.name, typeLabel: s.typeLabel, ra: c.ra, dec: c.dec });
+    suggList.hidden = true;
+    historyList.hidden = true;
+    searchInput.value = s.name;
+    searchInput.blur();
+  }
+  // mousedown, not click: it must beat the input's blur handler.
+  suggList.addEventListener('mousedown', (e) => {
+    const li = e.target.closest('li');
+    if (!li) return;
+    e.preventDefault();
+    pickSuggestion(currentSuggs[Number(li.dataset.i)]);
+  });
+  searchInput.addEventListener('keydown', (e) => {
+    if (suggList.hidden) return;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      const n = currentSuggs.length;
+      activeIdx = ((activeIdx + (e.key === 'ArrowDown' ? 1 : -1)) % n + n) % n;
+      [...suggList.children].forEach((el, i) => el.classList.toggle('active', i === activeIdx));
+    } else if (e.key === 'Enter' && activeIdx >= 0) {
+      e.preventDefault();
+      pickSuggestion(currentSuggs[activeIdx]);
+    }
+  });
+
   searchForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+    suggList.hidden = true;
     const result = await runSearch(aladin, searchInput.value);
     renderHistory();
     searchInput.blur();
-    // A resolved named object opens its detail card (with 3-D render if famous).
+    // A resolved named object opens its detail card (with media if famous).
     if (result && result.name) {
       const typeLabel = result.otype ? await humanObjectType(result.otype) : 'Astronomical object';
       renderDetailPanel({
@@ -312,19 +452,38 @@ async function main() {
   const bhList = document.getElementById('blackhole-toggle-list');
 
   // On by default: small, curated, high-signal.
+  const constRef = {};
+  const constToggle = addToggle(catalogList, {
+    label: 'Constellations', color: '#7aa0ff', checked: true,
+    onToggle: v => setCatalogVisible(constRef.catalogs, v)
+  });
+  loadConstellations(aladin).then(({ catalogs, count }) => {
+    constRef.catalogs = catalogs;
+    constToggle.setCount(count);
+    setCatalogVisible(catalogs, constToggle.isChecked());
+  });
+
   const messierRef = {};
   const messierToggle = addToggle(catalogList, {
     label: 'Messier & bright NGC/IC', color: '#ffd60a', checked: true,
     onToggle: v => setCatalogVisible(messierRef.catalogs, v)
   });
-  loadMessierNgc(aladin, onZoom).then(({ catalogs, count }) => { messierRef.catalogs = catalogs; messierToggle.setCount(count); });
+  loadMessierNgc(aladin, onZoom).then(({ catalogs, count }) => {
+    messierRef.catalogs = catalogs;
+    messierToggle.setCount(count);
+    setCatalogVisible(catalogs, messierToggle.isChecked());
+  });
 
   const planetsRef = {};
   const planetsToggle = addToggle(catalogList, {
     label: 'Solar System', color: '#7fd6ff', checked: true,
-    onToggle: v => setCatalogVisible(planetsRef.catalog, v)
+    onToggle: v => setCatalogVisible(planetsRef.catalogs, v)
   });
-  initPlanetsLayer(aladin).then(({ catalog, count }) => { planetsRef.catalog = catalog; planetsToggle.setCount(count); });
+  initPlanetsLayer(aladin).then(({ catalogs, count }) => {
+    planetsRef.catalogs = catalogs;
+    planetsToggle.setCount(count);
+    setCatalogVisible(catalogs, planetsToggle.isChecked());
+  });
 
   // Off by default, created lazily on first enable: heavy/bulk layers.
   let simbadCat = null;
@@ -355,6 +514,7 @@ async function main() {
         exoRef.catalog = catalog;
         exoRef.loading = false;
         if (count > 0) exoToggle.setCount(count.toLocaleString());
+        setCatalogVisible(catalog, exoToggle.isChecked());
       } else {
         setCatalogVisible(exoRef.catalog, v);
       }
@@ -367,14 +527,22 @@ async function main() {
     label: 'Stellar-mass black holes', color: '#ff9f0a', checked: true,
     onToggle: v => setCatalogVisible(stellarRef.catalog, v)
   });
-  loadStellarBlackHoles(aladin).then(({ catalog, count }) => { stellarRef.catalog = catalog; stellarToggle.setCount(count); });
+  loadStellarBlackHoles(aladin).then(({ catalog, count }) => {
+    stellarRef.catalog = catalog;
+    stellarToggle.setCount(count);
+    setCatalogVisible(catalog, stellarToggle.isChecked());
+  });
 
   const flagshipRef = {};
   const flagshipToggle = addToggle(bhList, {
     label: 'EHT-imaged supermassive', color: '#ffd60a', checked: true,
     onToggle: v => setCatalogVisible(flagshipRef.catalog, v)
   });
-  loadFlagshipSupermassive(aladin).then(({ catalog, count }) => { flagshipRef.catalog = catalog; flagshipToggle.setCount(count); });
+  loadFlagshipSupermassive(aladin).then(({ catalog, count }) => {
+    flagshipRef.catalog = catalog;
+    flagshipToggle.setCount(count);
+    setCatalogVisible(catalog, flagshipToggle.isChecked());
+  });
 
   let milliquasCat = null;
   addToggle(bhList, {
@@ -399,6 +567,7 @@ async function main() {
         gwRef.catalog = catalog;
         gwRef.loading = false;
         if (count > 0) gwToggle.setCount(count);
+        setCatalogVisible(catalog, gwToggle.isChecked());
       } else {
         setCatalogVisible(gwRef.catalog, v);
       }
@@ -411,11 +580,16 @@ async function main() {
   window.addEventListener('unhandledrejection', (e) => {
     console.error('Unhandled promise rejection:', e.reason);
   });
+
+  // PWA: cache the app shell so revisits load instantly (sky data stays live).
+  if ('serviceWorker' in navigator && location.protocol === 'https:') {
+    navigator.serviceWorker.register('sw.js').catch(() => { /* shell caching is optional */ });
+  }
 }
 
 async function initPlanetsLayer(aladin) {
-  const cat = A.catalog({
-    name: 'Solar System',
+  const catPlanets = A.catalog({
+    name: 'Solar System planets',
     shape: makePlanetIcon('#7fd6ff', 18),
     sourceSize: 18,
     displayLabel: true,
@@ -424,11 +598,36 @@ async function initPlanetsLayer(aladin) {
     labelFont: '11px -apple-system, sans-serif',
     onClick: null
   });
+  const catSun = A.catalog({
+    name: 'Sun',
+    shape: makeGlowDot('#ffd60a', 28),
+    sourceSize: 28,
+    displayLabel: true,
+    labelColumn: 'name',
+    labelColor: 'rgba(255, 224, 130, 0.9)',
+    labelFont: '11px -apple-system, sans-serif',
+    onClick: null
+  });
+  const catMoon = A.catalog({
+    name: 'Moon',
+    shape: makePlanetIcon('#d9d9de', 18),
+    sourceSize: 18,
+    displayLabel: true,
+    labelColumn: 'name',
+    labelColor: 'rgba(225, 225, 235, 0.85)',
+    labelFont: '11px -apple-system, sans-serif',
+    onClick: null
+  });
+
+  const EPHEMERIS_NOTE = 'Computed client-side from truncated orbital formulae, accurate to a few arcminutes (1800-2050).';
+  const EPHEMERIS_SOURCE = 'Self-contained ephemeris (see js/planets.js); JPL approximate elements / Astronomical Almanac low-precision formulae.';
 
   function build() {
-    if (typeof cat.removeAll === 'function') cat.removeAll();
-    const positions = computePlanetPositions(new Date());
-    const sources = positions.map(p => A.source(p.ra, p.dec, {
+    for (const c of [catPlanets, catSun, catMoon]) {
+      if (typeof c.removeAll === 'function') c.removeAll();
+    }
+    const now = new Date();
+    catPlanets.addSources(computePlanetPositions(now).map(p => A.source(p.ra, p.dec, {
       name: PLANET_LABELS[p.body],
       _detail: {
         name: PLANET_LABELS[p.body],
@@ -436,19 +635,45 @@ async function initPlanetsLayer(aladin) {
         ra: p.ra,
         dec: p.dec,
         distanceText: `${p.distanceAu.toFixed(3)} AU from Earth (today)`,
-        extraRows: [['Position computed', new Date().toUTCString()]],
-        approxNote: 'Computed client-side from truncated Keplerian orbital elements (JPL/Meeus low-precision formulae), accurate to a few arcminutes for 1800-2050.',
-        source: 'Self-contained ephemeris (see js/planets.js); orbital elements from JPL "Keplerian Elements for Approximate Positions of the Major Planets".'
+        extraRows: [['Position computed', now.toUTCString()]],
+        approxNote: EPHEMERIS_NOTE,
+        source: EPHEMERIS_SOURCE
       }
-    }));
-    cat.addSources(sources);
-    return sources.length;
+    })));
+    const sun = computeSunPosition(now);
+    catSun.addSources([A.source(sun.ra, sun.dec, {
+      name: 'Sun',
+      _detail: {
+        name: 'The Sun',
+        typeLabel: 'G-type main-sequence star',
+        ra: sun.ra,
+        dec: sun.dec,
+        distanceText: `${sun.distanceAu.toFixed(4)} AU from Earth (today)`,
+        extraRows: [['Position computed', now.toUTCString()]],
+        approxNote: EPHEMERIS_NOTE,
+        source: EPHEMERIS_SOURCE
+      }
+    })]);
+    const moon = computeMoonPosition(now);
+    catMoon.addSources([A.source(moon.ra, moon.dec, {
+      name: 'Moon',
+      _detail: {
+        name: 'The Moon',
+        typeLabel: "Earth's natural satellite",
+        ra: moon.ra,
+        dec: moon.dec,
+        distanceText: `${Math.round(moon.distanceKm).toLocaleString()} km from Earth's center (today)`,
+        extraRows: [['Position computed', now.toUTCString()]],
+        approxNote: 'Geocentric position from the Astronomical Almanac low-precision lunar formulae (~0.3° accuracy). From your location on Earth’s surface the Moon can appear up to ~1° away from this point (parallax).',
+        source: EPHEMERIS_SOURCE
+      }
+    })]);
   }
 
-  const count = build();
-  aladin.addCatalog(cat);
-  setInterval(build, 10 * 60 * 1000); // refresh every 10 minutes to reflect real orbital motion
-  return { catalog: cat, count };
+  build();
+  for (const c of [catPlanets, catSun, catMoon]) aladin.addCatalog(c);
+  setInterval(build, 10 * 60 * 1000); // refresh to reflect real motion (Moon moves ~0.5°/hr)
+  return { catalogs: [catPlanets, catSun, catMoon], count: 11 };
 }
 
 // On-page debug console for devices without dev tools (phones): append

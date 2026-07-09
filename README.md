@@ -9,11 +9,19 @@ Sgr A* and M87*), and notable gravitational-wave mergers.
 Designed for the general public with scientific-tool standards: an
 Apple-native frosted-glass UI floats over a full-bleed sky, only
 high-signal layers are on by default (heavier catalogs lazy-load when
-toggled), and famous objects — every planet, well-studied exoplanets,
-bright stars, and all black holes — open with an animated **3-D render**
-generated in-browser by a WebGL shader from published parameters (planet
-class, stellar temperature, accretion-disk physics). Renders are
+toggled), and famous objects — the Sun, Moon and every planet,
+well-studied exoplanets, bright stars, and all black holes — open with
+real photographs, official artist impressions, or an animated **3-D
+render** generated in-browser from published parameters. Renders are
 explicitly labeled as illustrations, never passed off as observations.
+
+Launch features: constellation stick figures for orientation, instant
+search suggestions from the curated catalogs, shareable permalinks for
+any view (plus a native share button), installable as a PWA with an
+offline-cached shell, and preferences (layers, night-vision mode) that
+persist locally. **No tracking, no analytics, no accounts — ever.**
+MIT licensed (code); all data and imagery remain under their providers'
+licenses, credited in-app.
 
 Built with [Aladin Lite v3](https://aladin.cds.unistra.fr/AladinLite/) as the
 sky-rendering engine. No build step, no framework, no backend, no API keys —

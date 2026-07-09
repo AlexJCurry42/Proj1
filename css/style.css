@@ -522,6 +522,29 @@ body.redlight :is(.glass-panel, .glass-btn, #search-form, .glass-select, #readou
 body.redlight{ --text-primary: #ff6b60; --text-secondary: rgba(255, 107, 96, 0.6); --text-tertiary: rgba(255, 107, 96, 0.35); --blue: #ff6b60; --green: #a83a32; }
 body.redlight .render-canvas{ filter: sepia(1) saturate(4) hue-rotate(-50deg) brightness(0.8); }
 
+/* ================= Lightbox ================= */
+#lightbox{
+  position: fixed; inset: 0; z-index: 350;
+  background: rgba(0, 0, 0, 0.88);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 12px; padding: 24px; cursor: zoom-out;
+  animation: fade-in 0.25s ease;
+}
+#lightbox img{
+  max-width: 100%; max-height: 82vh; border-radius: 12px; cursor: default;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+}
+#lightbox p{ font-size: 12.5px; color: var(--text-secondary); text-align: center; margin: 0; max-width: 600px; }
+#lightbox-close{ position: absolute; top: calc(14px + var(--safe-top)); right: 14px; }
+
+/* ================= No-backdrop-filter fallback (older devices) ================= */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))){
+  .glass-panel, .glass-btn, .glass-select, #search-form, #readouts, .dropdown-list, .toast{
+    background: rgba(18, 18, 24, 0.94) !important;
+  }
+}
+
 /* ================= Desktop hover refinements ================= */
 @media (hover: hover){
   .glass-btn:hover{ background: rgba(255, 255, 255, 0.10); }

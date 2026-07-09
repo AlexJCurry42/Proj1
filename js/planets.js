@@ -147,3 +147,58 @@ export const PLANET_LABELS = {
   mercury: 'Mercury', venus: 'Venus', mars: 'Mars', jupiter: 'Jupiter',
   saturn: 'Saturn', uranus: 'Uranus', neptune: 'Neptune', pluto: 'Pluto'
 };
+
+/**
+ * Geocentric Sun position: the negated heliocentric Earth vector from the
+ * same Keplerian table, so accuracy matches the planets (arcminutes).
+ */
+export function computeSunPosition(date = new Date()) {
+  const T = centuriesSinceJ2000(date);
+  const e = heliocentricEcliptic('earth', T);
+  const { ra, dec } = eclipticToEquatorial(-e.x, -e.y, -e.z);
+  return { ra, dec, distanceAu: Math.sqrt(e.x * e.x + e.y * e.y + e.z * e.z) };
+}
+
+/**
+ * Geocentric Moon position from the Astronomical Almanac's low-precision
+ * lunar formulae (page D22): accurate to ~0.3° in longitude / ~0.2° in
+ * latitude for 1900-2100 — fine for plotting a marker, and labeled as
+ * approximate in the UI. Note this is GEOCENTRIC: because the Moon is so
+ * close, its apparent position from a spot on Earth's surface can differ
+ * by up to ~1° (parallax).
+ */
+export function computeMoonPosition(date = new Date()) {
+  const T = centuriesSinceJ2000(date);
+  const s = (d) => Math.sin(d * DEG2RAD);
+  const c = (d) => Math.cos(d * DEG2RAD);
+
+  // Ecliptic longitude (deg)
+  const lambda = 218.32 + 481267.883 * T
+    + 6.29 * s(134.9 + 477198.85 * T)
+    - 1.27 * s(259.2 - 413335.38 * T)
+    + 0.66 * s(235.7 + 890534.23 * T)
+    + 0.21 * s(269.9 + 954397.70 * T)
+    - 0.19 * s(357.5 + 35999.05 * T)
+    - 0.11 * s(186.6 + 966404.05 * T);
+
+  // Ecliptic latitude (deg)
+  const beta = 5.13 * s(93.3 + 483202.03 * T)
+    + 0.28 * s(228.2 + 960400.87 * T)
+    - 0.28 * s(318.3 + 6003.18 * T)
+    - 0.17 * s(217.6 - 407332.20 * T);
+
+  // Horizontal parallax (deg) -> distance in km
+  const pi = 0.9508
+    + 0.0518 * c(134.9 + 477198.85 * T)
+    + 0.0095 * c(259.2 - 413335.38 * T)
+    + 0.0078 * c(235.7 + 890534.23 * T)
+    + 0.0028 * c(269.9 + 954397.70 * T);
+  const distanceKm = 6378.14 / Math.sin(pi * DEG2RAD);
+
+  // Ecliptic lon/lat -> unit rectangular -> equatorial RA/Dec
+  const x = c(beta) * c(lambda);
+  const y = c(beta) * s(lambda);
+  const z = s(beta);
+  const { ra, dec } = eclipticToEquatorial(x, y, z);
+  return { ra, dec, distanceKm };
+}
