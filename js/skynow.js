@@ -165,40 +165,61 @@ export function initSkyNow(aladin, { onTrackingStart } = {}) {
     // contributes only a slowly-trusted azimuth offset that anchors it to
     // true north. Compass glitches barely dent the offset; dropouts simply
     // pause its updates. Android's absolute stream needs no offset at all.
+    // The compass corrects the gyro frame CONTINUOUSLY — the anchor moves
+    // with the user, so pointing at the same real-world direction always
+    // shows the same sky. Two mechanisms share the work:
+    //  · gentle correction, weighted by how much geometric signal the
+    //    compass carries (webkitCompassHeading is the top edge projected on
+    //    the horizon, so its information fades as the phone tips vertical
+    //    and vanishes in the last ~10°, where rolls spin it full-circle);
+    //  · a consistency tracker that tells NOISE from REORIENTATION: compass
+    //    readings scattered everywhere are ignored, but readings that agree
+    //    with each other while disagreeing with the anchor mean the gyro
+    //    frame really rotated (walking, turning, an iOS re-reference) — the
+    //    anchor snaps to the new consensus within about a second.
     let azOffset = null;
+    let cand = null;    // fast follower of the compass-implied offset
+    let agreeMs = 0;    // how long the consensus has disagreed with the anchor
+    let lastEvT = 0;
     const wrap180 = (d) => { d = ((d + 180) % 360 + 360) % 360 - 180; return d; };
     const handler = (e) => {
       const rel = pointingFromOrientation(e.alpha, e.beta, e.gamma, null);
       if (!rel) return;
       gotEvent = true;
       gyroBtn?.classList.remove('acquiring');
+      const now = performance.now();
+      const dtE = Math.min(now - (lastEvT || now), 100);
+      lastEvT = now;
+      const fr = dtE / 16.7; // event-rate normalization (gains are per-60Hz-frame)
 
       const heading = (typeof e.webkitCompassHeading === 'number' &&
                        !Number.isNaN(e.webkitCompassHeading) &&
                        e.webkitCompassHeading >= 0) ? e.webkitCompassHeading : null;
       if (heading != null) {
-        // webkitCompassHeading is the device's TOP EDGE projected onto the
-        // horizon. Hold the phone VERTICAL — the natural stargazing grip —
-        // and that projection degenerates: a slight roll sweeps the reported
-        // heading through a full 360° (measured on-device: crosshair on the
-        // horizon, tiny tilts spun the whole sky). So the compass is trusted
-        // exactly to the degree the device's long axis is horizontal
-        // (|cos β|), and not at all within ~15° of vertical. While it's
-        // untrusted the anchor simply freezes and the smooth gyro stream
-        // carries the view alone.
         const cb = Math.abs(Math.cos((e.beta || 0) * D2R));
-        const trust = Math.min(1, Math.max(0, (cb - 0.25) / 0.5));
-        const abs = trust > 0 ? pointingFromOrientation(e.alpha, e.beta, e.gamma, heading) : null;
-        if (abs) {
-          const d = wrap180(abs.az - rel.az);
-          if (azOffset == null) azOffset = d;
-          else {
-            const dd = wrap180(d - azOffset);
-            // Outlier headings (glitches, interference) are trusted very
-            // slowly; agreeing ones converge in about a second when the
-            // device is held flat enough for the compass to mean anything.
-            const k = (Math.abs(dd) > 25 ? 0.015 : 0.06) * trust;
-            azOffset = wrap180(azOffset + dd * k);
+        const w = Math.min(1, Math.max(0, (cb - 0.12) / 0.45));
+        if (w > 0) {
+          const abs = pointingFromOrientation(e.alpha, e.beta, e.gamma, heading);
+          if (abs) {
+            const d = wrap180(abs.az - rel.az);
+            if (azOffset == null) {
+              azOffset = d;
+              cand = d;
+            } else {
+              cand = cand == null ? d
+                : wrap180(cand + wrap180(d - cand) * Math.min(1, 0.12 * w * fr));
+              const disagree = Math.abs(wrap180(cand - azOffset));
+              const candStable = Math.abs(wrap180(d - cand)) < 15;
+              if (disagree > 20 && candStable && w > 0.2) {
+                agreeMs += dtE;
+                if (agreeMs > 1100) { azOffset = cand; agreeMs = 0; } // the world moved: re-anchor
+              } else {
+                agreeMs = Math.max(0, agreeMs - dtE * 2);
+              }
+              const dd = wrap180(d - azOffset);
+              const k = (Math.abs(dd) > 25 ? 0.02 : 0.09) * w * fr;
+              azOffset = wrap180(azOffset + dd * Math.min(0.3, k));
+            }
           }
         }
       }
