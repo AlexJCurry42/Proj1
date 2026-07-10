@@ -177,18 +177,27 @@ export function initSkyNow(aladin, { onTrackingStart } = {}) {
                        !Number.isNaN(e.webkitCompassHeading) &&
                        e.webkitCompassHeading >= 0) ? e.webkitCompassHeading : null;
       if (heading != null) {
-        const abs = pointingFromOrientation(e.alpha, e.beta, e.gamma, heading);
+        // webkitCompassHeading is the device's TOP EDGE projected onto the
+        // horizon. Hold the phone VERTICAL — the natural stargazing grip —
+        // and that projection degenerates: a slight roll sweeps the reported
+        // heading through a full 360° (measured on-device: crosshair on the
+        // horizon, tiny tilts spun the whole sky). So the compass is trusted
+        // exactly to the degree the device's long axis is horizontal
+        // (|cos β|), and not at all within ~15° of vertical. While it's
+        // untrusted the anchor simply freezes and the smooth gyro stream
+        // carries the view alone.
+        const cb = Math.abs(Math.cos((e.beta || 0) * D2R));
+        const trust = Math.min(1, Math.max(0, (cb - 0.25) / 0.5));
+        const abs = trust > 0 ? pointingFromOrientation(e.alpha, e.beta, e.gamma, heading) : null;
         if (abs) {
-          // The steeper the phone points, the less the compass is trusted —
-          // its noise blows up with altitude.
-          const steep = Math.min(1, Math.max(0, (75 - rel.alt) / 45)); // 1 below 30°, 0 above 75°
           const d = wrap180(abs.az - rel.az);
           if (azOffset == null) azOffset = d;
           else {
             const dd = wrap180(d - azOffset);
             // Outlier headings (glitches, interference) are trusted very
-            // slowly; agreeing ones converge in about a second.
-            const k = (Math.abs(dd) > 25 ? 0.015 : 0.06) * (0.25 + 0.75 * steep);
+            // slowly; agreeing ones converge in about a second when the
+            // device is held flat enough for the compass to mean anything.
+            const k = (Math.abs(dd) > 25 ? 0.015 : 0.06) * trust;
             azOffset = wrap180(azOffset + dd * k);
           }
         }
