@@ -465,7 +465,7 @@ export function initAboutModal() {
   const modal = document.getElementById('about-modal');
   document.getElementById('about-content').innerHTML = `
     <h2>Pocket Planetarium</h2>
-    <p>A planetarium in your pocket: a browser-based sky atlas built with <a href="https://aladin.cds.unistra.fr/AladinLite/" target="_blank" rel="noopener">Aladin Lite v3</a>, streaming imagery and catalog data live from public astronomical archives. No accounts, no backend, no tracking.</p>
+    <p>A planetarium in your pocket: a browser-based sky atlas built with <a href="https://aladin.cds.unistra.fr/AladinLite/" target="_blank" rel="noopener">Aladin Lite v3</a>, streaming imagery and catalog data live from public astronomical archives.</p>
     <h3>Imagery &amp; sky rendering</h3>
     <ul>
       <li><strong>Aladin Lite</strong> &mdash; CDS, Observatoire de Strasbourg &amp; CNRS</li>
