@@ -318,6 +318,10 @@ async function main() {
     showGotoControl: false,
     showZoomControl: false,
     showFrame: false,
+    showCooLocation: false,
+    showFov: false,
+    showStatusBar: false,
+    showProjectionControl: false,
     cooFrame: 'ICRS',
     // Pure black around the celestial sphere — the sky should feel infinite,
     // not like a globe floating on a gray card.
@@ -450,37 +454,20 @@ async function main() {
   document.getElementById('zoom-in').addEventListener('click', () => zoomBy(0.5));
   document.getElementById('zoom-out').addEventListener('click', () => zoomBy(2));
 
-  // ------------------------------------------------------------ Readouts ---
-  const skyDiv = document.getElementById('aladin-lite-div');
-  const updateCoordReadout = debounce((x, y) => {
+  // ------------------------------------------------------- Coordinates HUD ---
+  // One whisper of text, bottom-right: the view center's coordinates.
+  // (The engine's own location/FoV/status widgets are disabled at init —
+  // their grey boxes and magenta text fought the design.)
+  const coordsHud = document.getElementById('coords-hud');
+  const updateCoordsHud = debounce(() => {
     try {
-      const [ra, dec] = aladin.pix2world(x, y);
-      if (ra == null) return;
-      document.getElementById('coord-readout').textContent = `${toSexagesimalRA(ra)} ${toSexagesimalDec(dec)}`;
-    } catch (err) { /* cursor left the sky area, e.g. off the sphere */ }
-  }, 250);
-  skyDiv.addEventListener('mousemove', (e) => {
-    const rect = skyDiv.getBoundingClientRect();
-    updateCoordReadout(e.clientX - rect.left, e.clientY - rect.top);
-  });
-
-  const updateFovReadout = debounce(() => {
-    try {
-      const fov = aladin.getFov();
-      document.getElementById('fov-readout').textContent = `FoV ${fov[0].toFixed(2)}°`;
-    } catch (err) { /* ignore transient state during animation */ }
-  }, 250);
-  onZoom(updateFovReadout);
-  updateFovReadout();
-
-  function tickClock() {
-    const now = new Date();
-    const hh = String(now.getUTCHours()).padStart(2, '0');
-    const mm = String(now.getUTCMinutes()).padStart(2, '0');
-    document.getElementById('clock-readout').textContent = `${hh}:${mm} UTC`;
-  }
-  setInterval(tickClock, 15000);
-  tickClock();
+      const [ra, dec] = aladin.getRaDec();
+      coordsHud.textContent = `${toSexagesimalRA(ra)}  ${toSexagesimalDec(dec)}`;
+    } catch (err) { /* transient state during animation */ }
+  }, 150);
+  onPosition(updateCoordsHud);
+  onZoom(updateCoordsHud);
+  updateCoordsHud();
 
   // -------------------------------------------------------------- Search ---
   const searchForm = document.getElementById('search-form');

@@ -631,21 +631,24 @@ input[type="range"]::-moz-range-thumb{
   #spectrum-rail{ height: min(320px, calc(100vh - 260px)); }
 }
 
-/* ================= Readouts =================
-   Not a bar — a whisper. Faint HUD text tucked into the bottom-right,
-   above the search bar (and left of the zoom buttons on desktop). */
-#readouts{
+/* ================= Coordinates HUD =================
+   Not a bar — a whisper. One line of faint text tucked into the
+   bottom-right, above the search bar (left of the zoom buttons on
+   desktop): the view center's coordinates, nothing else. */
+#coords-hud{
   position: fixed; z-index: 40;
   right: calc(64px + var(--safe-right));
   bottom: calc(70px + var(--safe-bottom));
-  display: flex; align-items: center; justify-content: flex-end; gap: 8px;
   font-size: 10px; font-weight: 500; letter-spacing: 0.02em;
   color: rgba(235, 235, 245, 0.48);
   font-variant-numeric: tabular-nums;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
   pointer-events: none; white-space: nowrap;
 }
-.dot-sep{ width: 2px; height: 2px; border-radius: 50%; background: rgba(235, 235, 245, 0.25); }
+
+/* The engine's own location/FoV/status widgets are disabled via init
+   options; this is the backstop in case an engine update renames them. */
+#aladin-lite-div :is(.aladin-location, .aladin-fov, .aladin-status-bar){ display: none !important; }
 
 /* ================= Onboarding ================= */
 #onboarding{
@@ -772,7 +775,7 @@ body.redlight :is(.glass-panel, .glass-btn, #search-form, .glass-select, .dropdo
   background: rgba(28, 4, 4, 0.75) !important;
   border-color: rgba(255, 69, 58, 0.25) !important;
 }
-body.redlight #readouts{ color: rgba(255, 107, 96, 0.45); }
+body.redlight #coords-hud{ color: rgba(255, 107, 96, 0.45); }
 body.redlight{ --text-primary: #ff6b60; --text-secondary: rgba(255, 107, 96, 0.6); --text-tertiary: rgba(255, 107, 96, 0.35); --blue: #ff6b60; --green: #a83a32; }
 body.redlight .render-canvas{ filter: sepia(1) saturate(4) hue-rotate(-50deg) brightness(0.8); }
 
@@ -850,7 +853,7 @@ body.redlight .render-canvas{ filter: sepia(1) saturate(4) hue-rotate(-50deg) br
   }
   #detail-close{ top: 14px; }
 
-  #readouts{ right: calc(12px + var(--safe-right)); font-size: 9px; gap: 6px; }
+  #coords-hud{ right: calc(12px + var(--safe-right)); font-size: 9px; }
 
   /* Phone bottom bar: Sky Now + search share one row, search takes the rest */
   #bottom-bar{
