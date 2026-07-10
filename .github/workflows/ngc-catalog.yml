@@ -86,4 +86,7 @@ jobs:
           git config user.email 'github-actions[bot]@users.noreply.github.com'
           git add data/ngc_full.json
           git diff --cached --quiet || git commit -m "Refresh OpenNGC catalog snapshot [skip ci]"
+          # Data workflows can race each other on push day: rebase onto
+          # whatever a sibling Action just committed before pushing.
+          git pull --rebase origin "$GITHUB_REF_NAME"
           git push
