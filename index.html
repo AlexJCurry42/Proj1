@@ -36,16 +36,20 @@
 
 <!-- Floating top controls -->
 <header id="top-bar">
-  <button id="brand-btn" class="glass-btn" aria-label="About Pocket Planetarium">
-    <img src="assets/icon-192.png" alt="" class="brand-logo" width="24" height="24" />
-    <span class="brand-name">Pocket&nbsp;Planetarium</span>
-  </button>
+  <div id="top-bar-left">
+    <button id="brand-btn" class="glass-btn" aria-label="About Pocket Planetarium">
+      <img src="assets/icon-192.png" alt="" class="brand-logo" width="24" height="24" />
+      <span class="brand-name">Pocket&nbsp;Planetarium</span>
+    </button>
+    <button id="view-toggle" class="glass-btn" aria-pressed="false" aria-label="Switch between orbiting the sky and standing inside it" title="Step inside the sky">
+      <!-- Outside (globe) mode: an arrow diving INTO the sphere — press to enter -->
+      <svg class="icon icon-globe" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13.5" r="6.6"/><ellipse cx="12" cy="13.5" rx="6.6" ry="2.4"/><line x1="12" y1="1.6" x2="12" y2="7"/><path d="M9.7 4.7L12 7l2.3-2.3"/></svg>
+      <!-- Inside (planetarium) mode: an arrow rising OUT of the dome — press to orbit -->
+      <svg class="icon icon-dome" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 17.5a7.5 7.5 0 0 1 15 0"/><circle cx="12" cy="20" r="1.5" fill="currentColor" stroke="none"/><line x1="12" y1="12.5" x2="12" y2="7"/><path d="M9.7 9.3L12 7l2.3 2.3"/></svg>
+    </button>
+  </div>
 
   <div id="top-bar-right">
-    <button id="view-toggle" class="glass-btn" aria-pressed="false" aria-label="Switch between globe view and inside-the-sky view" title="Globe / inside view">
-      <svg class="icon icon-globe" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><ellipse cx="12" cy="12" rx="3.8" ry="8.5"/><line x1="3.5" y1="12" x2="20.5" y2="12"/></svg>
-      <svg class="icon icon-dome" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17a8 8 0 0 1 16 0"/><circle cx="12" cy="19" r="1.6" fill="currentColor" stroke="none"/><line x1="12" y1="9" x2="12" y2="6.4"/><line x1="6.8" y1="11.2" x2="5" y2="9.4"/><line x1="17.2" y1="11.2" x2="19" y2="9.4"/></svg>
-    </button>
     <button id="share-btn" class="glass-btn" aria-label="Share this view" title="Share this view">
       <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"/><path d="M8 7l4-4 4 4"/><rect x="5" y="11" width="14" height="10" rx="3"/></svg>
     </button>

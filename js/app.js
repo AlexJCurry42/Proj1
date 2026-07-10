@@ -445,7 +445,16 @@ async function main() {
     }
   }
   viewBtn.setAttribute('aria-pressed', String(viewMode === 'inside'));
-  viewBtn.addEventListener('click', () => applyViewMode(viewMode === 'inside' ? 'globe' : 'inside'));
+  // First-discovery nudge: the button breathes until it has been pressed
+  // once, ever. One tap retires the animation for good.
+  if (readPref('viewhint', false) !== true) viewBtn.classList.add('nudge');
+  viewBtn.addEventListener('click', () => {
+    if (viewBtn.classList.contains('nudge')) {
+      viewBtn.classList.remove('nudge');
+      writePref('viewhint', true);
+    }
+    applyViewMode(viewMode === 'inside' ? 'globe' : 'inside');
+  });
 
   // Floating zoom controls (Aladin's own chrome is disabled for a clean sky).
   function zoomBy(factor) {

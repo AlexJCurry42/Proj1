@@ -155,13 +155,35 @@ body.redlight :is(#horizon-canvas, #satellite-canvas){ filter: sepia(1) saturate
 }
 .icon-red{ color: var(--red); }
 
-/* View-mode toggle: globe icon by default, dome icon while inside the sky */
+/* View-mode toggle: dive-into-the-sphere icon by default, rise-out-of-the-
+   dome icon while inside. Lives on the LEFT, beside the brand. */
+#top-bar-left{ display: flex; align-items: center; gap: 8px; }
 #view-toggle .icon-dome{ display: none; }
 #view-toggle[aria-pressed="true"] .icon-globe{ display: none; }
 #view-toggle[aria-pressed="true"] .icon-dome{ display: block; }
 #view-toggle[aria-pressed="true"]{
   background: rgba(10, 132, 255, 0.28);
   border-color: rgba(10, 132, 255, 0.5);
+}
+/* Until first pressed, the button quietly asks to be noticed: a slow
+   breathing glow with an occasional dip of the arrow. One tap ends it
+   forever (persisted). */
+#view-toggle.nudge{
+  border-color: rgba(10, 132, 255, 0.45);
+  animation: view-nudge-glow 3.2s ease-in-out infinite;
+}
+#view-toggle.nudge .icon{ animation: view-nudge-dip 3.2s ease-in-out infinite; }
+@keyframes view-nudge-glow{
+  0%, 100%{ box-shadow: var(--liquid-edge), 0 0 0 0 rgba(10, 132, 255, 0); }
+  50%{ box-shadow: var(--liquid-edge), 0 0 14px 2px rgba(10, 132, 255, 0.35); }
+}
+@keyframes view-nudge-dip{
+  0%, 74%, 100%{ transform: translateY(0); }
+  82%{ transform: translateY(2px); }
+  90%{ transform: translateY(-1px); }
+}
+@media (prefers-reduced-motion: reduce){
+  #view-toggle.nudge, #view-toggle.nudge .icon{ animation: none; }
 }
 
 /* ================= Top bar ================= */
