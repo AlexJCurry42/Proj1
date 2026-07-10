@@ -4,7 +4,7 @@
 
 import { fetchJSON, fetchText } from './net.js';
 import { showToast } from './ui.js';
-import { makeGlowDot } from './markers.js';
+import { makeGlowDot, makePlanetIcon } from './markers.js';
 
 const EXOPLANET_TAP_URL = 'https://exoplanetarchive.ipac.caltech.edu/TAP/sync';
 const GAIA_HIPS_CAT_URL = 'https://axel.u-strasbg.fr/HiPSCatService/I/355/gaiadr3';
@@ -409,16 +409,42 @@ export async function loadExoplanets(aladin) {
     }
   }
 
+  // The well-studied planets — the ones with curated artist impressions,
+  // direct images or renders in data/renders.json — get their own standout
+  // markers: bigger, ringed like the Solar System planets, and labeled by
+  // name, so they read as landmarks among the six thousand dots.
+  let famousNames = new Set();
+  try {
+    const renders = await fetchJSON('data/renders.json');
+    for (const e of renders.entries || []) {
+      for (const m of e.match || []) famousNames.add(m);
+    }
+  } catch (err) { /* purely cosmetic: everything falls back to plain dots */ }
+
   const cat = A.catalog({
     name: 'Exoplanets',
     shape: makeGlowDot('#30d158', 9),
     sourceSize: 9,
     onClick: null
   });
+  const catFamous = A.catalog({
+    name: 'Exoplanets (well-studied)',
+    shape: makePlanetIcon('#7dffb0', 17),
+    sourceSize: 17,
+    displayLabel: true,
+    labelColumn: 'name',
+    labelColor: 'rgba(158, 255, 196, 0.85)',
+    labelFont: '11px -apple-system, sans-serif',
+    onClick: null
+  });
+
   const sources = [];
+  const famous = [];
   for (const row of exoplanetCache) {
     if (row.ra == null || row.dec == null) continue;
-    sources.push(A.source(row.ra, row.dec, {
+    const isFamous = famousNames.has(String(row.pl_name).trim().toLowerCase());
+    const src = A.source(row.ra, row.dec, {
+      ...(isFamous ? { name: row.pl_name } : {}),
       _detail: {
         name: row.pl_name,
         typeLabel: 'Confirmed exoplanet',
@@ -434,9 +460,12 @@ export async function loadExoplanets(aladin) {
           ? 'NASA Exoplanet Archive (pscomppars), NASA/IPAC — bundled snapshot, refreshed weekly'
           : 'NASA Exoplanet Archive (pscomppars table), NASA/IPAC'
       }
-    }));
+    });
+    (isFamous ? famous : sources).push(src);
   }
   cat.addSources(sources);
+  catFamous.addSources(famous);
   aladin.addCatalog(cat);
-  return { catalog: cat, count: sources.length };
+  aladin.addCatalog(catFamous); // added second: draws above the plain dots
+  return { catalog: [cat, catFamous], count: sources.length + famous.length };
 }
