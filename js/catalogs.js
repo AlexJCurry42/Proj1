@@ -7,7 +7,6 @@ import { showToast } from './ui.js';
 import { makeGlowDot } from './markers.js';
 
 const EXOPLANET_TAP_URL = 'https://exoplanetarchive.ipac.caltech.edu/TAP/sync';
-const SIMBAD_HIPS_CAT_URL = 'https://axel.u-strasbg.fr/HiPSCatService/SIMBAD';
 const GAIA_HIPS_CAT_URL = 'https://axel.u-strasbg.fr/HiPSCatService/I/355/gaiadr3';
 const SIMBAD_TAP_URL = 'https://simbad.cds.unistra.fr/simbad/sim-tap/sync';
 
@@ -38,23 +37,6 @@ let exoplanetCache = null; // in-memory cache: never re-fetched in a session
 function debounce(fn, ms) {
   let t = null;
   return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
-}
-
-/** Progressive SIMBAD catalog — density scales with zoom, never bulk-loaded. */
-export function initSimbadHips(aladin) {
-  try {
-    const cat = A.catalogHiPS(SIMBAD_HIPS_CAT_URL, {
-      name: 'SIMBAD',
-      color: '#5eb1ff',
-      sourceSize: 8,
-      onClick: null
-    });
-    aladin.addCatalog(cat);
-    return cat;
-  } catch (err) {
-    showToast('SIMBAD progressive catalog failed to load.', 'error');
-    return null;
-  }
 }
 
 /** Progressive Gaia DR3 catalog of stars. */
@@ -205,6 +187,74 @@ export function initSimbadBlackHolesLayer(
       };
     }
   });
+}
+
+const NGC_TYPE_LABEL = {
+  G: 'Galaxy', GPair: 'Galaxy pair', GTrpl: 'Galaxy triplet', GGroup: 'Galaxy group',
+  OCl: 'Open cluster', GCl: 'Globular cluster', PN: 'Planetary nebula',
+  SNR: 'Supernova remnant', Neb: 'Nebula', EmN: 'Emission nebula',
+  RfN: 'Reflection nebula', HII: 'HII region', 'Cl+N': 'Cluster with nebulosity',
+  DrkN: 'Dark nebula', Ast: 'Asterism', Nova: 'Nova'
+};
+
+/**
+ * The complete OpenNGC catalog (~13,000 NGC/IC objects), snapshotted by
+ * .github/workflows/ngc-catalog.yml. Magnitude-tiered by field of view so
+ * the full list only appears once you're zoomed in enough for it to be
+ * useful rather than a wall of dots:
+ *   FoV ≥ 50°:  mag ≤ 8    ·  20–50°: mag ≤ 10
+ *   7–20°:      mag ≤ 12   ·  < 7°:   everything
+ */
+export async function loadNgcFull(aladin, onZoom = (fn) => aladin.on('zoomChanged', fn)) {
+  let data;
+  try {
+    data = await fetchJSON('data/ngc_full.json');
+  } catch (err) {
+    showToast('The full NGC/IC catalog is not available yet (data refresh pending).', 'info', 7000);
+    return { catalog: null, count: 0 };
+  }
+
+  // Tiers by magnitude; unmeasured-magnitude objects land in the last tier.
+  const tiers = [[], [], [], []];
+  for (const [name, type, ra, dec, mag, common] of data.objects) {
+    const src = A.source(ra, dec, {
+      _detail: {
+        name: common ? `${name} — ${common}` : name,
+        typeLabel: NGC_TYPE_LABEL[type] || type,
+        ra, dec,
+        mag: mag ?? undefined,
+        source: 'OpenNGC (CC-BY-SA-4.0) — the complete NGC/IC catalogs'
+      }
+    });
+    const tier = mag == null ? 3 : mag <= 8 ? 0 : mag <= 10 ? 1 : mag <= 12 ? 2 : 3;
+    tiers[tier].push(src);
+  }
+
+  const cat = A.catalog({
+    name: 'NGC & IC (full)',
+    shape: makeGlowDot('#66b7ff', 8),
+    sourceSize: 8,
+    onClick: null
+  });
+  aladin.addCatalog(cat);
+
+  let currentDepth = -1;
+  const depthFor = (fov) => fov >= 50 ? 0 : fov >= 20 ? 1 : fov >= 7 ? 2 : 3;
+  function rebuild() {
+    let fov = 60;
+    try { fov = aladin.getFov()[0]; } catch (err) { /* keep default */ }
+    const depth = depthFor(fov);
+    if (depth === currentDepth) return;
+    currentDepth = depth;
+    try {
+      if (typeof cat.removeAll === 'function') cat.removeAll();
+      cat.addSources(tiers.slice(0, depth + 1).flat());
+    } catch (err) { /* engine mid-redraw */ }
+  }
+  rebuild();
+  onZoom(debounce(rebuild, 200));
+
+  return { catalog: cat, count: data.objects.length };
 }
 
 /**

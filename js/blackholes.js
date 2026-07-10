@@ -1,18 +1,16 @@
 // Deep Sky Atlas — the black holes signature layer: confirmed stellar-mass
-// X-ray binaries, supermassive/AGN & quasars (with an EHT-imaged flagship pair
-// plus a live VizieR Milliquas cone search), and notable gravitational-wave
-// binary-black-hole mergers.
+// X-ray binaries and supermassive black holes (a curated measured set plus
+// a live VizieR Milliquas AGN/quasar cone search).
 
 import { fetchJSON } from './net.js';
 import { showToast } from './ui.js';
-import { makeGlowDot, makeBlackHoleIcon, makeDiffuseBlob } from './markers.js';
+import { makeGlowDot, makeBlackHoleIcon } from './markers.js';
 
 const VIZIER_TAP_URL = 'https://tapvizier.cds.unistra.fr/TAPVizieR/tap/sync';
 
 const STELLAR_COLOR = '#ff9f0a';
 const SUPERMASSIVE_COLOR = '#ff453a';
 const FLAGSHIP_COLOR = '#ffd60a';
-const GW_COLOR = '#bf5af2';
 
 function debounce(fn, ms) {
   let t = null;
@@ -264,49 +262,8 @@ export function initMilliquasLayer(
   return cat;
 }
 
-/** Curated notable LIGO/Virgo binary-black-hole mergers (illustrative centroids only). */
-export async function loadGwMergers(aladin) {
-  let data;
-  try {
-    data = await fetchJSON('data/blackholes_gw_mergers.json');
-  } catch (err) {
-    showToast('Could not load gravitational-wave merger events.', 'error');
-    return { catalog: null, count: 0 };
-  }
-
-  const cat = A.catalog({
-    name: 'Gravitational-wave mergers',
-    shape: makeDiffuseBlob(GW_COLOR, 26),
-    sourceSize: 26,
-    onClick: null
-  });
-  for (const ev of data.events) {
-    const source = A.source(ev.ra, ev.dec, {
-      _detail: {
-        name: ev.name,
-        typeLabel: 'Gravitational-wave binary black hole merger',
-        ra: ev.ra,
-        dec: ev.dec,
-        distanceText: `${ev.distance_mpc.toLocaleString()} Mpc`,
-        extraRows: [
-          ['Merger date', ev.date],
-          ['Progenitor masses', `${ev.mass1_solar} + ${ev.mass2_solar} M☉`],
-          ['Remnant mass', `${ev.remnant_mass_solar} M☉`],
-          ['90% localization area', `~${ev.localization_area_deg2} deg²`]
-        ],
-        // Two orbiting shadows sized by the real mass ratio; deliberately
-        // disk-free, since BBH mergers are gas-poor.
-        render: {
-          type: 'black_hole_binary',
-          title: ev.name,
-          params: { q: ev.mass2_solar / ev.mass1_solar }
-        },
-        source: ev.source,
-        approxNote: `Sky position is an illustrative centroid only — the real localization region spans roughly ${ev.localization_area_deg2} square degrees, not a point.`
-      }
-    });
-    cat.addSources([source]);
-  }
-  aladin.addCatalog(cat);
-  return { catalog: cat, count: data.events.length };
-}
+// NOTE: the former GW-mergers scatter layer was removed deliberately.
+// Real gravitational-wave localizations span tens to hundreds of square
+// degrees; plotting them as precise-looking pins overstated the app's
+// accuracy. GW170817 — the one merger pinpointed exactly, via its kilonova
+// in NGC 4993 — lives on as a guided-tour destination instead.

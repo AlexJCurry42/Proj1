@@ -2,9 +2,10 @@
 
 **Pocket Planetarium** (formerly Deep Sky Atlas): an interactive, browser-based atlas of the entire sky — imagery across the
 electromagnetic spectrum, stars, galaxies, nebulae, exoplanets, Solar System
-planets, and a dedicated **black holes** layer covering stellar-mass X-ray
-binaries, supermassive/AGN & quasars (including the two EHT-imaged flagships,
-Sgr A* and M87*), and notable gravitational-wave mergers.
+planets, the ISS and bright satellites overhead, and a dedicated **black
+holes** layer covering stellar-mass X-ray binaries and supermassive black
+holes (28 curated measured entries including the two EHT-imaged flagships,
+plus the full live AGN/quasar population).
 
 Designed for the general public with scientific-tool standards: an
 Apple-native liquid-glass UI floats over a full-bleed sky — search bar
@@ -19,12 +20,15 @@ in-browser from published parameters. Renders are explicitly labeled as
 illustrations, never passed off as observations.
 
 For stargazers: all 88 constellations (figures, names, optional
-boundaries), guided **tours** that fly three-act flights to the sky's
-greatest hits, and **Sky Now** — one tap flies to your zenith, and with
-the compass toggle on, the view tracks the phone live (sensor-smoothed
-gyro + compass, computed entirely on-device). Two projections: orbit
-the celestial sphere from outside, or stand inside it, planetarium
-style.
+boundaries), a **horizon & compass overlay** that draws YOUR horizon,
+cardinal directions and zenith on the sky, guided **tours** that fly
+three-act flights to the sky's greatest hits, the complete **NGC/IC
+catalog** (~13,000 objects, magnitude-tiered by zoom), live
+**satellites** with ISS pass predictions (SGP4, computed on-device),
+and **Sky Now** — one tap flies to your zenith, and with the compass
+toggle on, the view tracks the phone live (sensor-smoothed gyro +
+compass, computed entirely on-device). Two projections: orbit the
+celestial sphere from outside, or stand inside it, planetarium style.
 
 Also: instant search suggestions from the curated catalogs, shareable
 permalinks for any view (plus a native share button), installable as a
@@ -57,6 +61,9 @@ css/style.css        Liquid-glass design system, responsive layout, red-light mo
 js/app.js            App entry point: engine init, layer dock, readouts, permalinks
 js/spectrum.js       Vertical spectrum rail: scrub imagery gamma-ray → radio
 js/skynow.js         Sky Now + gyro/compass tracking (all math on-device)
+js/horizon.js        Local horizon, cardinal directions & zenith overlay
+js/satellites.js     ISS + bright satellites: live SGP4, pass predictions
+js/vendor/satellite/ Vendored satellite.js SGP4 submodules (MIT)
 js/constellations.js 88 constellations: figures, names, boundaries (Action data)
 js/catalogs.js       SIMBAD/Gaia HiPS catalogs, Messier/NGC-IC, exoplanets
 js/blackholes.js     Stellar-mass BHs, supermassive/AGN & quasars, GW mergers
@@ -87,7 +94,8 @@ data/*.json|csv      Curated + Action-refreshed data (black holes, tours, ...)
 | **Messier / NGC / IC** | Eagerly-loaded bright-object markers | Curated from standard published J2000 coordinates (SEDS/OpenNGC-derived) |
 | **BlackCAT catalog** (Corral-Santana et al. 2016, A&A 587, A61) | Stellar-mass black hole X-ray binaries | See `data/blackholes_stellar.json` for per-object literature citations |
 | **Event Horizon Telescope / GRAVITY Collaboration** | Sgr A* and M87* flagship entries | EHT Collaboration 2019/2022; GRAVITY Collaboration 2019/2022 |
-| **LIGO/Virgo/KAGRA GWTC** | Gravitational-wave merger events | See `data/blackholes_gw_mergers.json` for per-event citations |
+| **OpenNGC** | Full NGC/IC catalog layer (~13,000 objects) | Mattia Verga, CC-BY-SA-4.0, `github.com/mattiaverga/OpenNGC` (monthly snapshot) |
+| **CelesTrak** | ISS + bright satellite orbital elements (TLEs) | Dr. T.S. Kelso, `celestrak.org` (daily snapshot); propagated on-device with SGP4 (`satellite.js`, MIT) |
 
 Every curated JSON file carries a `source` field per entry, and an
 `approx: true` flag wherever the literature disagrees or a value (especially
@@ -128,11 +136,15 @@ drifts, the UI degrades to the procedural render without a broken image.
   queries, search) the first time you run it with real internet access, and
   file corrections for any endpoint/column-name drift — CDS occasionally
   renames HiPS catalog service paths and VizieR table columns.
-- **Gravitational-wave sky localizations are illustrative only.** Real
-  LIGO/Virgo localization regions are irregular and span tens to hundreds of
-  square degrees; the marker positions in `data/blackholes_gw_mergers.json`
-  are single illustrative points inside the published credible region, not
-  precise coordinates.
+- **Satellite positions depend on TLE freshness.** SGP4 accuracy decays
+  within days of the element epoch; the daily CelesTrak snapshot keeps the
+  ISS good to well under a degree, but if the Action stops running the app
+  warns once the data is >10 days old. ISS "passes" are above-horizon
+  windows — actually *seeing* one also requires a dark sky with the station
+  sunlit.
+- **The NGC/IC and satellite layers need their data Actions to have run**
+  (`ngc-catalog.yml`, `satellite-tles.yml`) — on a fresh fork they show a
+  "data refresh pending" note until the workflows commit their snapshots.
 - **Planet positions are geometric, not apparent.** The self-contained
   ephemeris (`js/planets.js`) uses the standard JPL low-precision Keplerian
   elements table (1800–2050 AD validity) with no light-time, aberration, or
@@ -167,8 +179,6 @@ drifts, the UI degrades to the procedural render without a broken image.
 
 - Verify and, if needed, correct HiPS survey IDs / TAP column names against
   live CDS/VizieR/NASA endpoints once network access is available.
-- Add a full NGC/IC catalog (progressive, not eager) once a suitable
-  HiPS catalog service endpoint is confirmed.
 - Expand the black hole layer with intermediate-mass black hole candidates
   (e.g. in dense globular clusters) as the literature matures.
 - Add unit conversion toggles (magnitude systems, distance units).

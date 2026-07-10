@@ -1,7 +1,7 @@
 // Deep Sky Atlas — instant search suggestions from the app's own curated
 // datasets (no network round-trip): planets + Sun/Moon, Messier/NGC objects,
-// black holes, GW events, famous stars/exoplanets, and tour stops. Sesame
-// still handles anything not in the index.
+// black holes, famous stars/exoplanets, and tour stops. Sesame still
+// handles anything not in the index.
 
 import { fetchJSON } from './net.js';
 import { computePlanetPositions, computeSunPosition, computeMoonPosition, PLANET_LABELS } from './planets.js';
@@ -9,11 +9,10 @@ import { computePlanetPositions, computeSunPosition, computeMoonPosition, PLANET
 let indexPromise = null;
 
 async function build() {
-  const [messier, stellar, sm, gw, tours, renders] = await Promise.all([
+  const [messier, stellar, sm, tours, renders] = await Promise.all([
     fetchJSON('data/messier_ngc.json').catch(() => null),
     fetchJSON('data/blackholes_stellar.json').catch(() => null),
     fetchJSON('data/blackholes_supermassive.json').catch(() => null),
-    fetchJSON('data/blackholes_gw_mergers.json').catch(() => null),
     fetchJSON('data/tours.json').catch(() => null),
     fetchJSON('data/renders.json').catch(() => null)
   ]);
@@ -44,9 +43,6 @@ async function build() {
   }
   if (sm) for (const o of sm.objects) {
     add(o.name, o.ra, o.dec, 'Supermassive black hole', { fov: 0.5, keys: (o.aliases || []).map(a => a.toLowerCase()) });
-  }
-  if (gw) for (const o of gw.events) {
-    add(o.name, o.ra, o.dec, 'Gravitational-wave merger (approx. position)', { fov: 10 });
   }
   if (tours) for (const t of tours.destinations) {
     add(t.name, t.ra, t.dec, 'Tour destination', { fov: t.fov_deg });

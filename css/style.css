@@ -114,6 +114,13 @@ body.redlight #constellation-canvas{ filter: sepia(1) saturate(6) hue-rotate(-50
 }
 body.redlight #fade-canvas{ filter: sepia(1) saturate(6) hue-rotate(-50deg) brightness(0.85); }
 
+/* Local horizon & compass overlay; satellites share the same treatment */
+#horizon-canvas, #satellite-canvas{
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  pointer-events: none; z-index: 4;
+}
+body.redlight :is(#horizon-canvas, #satellite-canvas){ filter: sepia(1) saturate(6) hue-rotate(-50deg) brightness(0.85); }
+
 /* ================= Shared materials ================= */
 .glass-panel{
   background: var(--sheen), var(--material);

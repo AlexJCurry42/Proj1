@@ -484,7 +484,7 @@ export function initAboutModal() {
     <ul>
       <li>Stellar-mass black hole X-ray binaries curated from the <strong>BlackCAT</strong> catalog (Corral-Santana et al. 2016) and subsequent literature</li>
       <li>Sgr A* and M87* parameters from the <strong>Event Horizon Telescope Collaboration</strong> and <strong>GRAVITY Collaboration</strong></li>
-      <li>Gravitational-wave mergers from the <strong>LIGO/Virgo/KAGRA</strong> Gravitational-Wave Transient Catalog (GWTC)</li>
+      <li><strong>CelesTrak</strong> orbital element sets (TLEs) for the ISS and bright satellites</li>
     </ul>
     <h3>Name resolution</h3>
     <p>Object search uses the CDS <strong>Sesame</strong> name resolver, querying SIMBAD, NED and VizieR.</p>

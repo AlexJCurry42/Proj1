@@ -14,12 +14,14 @@ import {
   initDetailPanelClose, initKeyboard
 } from './ui.js';
 import { runSearch, getHistory, addToHistory, flyTo } from './search.js';
-import { initSimbadHips, initGaiaHips, initGalaxiesLayer, initSimbadBlackHolesLayer, loadMessierNgc, loadExoplanets } from './catalogs.js';
-import { loadStellarBlackHoles, loadFlagshipSupermassive, initMilliquasLayer, loadGwMergers } from './blackholes.js';
+import { initGaiaHips, initGalaxiesLayer, initSimbadBlackHolesLayer, loadMessierNgc, loadNgcFull, loadExoplanets } from './catalogs.js';
+import { initSatellitesLayer } from './satellites.js';
+import { loadStellarBlackHoles, loadFlagshipSupermassive, initMilliquasLayer } from './blackholes.js';
 import { computePlanetPositions, computeSunPosition, computeMoonPosition, PLANET_LABELS } from './planets.js';
 import { makePlanetIcon, makeGlowDot } from './markers.js';
 import { initWarpEffect } from './warp.js';
 import { loadConstellations, loadConstellationBorders } from './constellations.js';
+import { initHorizonLayer, requestObserver } from './horizon.js';
 import { querySuggestions, suggestionCoords } from './suggest.js';
 import { initSkyNow } from './skynow.js';
 import { SURVEYS, STOP, MAX_VALUE, DEFAULT_VALUE, initSpectrumBar } from './spectrum.js';
@@ -66,7 +68,14 @@ function addToggle(listEl, { label, color, checked = true, sub = false, onToggle
   return {
     setCount: (n) => { li.querySelector('.toggle-count').textContent = n; },
     isChecked: () => input.checked,
-    setDisabled: (d) => { input.disabled = d; li.classList.toggle('disabled', d); }
+    setDisabled: (d) => { input.disabled = d; li.classList.toggle('disabled', d); },
+    // Programmatic revert (e.g. a layer whose permission was denied): keeps
+    // the saved preference in sync but does NOT re-fire onToggle.
+    setChecked: (v) => {
+      input.checked = v;
+      savedLayers[label] = v;
+      writePref('layers', savedLayers);
+    }
   };
 }
 
@@ -583,6 +592,29 @@ async function main() {
   // First-load default: ONLY the Solar System layer is on — the sky itself is
   // the star of the show. Everything else builds ready-to-go but starts
   // hidden; the user's own toggle choices persist and override from then on.
+
+  // Horizon & compass: YOUR horizon on the sky. Needs location (on-device
+  // only); lazy so no permission prompt fires until the user asks for it.
+  const horizonRef = { ctl: null, busy: false };
+  const horizonToggle = addToggle(catalogList, {
+    label: 'Horizon & compass', color: '#63d68b', checked: false,
+    onToggle: async (v) => {
+      if (v && !horizonRef.ctl && !horizonRef.busy) {
+        horizonRef.busy = true;
+        try {
+          const obs = await requestObserver();
+          horizonRef.ctl = initHorizonLayer(aladin, obs);
+        } catch (err) {
+          showToast('The horizon overlay needs your location to know which sky is yours — it never leaves this device.', 'error', 8000);
+          horizonToggle.setChecked(false);
+        }
+        horizonRef.busy = false;
+      }
+      if (!horizonRef.ctl) return;
+      if (horizonToggle.isChecked()) horizonRef.ctl.show(); else horizonRef.ctl.hide();
+    }
+  });
+
   const constRef = {};
   const bordersRef = { loading: false };
 
@@ -629,6 +661,25 @@ async function main() {
     setCatalogVisible(catalogs, messierToggle.isChecked());
   });
 
+  // The complete OpenNGC catalog (~13k objects), lazy: nothing downloads
+  // until the switch is flipped. Density is magnitude-tiered by zoom.
+  const ngcRef = { loading: false };
+  const ngcToggle = addToggle(catalogList, {
+    label: 'NGC & IC (full)', color: '#66b7ff', checked: false,
+    onToggle: async (v) => {
+      if (v && !ngcRef.catalog && !ngcRef.loading) {
+        ngcRef.loading = true;
+        const { catalog, count } = await loadNgcFull(aladin, onZoom);
+        ngcRef.catalog = catalog;
+        ngcRef.loading = false;
+        if (count > 0) ngcToggle.setCount(count.toLocaleString());
+        setCatalogVisible(catalog, ngcToggle.isChecked());
+      } else {
+        setCatalogVisible(ngcRef.catalog, v);
+      }
+    }
+  });
+
   const planetsRef = {};
   const planetsToggle = addToggle(catalogList, {
     label: 'Solar System', color: '#7fd6ff', checked: true,
@@ -640,16 +691,31 @@ async function main() {
     setCatalogVisible(catalogs, planetsToggle.isChecked());
   });
 
-  // Off by default, created lazily on first enable: heavy/bulk layers.
-  let simbadCat = null;
-  addToggle(catalogList, {
-    label: 'SIMBAD sources', color: '#0a84ff', checked: false,
-    onToggle: (v) => {
-      if (v && !simbadCat) simbadCat = initSimbadHips(aladin);
-      else setCatalogVisible(simbadCat, v);
+  // ISS & bright satellites: live SGP4, observer-dependent (parallax in low
+  // Earth orbit is huge), so it needs location like the horizon overlay.
+  const satRef = { ctl: null, busy: false };
+  const satToggle = addToggle(catalogList, {
+    label: 'Satellites & ISS', color: '#9fe8ff', checked: false,
+    onToggle: async (v) => {
+      if (v && !satRef.ctl && !satRef.busy) {
+        satRef.busy = true;
+        try {
+          const obs = await requestObserver();
+          const { controller, count } = await initSatellitesLayer(aladin, obs);
+          satRef.ctl = controller;
+          if (controller && count) satToggle.setCount(count);
+        } catch (err) {
+          showToast('Satellites need your location to compute where they are in YOUR sky — it never leaves this device.', 'error', 8000);
+        }
+        if (!satRef.ctl) satToggle.setChecked(false);
+        satRef.busy = false;
+      }
+      if (!satRef.ctl) return;
+      if (satToggle.isChecked()) satRef.ctl.show(); else satRef.ctl.hide();
     }
   });
 
+  // Off by default, created lazily on first enable: heavy/bulk layers.
   let gaiaCat = null;
   addToggle(catalogList, {
     label: 'Gaia stars', color: '#ffffff', checked: false,
@@ -734,23 +800,6 @@ async function main() {
       } else {
         milliquasCat?.dsaSetEnabled?.(v); // stop/restart live VizieR queries
         setCatalogVisible(milliquasCat, v);
-      }
-    }
-  });
-
-  const gwRef = { loading: false };
-  const gwToggle = addToggle(bhList, {
-    label: 'GW mergers', color: '#bf5af2', checked: false,
-    onToggle: async (v) => {
-      if (v && !gwRef.catalog && !gwRef.loading) {
-        gwRef.loading = true;
-        const { catalog, count } = await loadGwMergers(aladin);
-        gwRef.catalog = catalog;
-        gwRef.loading = false;
-        if (count > 0) gwToggle.setCount(count);
-        setCatalogVisible(catalog, gwToggle.isChecked());
-      } else {
-        setCatalogVisible(gwRef.catalog, v);
       }
     }
   });

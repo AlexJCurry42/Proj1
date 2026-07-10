@@ -138,6 +138,14 @@
       "caption": "The most violent star-forming region in the entire Local Group, in the Large Magellanic Cloud. If it sat where Orion's nebula does, it would cast shadows at night and cover a quarter of the sky's width."
     },
     {
+      "id": "gw170817",
+      "name": "GW170817 kilonova site (NGC 4993)",
+      "ra": 197.44875,
+      "dec": -23.38389,
+      "fov_deg": 0.3,
+      "caption": "On 17 August 2017 two neutron stars merged in this galaxy — the first cosmic event ever seen in both gravitational waves and light. The blast forged heavy elements like gold and platinum, and its remnant is likely the lightest black hole known."
+    },
+    {
       "id": "omegacen",
       "name": "Omega Centauri (NGC 5139)",
       "ra": 201.69683,
