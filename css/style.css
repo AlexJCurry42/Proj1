@@ -631,23 +631,21 @@ input[type="range"]::-moz-range-thumb{
   #spectrum-rail{ height: min(320px, calc(100vh - 260px)); }
 }
 
-/* ================= Readout pill ================= */
+/* ================= Readouts =================
+   Not a bar — a whisper. Faint HUD text tucked into the bottom-right,
+   above the search bar (and left of the zoom buttons on desktop). */
 #readouts{
   position: fixed; z-index: 40;
-  top: calc(58px + var(--safe-top));
-  left: 50%; transform: translateX(-50%);
-  display: flex; align-items: center; gap: 10px;
-  height: 30px; padding: 0 16px;
-  border-radius: 999px; border: 0.5px solid var(--hairline);
-  background: var(--material-thin);
-  -webkit-backdrop-filter: var(--blur);
-  backdrop-filter: var(--blur);
-  font-size: 11.5px; color: var(--text-secondary);
+  right: calc(64px + var(--safe-right));
+  bottom: calc(70px + var(--safe-bottom));
+  display: flex; align-items: center; justify-content: flex-end; gap: 8px;
+  font-size: 10px; font-weight: 500; letter-spacing: 0.02em;
+  color: rgba(235, 235, 245, 0.48);
   font-variant-numeric: tabular-nums;
-  box-shadow: var(--liquid-edge);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
   pointer-events: none; white-space: nowrap;
 }
-.dot-sep{ width: 3px; height: 3px; border-radius: 50%; background: var(--text-tertiary); }
+.dot-sep{ width: 2px; height: 2px; border-radius: 50%; background: rgba(235, 235, 245, 0.25); }
 
 /* ================= Onboarding ================= */
 #onboarding{
@@ -770,10 +768,11 @@ input[type="range"]::-moz-range-thumb{
 
 /* ================= Red-light night-vision mode ================= */
 body.redlight #aladin-lite-div{ filter: sepia(1) saturate(6) hue-rotate(-50deg) brightness(0.85); }
-body.redlight :is(.glass-panel, .glass-btn, #search-form, .glass-select, #readouts, .dropdown-list, .toast){
+body.redlight :is(.glass-panel, .glass-btn, #search-form, .glass-select, .dropdown-list, .toast){
   background: rgba(28, 4, 4, 0.75) !important;
   border-color: rgba(255, 69, 58, 0.25) !important;
 }
+body.redlight #readouts{ color: rgba(255, 107, 96, 0.45); }
 body.redlight{ --text-primary: #ff6b60; --text-secondary: rgba(255, 107, 96, 0.6); --text-tertiary: rgba(255, 107, 96, 0.35); --blue: #ff6b60; --green: #a83a32; }
 body.redlight .render-canvas{ filter: sepia(1) saturate(4) hue-rotate(-50deg) brightness(0.8); }
 
@@ -795,7 +794,7 @@ body.redlight .render-canvas{ filter: sepia(1) saturate(4) hue-rotate(-50deg) br
 
 /* ================= No-backdrop-filter fallback (older devices) ================= */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))){
-  .glass-panel, .glass-btn, .glass-select, #search-form, #readouts, .dropdown-list, .toast{
+  .glass-panel, .glass-btn, .glass-select, #search-form, .dropdown-list, .toast{
     background: rgba(18, 18, 24, 0.94) !important;
   }
 }
@@ -851,7 +850,7 @@ body.redlight .render-canvas{ filter: sepia(1) saturate(4) hue-rotate(-50deg) br
   }
   #detail-close{ top: 14px; }
 
-  #readouts{ height: 26px; font-size: 10.5px; padding: 0 12px; gap: 8px; }
+  #readouts{ right: calc(12px + var(--safe-right)); font-size: 9px; gap: 6px; }
 
   /* Phone bottom bar: Sky Now + search share one row, search takes the rest */
   #bottom-bar{
