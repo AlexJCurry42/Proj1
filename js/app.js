@@ -419,7 +419,10 @@ async function main() {
   });
 
   initTours(aladin);
-  initSkyNow(aladin);
+  // Motion tracking switches on the horizon/compass overlay for orientation;
+  // the hook is filled in below once the layer dock exists.
+  let onTrackingStartHook = null;
+  initSkyNow(aladin, { onTrackingStart: (lat, lon) => onTrackingStartHook?.(lat, lon) });
 
   // ------------------------------------------------------- View mode toggle ---
   const viewBtn = document.getElementById('view-toggle');
@@ -633,6 +636,17 @@ async function main() {
       if (horizonToggle.isChecked()) horizonRef.ctl.show(); else horizonRef.ctl.hide();
     }
   });
+  // Gyro tracking brings its own orientation context: the horizon, cardinal
+  // directions and zenith switch on with it (coordinates arrive from the
+  // tracker, so no second location request is ever needed).
+  onTrackingStartHook = (lat, lon) => {
+    if (!horizonRef.ctl) {
+      try { horizonRef.ctl = initHorizonLayer(aladin, { lat, lon }); }
+      catch (err) { return; }
+    }
+    if (!horizonToggle.isChecked()) horizonToggle.setChecked(true);
+    horizonRef.ctl.show();
+  };
 
   const constRef = {};
   const bordersRef = { loading: false };

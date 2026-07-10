@@ -95,18 +95,10 @@ const vecMix = (a, b, k) => {
   return [x / l, y / l, z / l];
 };
 
-export function initSkyNow(aladin) {
+export function initSkyNow(aladin, { onTrackingStart } = {}) {
   const btn = document.getElementById('skynow-btn');
   const gyroBtn = document.getElementById('gyro-toggle');
   if (!btn) return;
-
-  // Whether Sky Now should engage live gyro tracking (the compass toggle).
-  const readGyroPref = () => {
-    try { return localStorage.getItem('dsa-gyro') !== 'false'; } catch (err) { return true; }
-  };
-  const writeGyroPref = (v) => {
-    try { localStorage.setItem('dsa-gyro', String(v)); } catch (err) { /* private mode */ }
-  };
 
   let tracking = false;
   let teardown = [];
@@ -118,7 +110,29 @@ export function initSkyNow(aladin) {
     teardown = [];
     btn.setAttribute('aria-pressed', 'false');
     gyroBtn?.setAttribute('aria-pressed', 'false');
+    gyroBtn?.classList.remove('acquiring');
     if (!quiet) showToast('Gyro tracking off — drag to explore. Tap the compass to resume.', 'info', 4000);
+  }
+
+  // Cinematic FoV breathe used when tracking engages (never a snap).
+  function easeFovTo(toFov, ms = 900) {
+    let from;
+    try { from = aladin.getFov()[0]; } catch (err) { return; }
+    if (!Number.isFinite(from) || Math.abs(from - toFov) < 0.5) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      try { aladin.setFoV(toFov); } catch (err) { /* engine hiccup */ }
+      return;
+    }
+    const t0 = performance.now();
+    let raf = null;
+    const step = (t) => {
+      const u = Math.min(1, (t - t0) / ms);
+      const e = u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
+      try { aladin.setFoV(from + (toFov - from) * e); } catch (err) { /* engine hiccup */ }
+      if (u < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    teardown.push(() => cancelAnimationFrame(raf));
   }
 
   function oneShotZenith(latitude, longitude) {
@@ -141,23 +155,47 @@ export function initSkyNow(aladin) {
     // 10 Hz gotoRaDec jumps, which is what made tracking feel clunky.
     let target = null;
     let shown = null;
-    // iOS quirk: webkitCompassHeading (absolute yaw) can drop out for single
-    // events — interference, calibration. Falling back to the RELATIVE alpha
-    // for those events flips the whole frame of reference back to wherever
-    // the phone faced when tracking began, so the view snaps to that spot
-    // and back. Once compass-referenced, always compass-referenced: events
-    // without a valid heading are simply skipped.
-    let compassRef = false;
+    // COMPLEMENTARY FILTER — the fix for point-jumping on iPhones.
+    // The OS's sensor-fused alpha/beta/gamma stream is silky-smooth but its
+    // yaw is RELATIVE (arbitrary zero). webkitCompassHeading is ABSOLUTE but
+    // raw magnetometer: noisy, glitchy, and gimbal-unstable exactly when the
+    // phone points up at the sky (heading is defined around gravity, so near
+    // vertical, tiny wobbles swing it wildly — the source of the jumps).
+    // So: ALL motion comes from the smooth relative stream, and the compass
+    // contributes only a slowly-trusted azimuth offset that anchors it to
+    // true north. Compass glitches barely dent the offset; dropouts simply
+    // pause its updates. Android's absolute stream needs no offset at all.
+    let azOffset = null;
+    const wrap180 = (d) => { d = ((d + 180) % 360 + 360) % 360 - 180; return d; };
     const handler = (e) => {
-      let heading = (typeof e.webkitCompassHeading === 'number' &&
-                     !Number.isNaN(e.webkitCompassHeading) &&
-                     e.webkitCompassHeading >= 0) ? e.webkitCompassHeading : null;
-      if (heading != null) compassRef = true;
-      else if (compassRef) { gotEvent = true; return; }
-      const p = pointingFromOrientation(e.alpha, e.beta, e.gamma, heading);
-      if (!p) return;
+      const rel = pointingFromOrientation(e.alpha, e.beta, e.gamma, null);
+      if (!rel) return;
       gotEvent = true;
-      const { ra, dec } = altAzToRaDec(p.alt, p.az, latitude, longitude);
+      gyroBtn?.classList.remove('acquiring');
+
+      const heading = (typeof e.webkitCompassHeading === 'number' &&
+                       !Number.isNaN(e.webkitCompassHeading) &&
+                       e.webkitCompassHeading >= 0) ? e.webkitCompassHeading : null;
+      if (heading != null) {
+        const abs = pointingFromOrientation(e.alpha, e.beta, e.gamma, heading);
+        if (abs) {
+          // The steeper the phone points, the less the compass is trusted —
+          // its noise blows up with altitude.
+          const steep = Math.min(1, Math.max(0, (75 - rel.alt) / 45)); // 1 below 30°, 0 above 75°
+          const d = wrap180(abs.az - rel.az);
+          if (azOffset == null) azOffset = d;
+          else {
+            const dd = wrap180(d - azOffset);
+            // Outlier headings (glitches, interference) are trusted very
+            // slowly; agreeing ones converge in about a second.
+            const k = (Math.abs(dd) > 25 ? 0.015 : 0.06) * (0.25 + 0.75 * steep);
+            azOffset = wrap180(azOffset + dd * k);
+          }
+        }
+      }
+
+      const az = azOffset != null ? rel.az + azOffset : rel.az;
+      const { ra, dec } = altAzToRaDec(rel.alt, ((az % 360) + 360) % 360, latitude, longitude);
       const v = raDecToVec(ra, dec);
       target = target ? vecMix(target, v, 0.3) : v;
     };
@@ -211,12 +249,18 @@ export function initSkyNow(aladin) {
     tracking = true;
     btn.setAttribute('aria-pressed', 'true');
     gyroBtn?.setAttribute('aria-pressed', 'true');
+    gyroBtn?.classList.add('acquiring'); // pulses until the first sensor fix
     // Kill any in-flight fly-to animation (zenith snapshot, tour, search):
     // a running animator would tug the camera back along its own path every
     // frame, fighting the tracker. Re-issuing the current position as a
     // plain goto supersedes it.
     try { const [r0, d0] = aladin.getRaDec(); aladin.gotoRaDec(r0, d0); } catch (err) { /* fresh view */ }
-    try { aladin.setFoV(70); } catch (err) { /* keep current FoV */ }
+    // Cinematic engage: the FoV breathes to a sky-window width while the
+    // tracker glides toward where the phone points — never a hard cut.
+    easeFovTo(70, 900);
+    // Orientation context comes on with tracking: the horizon line, cardinal
+    // directions and zenith marker (app.js wires this to the layer dock).
+    try { onTrackingStart?.(latitude, longitude); } catch (err) { /* optional */ }
     showToast('Point your phone at the sky and the view follows. Tap the compass — or drag the sky — to stop.', 'info', 8000);
   }
 
@@ -260,20 +304,16 @@ export function initSkyNow(aladin) {
     await startTracking(latitude, longitude);
   }
 
-  // Sky Now: show my sky (tracking it live if the gyro toggle is on).
+  // Sky Now: a zenith snapshot, nothing more — it never starts motion
+  // tracking. If tracking is running, it stops it and shows the zenith.
   btn.addEventListener('click', () => {
-    if (tracking) { stopTracking(); return; }
-    engage(readGyroPref());
+    if (tracking) stopTracking(true);
+    engage(false);
   });
 
-  // The compass: explicit gyro on/off, independent of Sky Now.
+  // The compass alone owns motion tracking: tap on, tap off.
   gyroBtn?.addEventListener('click', () => {
-    if (tracking) {
-      writeGyroPref(false);
-      stopTracking();
-    } else {
-      writeGyroPref(true);
-      engage(true);
-    }
+    if (tracking) stopTracking();
+    else engage(true);
   });
 }
