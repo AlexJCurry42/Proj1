@@ -13,14 +13,18 @@
 // across engines) with full keyboard support: arrows step between surveys,
 // Home/End jump to the spectrum's ends.
 
+// minFov (degrees) is each survey's honest zoom floor: roughly where one
+// data pixel fills a screen pixel. Zooming past it just magnifies plate
+// grain — on DSS2 the misregistered red/blue plates dissolve into orange,
+// blue and black blotches — so the app stops where the data does.
 export const SURVEYS = [
-  { id: 'P/Fermi/color', name: 'Fermi', band: 'Gamma-ray — the violent universe' },
-  { id: 'P/SDSS9/color', name: 'SDSS9', band: 'Optical — Sloan digital survey' },
-  { id: 'P/PanSTARRS/DR1/color-z-zg-g', name: 'Pan-STARRS', band: 'Optical — deepest wide field' },
-  { id: 'P/DSS2/color', name: 'DSS2', band: 'Optical — the classic all-sky view' },
-  { id: 'P/2MASS/color', name: '2MASS', band: 'Near-infrared — through the dust' },
-  { id: 'P/allWISE/color', name: 'AllWISE', band: 'Mid-infrared — warm dust & AGN glow' },
-  { id: 'P/NVSS', name: 'NVSS', band: 'Radio — jets, lobes & remnants' }
+  { id: 'P/Fermi/color', name: 'Fermi', band: 'Gamma-ray — the violent universe', minFov: 1.0 },
+  { id: 'P/SDSS9/color', name: 'SDSS9', band: 'Optical — Sloan digital survey', minFov: 0.05 },
+  { id: 'P/PanSTARRS/DR1/color-z-zg-g', name: 'Pan-STARRS', band: 'Optical — deepest wide field', minFov: 0.03 },
+  { id: 'P/DSS2/color', name: 'DSS2', band: 'Optical — the classic all-sky view', minFov: 0.1 },
+  { id: 'P/2MASS/color', name: '2MASS', band: 'Near-infrared — through the dust', minFov: 0.14 },
+  { id: 'P/allWISE/color', name: 'AllWISE', band: 'Mid-infrared — warm dust & AGN glow', minFov: 0.2 },
+  { id: 'P/NVSS', name: 'NVSS', band: 'Radio — jets, lobes & remnants', minFov: 0.6 }
 ];
 
 export const STOP = 100;

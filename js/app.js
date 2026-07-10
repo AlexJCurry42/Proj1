@@ -345,13 +345,44 @@ async function main() {
 
   initWarpEffect(aladin, onZoom);
 
+  // Zoom stops where the data does. Each survey has an honest floor
+  // (~1 data pixel per screen pixel); zooming past it just magnifies plate
+  // grain into orange/blue/black blotches. The engine range enforces the
+  // floor against pinch, wheel and buttons alike; when a spectrum scrub
+  // lands on a coarser survey while zoomed below its floor, the view eases
+  // out to it instead of snapping.
+  function currentFovFloor() {
+    return SURVEYS[Math.min(SURVEYS.length - 1, Math.max(0, Math.round(spectrum.getValue() / STOP)))].minFov;
+  }
+  let fovEaseToken = 0;
+  function applyFovLimits() {
+    const floor = currentFovFloor();
+    const max = maxFovFor(viewMode);
+    const token = ++fovEaseToken;
+    let fov = 60;
+    try { fov = aladin.getFov()[0]; } catch (err) { /* engine mid-init */ }
+    const finish = () => { try { aladin.setFoVRange?.(floor, max); } catch (err) { /* older builds */ } };
+    if (fov >= floor || window.matchMedia('(prefers-reduced-motion: reduce)').matches) { finish(); return; }
+    // Ease out to the new floor over ~450 ms, then lock the range.
+    const from = fov, t0 = performance.now();
+    const step = (t) => {
+      if (token !== fovEaseToken) return;
+      const u = Math.min(1, (t - t0) / 450);
+      const e = u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
+      try { aladin.setFoV(from + (floor - from) * e); } catch (err) { /* engine hiccup */ }
+      if (u < 1) requestAnimationFrame(step); else finish();
+    };
+    requestAnimationFrame(step);
+  }
+
   // One slider, the whole spectrum: settles persist position + permalink.
   const spectrum = initSpectrumBar(aladin, {
-    onSettle: (v) => { writePref('spectrum', v); updateHash(); },
+    onSettle: (v) => { writePref('spectrum', v); updateHash(); applyFovLimits(); },
     collapsed: readPref('spectrumcollapsed', false) === true,
     onCollapse: (c) => writePref('spectrumcollapsed', c)
   });
   spectrum.setValue(initialSpectrum);
+  applyFovLimits();
 
   // Keep the URL hash in sync with the view (debounced, replaceState so the
   // back button isn't spammed) — every view is a shareable permalink.
@@ -396,6 +427,7 @@ async function main() {
       if (mode === 'inside' && fov >= 150) aladin.setFoV(240); // reveal the wraparound
       if (mode === 'globe' && fov > 180) aladin.setFoV(180);   // globe caps at a hemisphere
     } catch (err) { /* keep current FoV */ }
+    applyFovLimits();
     viewBtn.setAttribute('aria-pressed', String(mode === 'inside'));
     writePref('viewmode', mode);
     updateHash();
