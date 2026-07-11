@@ -410,22 +410,15 @@ export async function initTours(aladin, spectrum) {
   }
   const pause = (ms, token) => new Promise((r) => setTimeout(() => r(token === flightToken), ms));
 
-  // Glide the spectrum slider to the destination's best survey — a smooth
-  // scrub through the wavelengths rather than an instant swap.
-  function glideSpectrum(surveyId, ms, token) {
+  // Bring in the destination's best survey as ONE direct cross-fade
+  // (spectrum.fadeToSurvey), never a value scrub: scrubbing crosses every
+  // survey in between, and each crossing swaps the base layer and fetches
+  // tiles for imagery that's on screen for milliseconds — mid-flight, that
+  // read as lag and wavelength flicker. One overlay, one slow breath,
+  // spanning the glide and most of the descent.
+  function glideSpectrum(surveyId, ms) {
     if (!spectrum || !surveyId) return;
-    const to = spectrum.valueForSurveyId(surveyId);
-    if (to == null) return;
-    const from = spectrum.getValue();
-    if (Math.abs(to - from) < 1) return;
-    const t0 = performance.now();
-    const step = (t) => {
-      if (token !== flightToken) return;
-      const u = Math.min(1, (t - t0) / ms);
-      spectrum.setValue(from + (to - from) * easeInOutCubic(u), { settle: u >= 1 });
-      if (u < 1) requestAnimationFrame(step);
-    };
-    requestAnimationFrame(step);
+    spectrum.fadeToSurvey(surveyId, ms);
   }
 
   btn.addEventListener('click', async () => {
@@ -451,9 +444,10 @@ export async function initTours(aladin, spectrum) {
     if (cur < 25) {
       if (!await easeFov(Math.min(60, Math.max(cur * 4, 35)), 750, token)) return;
     }
-    // Act 2 — glide, scrubbing the light itself along the way.
+    // Act 2 — glide, while the destination's wavelength breathes in as a
+    // single cross-fade timed to finish partway down the descent.
     try { aladin.animateToRaDec(t.ra, t.dec, 1.6); } catch (err) { aladin.gotoRaDec(t.ra, t.dec); }
-    glideSpectrum(t.survey, 1400, token);
+    glideSpectrum(t.survey, 2400);
     if (!await pause(1650, token)) return;
     // Act 3 — descend into the destination.
     await easeFov(t.fov_deg, 1200, token);

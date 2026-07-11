@@ -254,8 +254,19 @@ export function initSpectrumBar(aladin, { onSettle, collapsed = false, onCollaps
   }
   rail.querySelector('#spectrum-track').addEventListener('transitionend', () => paint(value));
 
-  return {
+  // Direct survey cross-fade, used by the "Show me something cool" flights.
+  // Scrubbing the VALUE to a distant survey swaps the base layer at every
+  // stop crossed and creates an overlay per intermediate survey — tile
+  // fetches for wavelengths shown for milliseconds, mid-camera-animation.
+  // That churn is what made flights stutter. This instead pins the CURRENT
+  // survey as the base, brings the DESTINATION in as the single blend
+  // overlay, and eases only its opacity; the base swap happens once, hidden
+  // beneath a fully-opaque overlay (the same seamless-by-construction trick
+  // applyEngine uses at stop crossings).
+  let fadeToken = 0;
+  const api = {
     setValue(v, { settle = false } = {}) {
+      fadeToken++; // a direct set supersedes any in-flight fade
       value = target = Math.max(0, Math.min(MAX_VALUE, v));
       applyEngine(value);
       paint(value);
@@ -266,6 +277,43 @@ export function initSpectrumBar(aladin, { onSettle, collapsed = false, onCollaps
     valueForSurveyId: (id) => {
       const i = SURVEYS.findIndex(s => s.id === id);
       return i >= 0 ? i * STOP : null;
+    },
+    fadeToSurvey(id, ms = 1800) {
+      const i = SURVEYS.findIndex(s => s.id === id);
+      if (i < 0) return;
+      const toV = i * STOP;
+      const fromV = target;
+      if (Math.round(fromV) === toV) { api.setValue(toV, { settle: true }); return; }
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        api.setValue(toV, { settle: true });
+        return;
+      }
+      const token = ++fadeToken;
+      // Pin the pair: whatever is on screen now stays the base…
+      const fromIdx = Math.round(fromV / STOP);
+      try { aladin.setBaseImageLayer(SURVEYS[fromIdx].id); } catch (err) { /* engine hiccup */ }
+      curBase = fromIdx;
+      // …and the destination is the one and only incoming layer.
+      try {
+        overlayLayer = aladin.setOverlayImageLayer(SURVEYS[i].id, 'dsa-blend')
+          || aladin.getOverlayImageLayer?.('dsa-blend') || overlayLayer;
+      } catch (err) { overlayLayer = null; }
+      curOver = i;
+      const t0 = performance.now();
+      const step = (t) => {
+        // A user grab or another set/fade takes over instantly.
+        if (token !== fadeToken || dragging) return;
+        const u = Math.min(1, (t - t0) / ms);
+        try { overlayLayer?.setOpacity?.(smoothstep(u)); } catch (err) { /* non-fatal */ }
+        // The thumb glides along for feedback; the engine pair stays pinned.
+        value = target = fromV + (toV - fromV) * smoothstep(u);
+        paint(value);
+        if (u < 1) { requestAnimationFrame(step); return; }
+        // Fully opaque: swapping the base underneath is invisible.
+        api.setValue(toV, { settle: true });
+      };
+      requestAnimationFrame(step);
     }
   };
+  return api;
 }
