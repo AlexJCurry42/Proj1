@@ -670,11 +670,7 @@
         "colorB": "#3a5273"
       },
       "blurb": "A temperate sub-Neptune where Hubble found water vapour in the atmosphere (2019) — and JWST later found carbon-bearing molecules.",
-      "photo": {
-        "file": "Exoplanet K2-18 b (Artist’s Impression).jpg",
-        "kind": "art",
-        "credit": "ESA/Hubble, M. Kornmesser"
-      }
+      "_photo_note": "Former Commons artist-impression filename 404s (caught by the daily health check, 2026-07-11); procedural render until a verified filename replaces it."
     },
     {
       "match": [
@@ -688,11 +684,7 @@
         "colorB": "#1c1220"
       },
       "blurb": "One of the darkest and hottest planets known — pulled egg-shaped by tides and being devoured by its star.",
-      "photo": {
-        "file": "Artist's impression of WASP-12b.jpg",
-        "kind": "art",
-        "credit": "NASA/ESA/G. Bacon (STScI)"
-      }
+      "_photo_note": "Former Commons artist-impression filename 404s (caught by the daily health check, 2026-07-11); procedural render until a verified filename replaces it."
     },
     {
       "match": [
