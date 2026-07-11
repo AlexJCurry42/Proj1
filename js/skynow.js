@@ -9,23 +9,11 @@
 
 import { showToast } from './ui.js';
 import { flyTo } from './search.js';
+import { D2R, R2D, altAzToRaDec, zenithRaDec, raDecToVec, vecToRaDec, vecMix } from './astro.js';
+import { requestObserver, seedObserver } from './observer.js';
 
-const D2R = Math.PI / 180;
-const R2D = 180 / Math.PI;
-
-/** Greenwich mean sidereal time in degrees (Meeus eq. 12.4, linear term). */
-export function gmstDeg(date = new Date()) {
-  const jd = date.getTime() / 86400000 + 2440587.5;
-  const d = jd - 2451545.0;
-  let gmst = (280.46061837 + 360.98564736629 * d) % 360;
-  return gmst < 0 ? gmst + 360 : gmst;
-}
-
-/** Zenith equatorial coordinates: RA = local sidereal time, Dec = latitude. */
-export function zenithRaDec(latDeg, lonEastDeg, date = new Date()) {
-  const lst = ((gmstDeg(date) + lonEastDeg) % 360 + 360) % 360;
-  return { ra: lst, dec: Math.max(-90, Math.min(90, latDeg)) };
-}
+// Re-exports kept for compatibility (tests and older callers).
+export { gmstDeg, zenithRaDec, altAzToRaDec } from './astro.js';
 
 /**
  * Where is the phone pointing? W3C device orientation (α,β,γ) rotates the
@@ -53,47 +41,6 @@ export function pointingFromOrientation(alpha, beta, gamma, compassHeading = nul
   const alt = Math.asin(Math.max(-1, Math.min(1, vU))) * R2D;
   return { az, alt };
 }
-
-/** Horizontal (alt/az) → equatorial (RA/Dec) for an observer, now. */
-export function altAzToRaDec(altDeg, azDeg, latDeg, lonEastDeg, date = new Date()) {
-  const alt = altDeg * D2R, az = azDeg * D2R, lat = latDeg * D2R;
-  const sinDec = Math.sin(alt) * Math.sin(lat) + Math.cos(alt) * Math.cos(lat) * Math.cos(az);
-  const dec = Math.asin(Math.max(-1, Math.min(1, sinDec))) * R2D;
-  const haDeg = Math.atan2(
-    -Math.sin(az) * Math.cos(alt),
-    Math.sin(alt) * Math.cos(lat) - Math.cos(alt) * Math.sin(lat) * Math.cos(az)
-  ) * R2D;
-  const lst = gmstDeg(date) + lonEastDeg;
-  const ra = ((lst - haDeg) % 360 + 360) % 360;
-  return { ra, dec };
-}
-
-function getPosition() {
-  return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) { reject(new Error('no geolocation on this browser')); return; }
-    navigator.geolocation.getCurrentPosition(resolve, (e) => reject(new Error(e.message)), {
-      timeout: 8000, maximumAge: 60000
-    });
-  });
-}
-
-// ---- smoothing helpers: pointing directions as celestial unit vectors ----
-// Working in vectors (not angles) makes the smoothing seamless across the
-// RA 0/360 wrap and near the poles, where angle-space interpolation whips.
-const raDecToVec = (raDeg, decDeg) => {
-  const r = raDeg * D2R, d = decDeg * D2R, cd = Math.cos(d);
-  return [cd * Math.cos(r), cd * Math.sin(r), Math.sin(d)];
-};
-const vecToRaDec = (v) => {
-  let ra = Math.atan2(v[1], v[0]) * R2D;
-  if (ra < 0) ra += 360;
-  return { ra, dec: Math.asin(Math.max(-1, Math.min(1, v[2]))) * R2D };
-};
-const vecMix = (a, b, k) => {
-  const x = a[0] + (b[0] - a[0]) * k, y = a[1] + (b[1] - a[1]) * k, z = a[2] + (b[2] - a[2]) * k;
-  const l = Math.hypot(x, y, z) || 1;
-  return [x / l, y / l, z / l];
-};
 
 export function initSkyNow(aladin, { onTrackingStart } = {}) {
   const btn = document.getElementById('skynow-btn');
@@ -315,15 +262,15 @@ export function initSkyNow(aladin, { onTrackingStart } = {}) {
         .catch(() => false);
     }
 
-    let pos;
+    let obs;
     try {
       showToast('Finding your sky…', 'info', 3000);
-      pos = await getPosition();
+      obs = await requestObserver(); // shared, session-cached location
     } catch (err) {
       showToast(`Location unavailable (${err.message}). Allow location access to use Sky Now — your position never leaves this device.`, 'error', 9000);
       return;
     }
-    const { latitude, longitude } = pos.coords;
+    const { lat: latitude, lon: longitude } = seedObserver(obs.lat, obs.lon);
 
     if (!wantTracking) { oneShotZenith(latitude, longitude); return; }
     if (!motionAllowed) {

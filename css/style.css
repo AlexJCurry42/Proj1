@@ -35,6 +35,9 @@
   --radius-control: 12px;
   --shadow-card: 0 12px 40px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.3);
 
+  /* Motion: one spring for the whole app (iOS's standard curve) */
+  --spring: cubic-bezier(0.32, 0.72, 0, 1);
+
   --blur: saturate(200%) blur(26px) brightness(1.06);
   /* Liquid glass: a diagonal specular sheen + hairline top highlight that
      make panels read as curved, light-catching glass rather than flat tint */
@@ -100,26 +103,14 @@ select option, select optgroup{
 }
 body.redlight #warp-canvas{ filter: sepia(1) saturate(6) hue-rotate(-50deg) brightness(0.85); }
 
-/* Constellation figures/labels/boundaries: custom-drawn above the sky */
-#constellation-canvas{
+/* The unified overlay engine: constellations, horizon & compass, satellites
+   and marker cross-fades all draw on this ONE canvas (one compositor buffer,
+   one animation loop — see js/overlay.js). */
+#overlay-canvas{
   position: absolute; inset: 0; width: 100%; height: 100%;
   pointer-events: none; z-index: 4;
 }
-body.redlight #constellation-canvas{ filter: sepia(1) saturate(6) hue-rotate(-50deg) brightness(0.85); }
-
-/* Marker fade layer: layer toggles cross-fade catalog markers here */
-#fade-canvas{
-  position: absolute; inset: 0; width: 100%; height: 100%;
-  pointer-events: none; z-index: 4;
-}
-body.redlight #fade-canvas{ filter: sepia(1) saturate(6) hue-rotate(-50deg) brightness(0.85); }
-
-/* Local horizon & compass overlay; satellites share the same treatment */
-#horizon-canvas, #satellite-canvas{
-  position: absolute; inset: 0; width: 100%; height: 100%;
-  pointer-events: none; z-index: 4;
-}
-body.redlight :is(#horizon-canvas, #satellite-canvas){ filter: sepia(1) saturate(6) hue-rotate(-50deg) brightness(0.85); }
+body.redlight #overlay-canvas{ filter: sepia(1) saturate(6) hue-rotate(-50deg) brightness(0.85); }
 
 /* ================= Shared materials ================= */
 .glass-panel{
@@ -249,7 +240,7 @@ body.redlight :is(#horizon-canvas, #satellite-canvas){ filter: sepia(1) saturate
   box-shadow: var(--shadow-card);
   max-height: 40vh; overflow-y: auto;
   transform-origin: bottom center;
-  animation: pop-in 0.2s cubic-bezier(0.32, 0.72, 0, 1);
+  animation: pop-in 0.2s var(--spring);
 }
 @keyframes pop-in{ from{ opacity: 0; transform: scale(0.97) translateY(4px); } }
 .dropdown-list li{
@@ -267,7 +258,7 @@ body.redlight :is(#horizon-canvas, #satellite-canvas){ filter: sepia(1) saturate
   font-size: 13.5px; font-weight: 600; white-space: nowrap;
 }
 #cool-btn .icon{ width: 15px; height: 15px; color: #ffd60a; }
-#cool-btn:active .icon{ transform: rotate(72deg) scale(1.2); transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1); }
+#cool-btn:active .icon{ transform: rotate(72deg) scale(1.2); transition: transform 0.3s var(--spring); }
 
 .glass-select{
   height: 40px; padding: 0 30px 0 14px;
@@ -305,12 +296,12 @@ body.redlight :is(#horizon-canvas, #satellite-canvas){ filter: sepia(1) saturate
   overflow: hidden;
   padding: 4px 12px 8px;
   border-radius: 18px;
-  transition: width 0.42s cubic-bezier(0.32, 0.72, 0, 1),
-              max-height 0.42s cubic-bezier(0.32, 0.72, 0, 1);
+  transition: width 0.42s var(--spring),
+              max-height 0.42s var(--spring);
 }
 #layer-dock .fold-btn{
   margin-left: -10px;
-  transition: margin-left 0.42s cubic-bezier(0.32, 0.72, 0, 1);
+  transition: margin-left 0.42s var(--spring);
 }
 #layer-dock-list{
   overflow-y: auto;
@@ -354,6 +345,21 @@ input[type="range"]::-moz-range-thumb{
 
 /* Toggle rows with iOS switches */
 .toggle-list{ list-style: none; margin: 0; padding: 0; }
+/* Rows breathe in on first build: a quick staggered rise, then never again */
+.toggle-list li{ animation: row-in 0.38s var(--spring) backwards; }
+.toggle-list li:nth-child(2){ animation-delay: 0.03s; }
+.toggle-list li:nth-child(3){ animation-delay: 0.06s; }
+.toggle-list li:nth-child(4){ animation-delay: 0.09s; }
+.toggle-list li:nth-child(5){ animation-delay: 0.12s; }
+.toggle-list li:nth-child(6){ animation-delay: 0.15s; }
+.toggle-list li:nth-child(7){ animation-delay: 0.18s; }
+.toggle-list li:nth-child(8){ animation-delay: 0.21s; }
+.toggle-list li:nth-child(9){ animation-delay: 0.24s; }
+.toggle-list li:nth-child(10){ animation-delay: 0.27s; }
+.toggle-list li:nth-child(n+11){ animation-delay: 0.3s; }
+@keyframes row-in{ from{ opacity: 0; transform: translateY(6px); } }
+@media (prefers-reduced-motion: reduce){ .toggle-list li{ animation: none; } }
+
 /* Quiet section headers inside the dock */
 .toggle-list li.dock-section{
   display: block;
@@ -405,7 +411,7 @@ input[type="range"]::-moz-range-thumb{
   content: ""; position: absolute; top: 2px; left: 2px;
   width: 20px; height: 20px; border-radius: 999px;
   background: #fff; box-shadow: 0 1.5px 4px rgba(0,0,0,0.35);
-  transition: transform 0.22s cubic-bezier(0.32, 0.72, 0, 1), width 0.15s ease;
+  transition: transform 0.22s var(--spring), width 0.15s ease;
 }
 .toggle-list input[type="checkbox"]:not(.sub):checked{ background: var(--green); }
 .toggle-list input[type="checkbox"]:not(.sub):checked::after{ transform: translateX(16px); }
@@ -439,9 +445,14 @@ input[type="range"]::-moz-range-thumb{
   overflow-y: auto;
   padding: 18px 16px calc(18px + var(--safe-bottom));
   -webkit-overflow-scrolling: touch;
+  /* Entrance: glide in from the right edge (replays whenever unhidden) */
+  animation: panel-in 0.32s var(--spring);
 }
+@keyframes panel-in{ from{ opacity: 0; transform: translateX(18px); } }
+@keyframes sheet-in{ from{ opacity: 0; transform: translateY(26px); } }
+@media (prefers-reduced-motion: reduce){ #detail-panel{ animation: none; } }
 #detail-panel[hidden]{ display: none; }
-#detail-panel:not([hidden]){ animation: panel-in 0.34s cubic-bezier(0.32, 0.72, 0, 1); }
+#detail-panel:not([hidden]){ animation: panel-in 0.34s var(--spring); }
 @keyframes panel-in{
   from{ opacity: 0; transform: translateY(16px) scale(0.985); }
   to{ opacity: 1; transform: none; }
@@ -519,8 +530,8 @@ input[type="range"]::-moz-range-thumb{
   display: flex; flex-direction: column; align-items: center; gap: 4px;
   border-radius: 28px;
   overflow: hidden;
-  transition: right 0.34s cubic-bezier(0.32, 0.72, 0, 1),
-              height 0.42s cubic-bezier(0.32, 0.72, 0, 1);
+  transition: right 0.34s var(--spring),
+              height 0.42s var(--spring);
 }
 /* Collapsed: the rail folds into a single pill (chevron + identity glyph). */
 #spectrum-rail.collapsed{ height: 78px; padding-bottom: 8px; }
@@ -533,9 +544,9 @@ input[type="range"]::-moz-range-thumb{
    rail it belongs to, mirroring the rail's own collapse animation. */
 #spectrum-chip{
   opacity: 0;
-  transition: right 0.34s cubic-bezier(0.32, 0.72, 0, 1),
+  transition: right 0.34s var(--spring),
               opacity 0.34s ease,
-              transform 0.42s cubic-bezier(0.32, 0.72, 0, 1);
+              transform 0.42s var(--spring);
 }
 #spectrum-chip.visible{
   opacity: 1;
@@ -552,7 +563,7 @@ input[type="range"]::-moz-range-thumb{
 }
 .fold-btn .icon{
   width: 15px; height: 15px;
-  transition: transform 0.42s cubic-bezier(0.32, 0.72, 0, 1);
+  transition: transform 0.42s var(--spring);
 }
 .fold-btn:active{ transform: scale(0.9); }
 #spectrum-rail.collapsed .fold-btn .icon{ transform: rotate(180deg); }
@@ -584,7 +595,7 @@ input[type="range"]::-moz-range-thumb{
   #detail-panel:not([hidden]) ~ #spectrum-rail{ right: calc(362px + var(--safe-right)); }
   #detail-panel:not([hidden]) ~ #spectrum-chip{ right: calc(428px + var(--safe-right)); }
   #detail-panel:not([hidden]) ~ #bottom-bar{ right: calc(362px + var(--safe-right)); }
-  #bottom-bar{ transition: right 0.34s cubic-bezier(0.32, 0.72, 0, 1); }
+  #bottom-bar{ transition: right 0.34s var(--spring); }
 }
 .spectrum-end{
   font-size: 8.5px; font-weight: 650; text-transform: uppercase; letter-spacing: 0.05em;
@@ -614,7 +625,7 @@ input[type="range"]::-moz-range-thumb{
   transform: translate(-50%, -50%);
   border-radius: 50%; background: rgba(10, 12, 18, 0.85);
   border: 1.5px solid rgba(255, 255, 255, 0.55);
-  transition: transform 0.2s cubic-bezier(0.32, 0.72, 0, 1), border-color 0.2s ease;
+  transition: transform 0.2s var(--spring), border-color 0.2s ease;
 }
 .spectrum-dot.active{
   transform: translate(-50%, -50%) scale(1.35);
@@ -730,7 +741,7 @@ input[type="range"]::-moz-range-thumb{
   max-height: min(78vh, 700px); overflow-y: auto; padding: 26px 24px;
   background: var(--material-thick);
   -webkit-overflow-scrolling: touch;
-  animation: card-in 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+  animation: card-in 0.4s var(--spring);
 }
 #about-close{ position: absolute; top: 14px; right: 14px; }
 #about-content h2{ font-size: 20px; font-weight: 700; letter-spacing: -0.02em; margin: 0 30px 12px 0; }
@@ -761,7 +772,7 @@ input[type="range"]::-moz-range-thumb{
   padding: 8px 13px; border-radius: 12px;
   font-size: 12px; line-height: 1.4; max-width: 100%;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4), var(--liquid-edge);
-  animation: toast-in 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+  animation: toast-in 0.28s var(--spring);
 }
 .toast.toast-error{ border-color: rgba(255, 69, 58, 0.5); color: var(--text-primary); }
 .toast.toast-info{ border-color: var(--hairline); }
@@ -875,8 +886,9 @@ body.redlight .render-canvas{ filter: sepia(1) saturate(4) hue-rotate(-50deg) br
     max-height: 62vh;
     border-radius: var(--radius-card) var(--radius-card) 0 0;
     padding-top: 4px;
-    transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+    transition: transform 0.3s var(--spring);
     overscroll-behavior-y: contain;
+    animation-name: sheet-in; /* phones: rise as a sheet, not a side panel */
   }
   #detail-close{ top: 14px; }
 
@@ -885,7 +897,7 @@ body.redlight .render-canvas{ filter: sepia(1) saturate(4) hue-rotate(-50deg) br
   /* Phone bottom bar: Sky Now + search share one row, search takes the rest */
   #bottom-bar{
     display: flex;
-    transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+    transition: opacity 0.3s ease, transform 0.3s var(--spring);
   }
   #search-form{ flex: 1; }
   /* The detail sheet owns the bottom of a phone screen: the bar steps aside */

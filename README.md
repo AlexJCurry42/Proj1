@@ -57,27 +57,34 @@ file server (`npx serve`, `php -S`, etc.) works equally well.
 
 ```
 index.html           Page shell: top bar, layer dock, spectrum rail, bottom bar
-css/style.css        Liquid-glass design system, responsive layout, red-light mode
-js/app.js            App entry point: engine init, layer dock, readouts, permalinks
+css/style.css        Liquid-glass design system, one --spring motion token
+js/app.js            App entry point: engine init, layer dock, permalinks
+js/overlay.js        UNIFIED overlay engine: one canvas + one loop for every
+                     sky-drawn layer (goes fully idle when nothing animates)
+js/astro.js          Shared spherical math: vectors, alt-az↔RA/Dec, GMST
+js/prefs.js          Shared localStorage preferences (one namespace/codec)
+js/observer.js       Shared geolocation (one permission flow, session cache)
+js/conesearch.js     Shared live TAP cone-search layer skeleton
+js/markerfade.js     Marker cross-fades for layer toggles (overlay layer)
 js/spectrum.js       Vertical spectrum rail: scrub imagery gamma-ray → radio
 js/skynow.js         Sky Now + gyro/compass tracking (all math on-device)
-js/horizon.js        Local horizon, cardinal directions & zenith overlay
-js/satellites.js     ISS + bright satellites: live SGP4, pass predictions
+js/horizon.js        Local horizon, cardinal directions & zenith (overlay layer)
+js/satellites.js     ISS + bright satellites: live SGP4 (overlay layer)
 js/vendor/satellite/ Vendored satellite.js SGP4 submodules (MIT)
-js/constellations.js 88 constellations: figures, names, boundaries (Action data)
-js/catalogs.js       SIMBAD/Gaia HiPS catalogs, Messier/NGC-IC, exoplanets
-js/blackholes.js     Stellar-mass BHs, supermassive/AGN & quasars, GW mergers
+js/constellations.js 88 constellations: figures, names, boundaries (overlay layer)
+js/catalogs.js       SIMBAD/Gaia layers, Deep sky (Messier+OpenNGC), exoplanets
+js/blackholes.js     Stellar-mass + supermassive BHs, live AGN/quasars
 js/planets.js        Self-contained Solar System ephemeris (no external calls)
 js/search.js         CDS Sesame name resolver + coordinate parsing
 js/suggest.js        Instant search suggestions from the curated catalogs
-js/ui.js             Detail panel, toasts, tours, onboarding, about modal
+js/ui.js             Detail panel, toasts, sky destinations, about modal
 js/render3d.js       WebGL procedural 3-D renders (planets, stars, black holes)
 js/warp.js           Star-streak warp feedback on zoom, fed by the live view
 js/markers.js        Shared catalog-marker helpers
 js/net.js            Shared fetch-with-timeout-and-retry helper
 sw.js                Service worker: network-first shell cache (offline PWA)
-data/*.json|csv      Curated + Action-refreshed data (black holes, tours, ...)
-.github/workflows/   Weekly exoplanet snapshot + constellation data pipelines
+data/*.json|csv|txt  Curated + Action-refreshed data
+.github/workflows/   Exoplanet, constellation, OpenNGC and TLE data pipelines
 ```
 
 ## Data sources & attribution

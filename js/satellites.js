@@ -4,23 +4,18 @@
 // .github/workflows/satellite-tles.yml refreshes daily from CelesTrak).
 //
 // Positions are TOPOCENTRIC — computed for the observer's location, which
-// matters enormously in low Earth orbit (the parallax between "where the
-// ISS is over the Earth" and "where YOU see it" reaches tens of degrees).
-// That's why this layer requires location, like the horizon overlay.
-//
-// Satellites cross the sky in minutes, so markers are drawn on a dedicated
-// canvas every frame while the layer is on — the engine's static catalogs
-// can't move. Tapping a dot opens a detail panel; the ISS panel includes
-// its next above-horizon passes for your location.
+// matters enormously in low Earth orbit (parallax reaches tens of degrees).
+// Satellites cross the sky in minutes, so this registers as an every-frame
+// layer on the unified overlay engine while visible. Tapping a dot opens a
+// detail panel; the ISS panel includes its next above-horizon passes.
 
 import { twoline2satrec } from './vendor/satellite/io.js';
 import { propagate, gstime } from './vendor/satellite/propagation.js';
 import { eciToEcf, ecfToLookAngles, degreesToRadians } from './vendor/satellite/transforms.js';
-import { altAzToRaDec } from './skynow.js';
+import { altAzToRaDec, R2D } from './astro.js';
 import { fetchText } from './net.js';
 import { showToast, renderDetailPanel } from './ui.js';
-
-const R2D = 180 / Math.PI;
+import { getOverlay, haloText } from './overlay.js';
 
 function parseTles(text) {
   const lines = text.split('\n').map(l => l.trimEnd()).filter(l => l.trim());
@@ -91,35 +86,15 @@ export async function initSatellitesLayer(aladin, observer) {
   // TLE freshness: SGP4 drifts km/day; past ~10 days pass timing is mush.
   const iss = sats.find(s => s.isISS) || null;
   const epochAgeDays = iss ? (Date.now() / 86400000 + 2440587.5 - iss.rec.jdsatepoch) : 0;
-  const stale = epochAgeDays > 10;
-  if (stale) showToast('Satellite orbit data is over ten days old — positions are approximate until the next refresh.', 'info', 8000);
-
-  const wrap = document.getElementById('sky-wrap');
-  const canvas = document.createElement('canvas');
-  canvas.id = 'satellite-canvas';
-  wrap.appendChild(canvas);
-  const ctx = canvas.getContext('2d');
-  let dpr = 1, W = 0, H = 0;
-  function resize() {
-    dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const r = wrap.getBoundingClientRect();
-    W = r.width; H = r.height;
-    canvas.width = Math.round(W * dpr);
-    canvas.height = Math.round(H * dpr);
+  if (epochAgeDays > 10) {
+    showToast('Satellite orbit data is over ten days old — positions are approximate until the next refresh.', 'info', 8000);
   }
-  window.addEventListener('resize', resize);
-  resize();
 
-  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  let raf = null, lastT = 0;
-  let alpha = 0, target = 0;
   let hits = []; // last-drawn screen positions, for tap lookup
 
-  function draw() {
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, W, H);
+  function draw(ctx, view, state) {
+    const alpha = state.alpha;
     hits = [];
-    if (alpha <= 0.004) return;
     const date = new Date();
     for (const sat of sats) {
       const la = lookAngles(sat, observerGd, date);
@@ -127,9 +102,8 @@ export async function initSatellitesLayer(aladin, observer) {
       const el = la.elevation * R2D;
       if (el < 0) continue; // below the observer's horizon
       const { ra, dec } = altAzToRaDec(el, la.azimuth * R2D, observer.lat, observer.lon, date);
-      let p;
-      try { p = aladin.world2pix(ra, dec); } catch (err) { continue; }
-      if (!p || !Number.isFinite(p[0])) continue;
+      const p = view.proj(ra, dec);
+      if (!p) continue;
       hits.push({ x: p[0], y: p[1], sat, el, rangeKm: la.rangeSat, ra, dec });
 
       if (sat.isISS) {
@@ -137,9 +111,8 @@ export async function initSatellitesLayer(aladin, observer) {
         const la2 = lookAngles(sat, observerGd, new Date(date.getTime() + 30000));
         if (la2 && la2.elevation > 0) {
           const n = altAzToRaDec(la2.elevation * R2D, la2.azimuth * R2D, observer.lat, observer.lon, date);
-          let q = null;
-          try { q = aladin.world2pix(n.ra, n.dec); } catch (err) { /* off view */ }
-          if (q && Number.isFinite(q[0]) && Math.hypot(q[0] - p[0], q[1] - p[1]) < 0.4 * Math.max(W, H)) {
+          const q = view.proj(n.ra, n.dec);
+          if (q && Math.hypot(q[0] - p[0], q[1] - p[1]) < 0.4 * Math.max(view.W, view.H)) {
             ctx.strokeStyle = `rgba(159, 232, 255, ${0.5 * alpha})`;
             ctx.lineWidth = 1.2;
             ctx.setLineDash([3, 4]);
@@ -162,11 +135,8 @@ export async function initSatellitesLayer(aladin, observer) {
         ctx.font = '700 10px -apple-system, BlinkMacSystemFont, sans-serif';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
-        ctx.strokeStyle = `rgba(2, 8, 12, ${0.6 * alpha})`;
-        ctx.lineWidth = 3;
-        ctx.strokeText('ISS', p[0] + 11, p[1]);
-        ctx.fillStyle = `rgba(190, 240, 255, ${0.9 * alpha})`;
-        ctx.fillText('ISS', p[0] + 11, p[1]);
+        haloText(ctx, 'ISS', p[0] + 11, p[1],
+          `rgba(190, 240, 255, ${0.9 * alpha})`, `rgba(2, 8, 12, ${0.6 * alpha})`);
       } else {
         ctx.fillStyle = `rgba(170, 220, 245, ${0.75 * alpha})`;
         ctx.beginPath();
@@ -176,26 +146,13 @@ export async function initSatellitesLayer(aladin, observer) {
     }
   }
 
-  function frame(now) {
-    raf = requestAnimationFrame(frame);
-    const dt = Math.min(now - (lastT || now), 100);
-    lastT = now;
-    alpha += (target - alpha) * (1 - Math.exp(-dt / (reduceMotion ? 1 : 110)));
-    if (Math.abs(target - alpha) <= 0.004) alpha = target;
-    if (alpha <= 0.004 && target === 0) {
-      draw(); // final clear
-      cancelAnimationFrame(raf);
-      raf = null;
-      return;
-    }
-    draw(); // satellites move every frame: always repaint while visible
-  }
-  const ensureLoop = () => { if (!raf) { lastT = 0; raf = requestAnimationFrame(frame); } };
+  const ctl = getOverlay(aladin).addLayer({ z: 30, everyFrame: true, draw });
 
   // Tap a drawn satellite → detail panel (capture phase beats the engine's
   // own canvas handling; only intercepts when a dot is actually hit).
+  const wrap = document.getElementById('sky-wrap');
   const onTap = (e) => {
-    if (alpha < 0.5 || !hits.length) return;
+    if (ctl.state.alpha < 0.5 || !hits.length) return;
     const r = wrap.getBoundingClientRect();
     const x = e.clientX - r.left, y = e.clientY - r.top;
     let best = null, bestD = 16;
@@ -225,9 +182,8 @@ export async function initSatellitesLayer(aladin, observer) {
   };
   wrap.addEventListener('click', onTap, true);
 
-  const controller = {
-    show() { target = 1; ensureLoop(); },
-    hide() { target = 0; ensureLoop(); }
+  return {
+    controller: { show: () => ctl.show(), hide: () => ctl.hide() },
+    count: sats.length
   };
-  return { controller, count: sats.length };
 }

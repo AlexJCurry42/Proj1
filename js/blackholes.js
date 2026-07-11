@@ -5,17 +5,13 @@
 import { fetchJSON } from './net.js';
 import { showToast } from './ui.js';
 import { makeGlowDot, makeBlackHoleIcon } from './markers.js';
+import { makeConeLayer } from './conesearch.js';
 
 const VIZIER_TAP_URL = 'https://tapvizier.cds.unistra.fr/TAPVizieR/tap/sync';
 
 const STELLAR_COLOR = '#ff9f0a';
 const SUPERMASSIVE_COLOR = '#ff453a';
 const FLAGSHIP_COLOR = '#ffd60a';
-
-function debounce(fn, ms) {
-  let t = null;
-  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
-}
 
 function lerpHex(a, b, t) {
   const pa = a.match(/\w\w/g).map(x => parseInt(x, 16));
@@ -182,38 +178,19 @@ export function initMilliquasLayer(
   onZoom = (fn) => aladin.on('zoomChanged', fn),
   onPosition = (fn) => aladin.on('positionChanged', fn)
 ) {
-  const cat = A.catalog({
+  return makeConeLayer(aladin, onZoom, onPosition, {
     name: 'AGN & Quasars (Milliquas)',
     shape: makeGlowDot(SUPERMASSIVE_COLOR, 9),
     sourceSize: 9,
-    onClick: null
-  });
-  aladin.addCatalog(cat);
-
-  let lastKey = '';
-  let failed = false;
-  let enabled = true;
-
-  async function refresh() {
-    if (failed || !enabled) return; // dead endpoint or layer toggled off: no queries
-    const [ra, dec] = aladin.getRaDec();
-    const fov = aladin.getFov()[0];
-    const radius = Math.min(Math.max(fov / 2, 0.05), 5);
-    const key = `${ra.toFixed(2)},${dec.toFixed(2)},${radius.toFixed(2)}`;
-    if (key === lastKey) return;
-    lastKey = key;
-
-    const query =
-      `SELECT TOP 500 RAJ2000, DEJ2000, Name, z, Rmag, Type FROM "VII/294/catalog" ` +
-      `WHERE 1=CONTAINS(POINT('ICRS',RAJ2000,DEJ2000),CIRCLE('ICRS',${ra},${dec},${radius}))`;
-    const url = `${VIZIER_TAP_URL}?request=doQuery&lang=adql&format=json&query=${encodeURIComponent(query)}`;
-
-    try {
-      const json = await fetchJSON(url);
+    maxRadiusDeg: 5,
+    failMsg: 'VizieR Milliquas AGN/quasar layer is unreachable right now.',
+    async fetchSources(ra, dec, radius) {
+      const query =
+        `SELECT TOP 500 RAJ2000, DEJ2000, Name, z, Rmag, Type FROM "VII/294/catalog" ` +
+        `WHERE 1=CONTAINS(POINT('ICRS',RAJ2000,DEJ2000),CIRCLE('ICRS',${ra},${dec},${radius}))`;
+      const json = await fetchJSON(`${VIZIER_TAP_URL}?request=doQuery&lang=adql&format=json&query=${encodeURIComponent(query)}`);
       const cols = (json.metadata || []).map(m => m.name);
-      const rows = json.data || [];
-      if (typeof cat.removeAll === 'function') cat.removeAll();
-      const sources = rows.map(r => {
+      return (json.data || []).map(r => {
         const get = (name) => r[cols.indexOf(name)];
         const typeCode = get('Type');
         const typeLabel = { Q: 'Quasar', A: 'AGN', B: 'BL Lac object', K: 'Narrow-line AGN' }[typeCode] || 'AGN/quasar candidate';
@@ -244,22 +221,8 @@ export function initMilliquasLayer(
           }
         });
       });
-      cat.addSources(sources);
-    } catch (err) {
-      failed = true;
-      showToast('VizieR Milliquas AGN/quasar layer is unreachable right now.', 'error');
     }
-  }
-
-  onPosition(debounce(refresh, 250));
-  onZoom(debounce(refresh, 250));
-  refresh();
-  // Lets the layer toggle stop live VizieR queries entirely while hidden.
-  cat.dsaSetEnabled = (v) => {
-    enabled = v;
-    if (v) { lastKey = ''; refresh(); }
-  };
-  return cat;
+  });
 }
 
 // NOTE: the former GW-mergers scatter layer was removed deliberately.

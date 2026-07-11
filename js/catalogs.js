@@ -5,6 +5,7 @@
 import { fetchJSON, fetchText } from './net.js';
 import { showToast } from './ui.js';
 import { makeGlowDot, makePlanetIcon } from './markers.js';
+import { makeConeLayer } from './conesearch.js';
 
 const EXOPLANET_TAP_URL = 'https://exoplanetarchive.ipac.caltech.edu/TAP/sync';
 const GAIA_HIPS_CAT_URL = 'https://axel.u-strasbg.fr/HiPSCatService/I/355/gaiadr3';
@@ -57,53 +58,29 @@ export function initGaiaHips(aladin) {
 }
 
 /**
- * Live SIMBAD cone-search layer factory. SIMBAD aggregates the major
- * catalogs, so an otype-filtered cone search around the view center gives
- * "all known X" semantics with progressive loading — the same live-query
- * pattern as the AGN/quasar layer. The ADQL keeps the parser-safe shape the
- * detail panel already uses in production: no joins, no ORDER BY on
- * expressions, coordinates pre-validated and fixed-point.
+ * SIMBAD flavor of the shared cone-layer skeleton (js/conesearch.js).
+ * SIMBAD aggregates the major catalogs, so an otype-filtered cone search
+ * around the view center gives "all known X" semantics with progressive
+ * loading. The ADQL keeps the parser-safe shape the detail panel already
+ * uses in production: no joins, no ORDER BY on expressions, coordinates
+ * pre-validated and fixed-point.
  */
 function makeSimbadConeLayer(aladin, onZoom, onPosition, opts) {
-  const cat = A.catalog({
+  return makeConeLayer(aladin, onZoom, onPosition, {
     name: opts.name,
     shape: makeGlowDot(opts.color, opts.dotSize ?? 9),
     sourceSize: opts.dotSize ?? 9,
-    onClick: null
-  });
-  aladin.addCatalog(cat);
-
-  let lastKey = '';
-  let failed = false;
-  let enabled = true;
-  let hinted = false;
-
-  async function refresh() {
-    if (failed || !enabled) return; // dead endpoint or layer toggled off: no queries
-    const [ra, dec] = aladin.getRaDec();
-    const fov = aladin.getFov()[0];
-    if (!Number.isFinite(ra) || !Number.isFinite(dec)) return;
-    const radius = Math.min(Math.max(fov / 2, 0.05), opts.maxRadiusDeg ?? 4);
-    if (!hinted && fov > 60 && opts.hint) {
-      hinted = true;
-      showToast(opts.hint, 'info', 6000);
-    }
-    const key = `${ra.toFixed(2)},${dec.toFixed(2)},${radius.toFixed(2)}`;
-    if (key === lastKey) return;
-    lastKey = key;
-
-    const query =
-      `SELECT TOP ${opts.top ?? 800} main_id, otype, ra, dec FROM basic ` +
-      `WHERE ${opts.where} AND ra IS NOT NULL AND dec IS NOT NULL ` +
-      `AND CONTAINS(POINT('ICRS', ra, dec), CIRCLE('ICRS', ${ra.toFixed(6)}, ${dec.toFixed(6)}, ${radius.toFixed(4)})) = 1`;
-    const url = `${SIMBAD_TAP_URL}?request=doQuery&lang=adql&format=json&query=${encodeURIComponent(query)}`;
-
-    try {
-      const json = await fetchJSON(url);
+    maxRadiusDeg: opts.maxRadiusDeg,
+    hint: opts.hint,
+    failMsg: `The SIMBAD ${opts.fallbackName} service is unreachable right now; the layer will retry next session.`,
+    async fetchSources(ra, dec, radius) {
+      const query =
+        `SELECT TOP ${opts.top ?? 800} main_id, otype, ra, dec FROM basic ` +
+        `WHERE ${opts.where} AND ra IS NOT NULL AND dec IS NOT NULL ` +
+        `AND CONTAINS(POINT('ICRS', ra, dec), CIRCLE('ICRS', ${ra.toFixed(6)}, ${dec.toFixed(6)}, ${radius.toFixed(4)})) = 1`;
+      const json = await fetchJSON(`${SIMBAD_TAP_URL}?request=doQuery&lang=adql&format=json&query=${encodeURIComponent(query)}`);
       const cols = (json.metadata || []).map(m => m.name.toLowerCase());
-      const rows = json.data || [];
-      if (typeof cat.removeAll === 'function') cat.removeAll();
-      cat.addSources(rows.map(r => {
+      return (json.data || []).map(r => {
         const get = (name) => r[cols.indexOf(name)];
         const oname = get('main_id') || opts.fallbackName;
         return A.source(get('ra'), get('dec'), {
@@ -117,22 +94,9 @@ function makeSimbadConeLayer(aladin, onZoom, onPosition, opts) {
             source: opts.sourceNote
           }
         });
-      }));
-    } catch (err) {
-      failed = true;
-      showToast(`The SIMBAD ${opts.fallbackName} service is unreachable right now; the layer will retry next session.`, 'error');
+      });
     }
-  }
-
-  onPosition(debounce(refresh, 250));
-  onZoom(debounce(refresh, 250));
-  refresh();
-  // Lets the layer toggle stop live queries entirely while hidden.
-  cat.dsaSetEnabled = (v) => {
-    enabled = v;
-    if (v) { lastKey = ''; refresh(); }
-  };
-  return cat;
+  });
 }
 
 /**
