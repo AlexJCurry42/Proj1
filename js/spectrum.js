@@ -264,6 +264,21 @@ export function initSpectrumBar(aladin, { onSettle, collapsed = false, onCollaps
   // beneath a fully-opaque overlay (the same seamless-by-construction trick
   // applyEngine uses at stop crossings).
   let fadeToken = 0;
+  // Pin the blend pair: base = the survey on screen now, overlay = the
+  // incoming one (created only if it isn't already the 'dsa-blend' layer).
+  function pinBlendPair(fromIdx, toIdx) {
+    if (curBase !== fromIdx) {
+      try { aladin.setBaseImageLayer(SURVEYS[fromIdx].id); } catch (err) { /* engine hiccup */ }
+      curBase = fromIdx;
+    }
+    if (curOver !== toIdx || !overlayLayer) {
+      try {
+        overlayLayer = aladin.setOverlayImageLayer(SURVEYS[toIdx].id, 'dsa-blend')
+          || aladin.getOverlayImageLayer?.('dsa-blend') || overlayLayer;
+      } catch (err) { overlayLayer = null; }
+      curOver = toIdx;
+    }
+  }
   const api = {
     setValue(v, { settle = false } = {}) {
       fadeToken++; // a direct set supersedes any in-flight fade
@@ -278,6 +293,17 @@ export function initSpectrumBar(aladin, { onSettle, collapsed = false, onCollaps
       const i = SURVEYS.findIndex(s => s.id === id);
       return i >= 0 ? i * STOP : null;
     },
+    // Create the destination survey as an INVISIBLE (opacity 0) blend
+    // overlay so the engine starts fetching its tiles now — flights call
+    // this at launch, then fadeToSurvey later finds the layer warm and the
+    // reveal is a pure opacity ramp instead of a cold tile load.
+    primeSurvey(id) {
+      const i = SURVEYS.findIndex(s => s.id === id);
+      if (i < 0 || i === Math.round(target / STOP)) return;
+      fadeToken++; // priming supersedes any fade already in flight
+      pinBlendPair(Math.round(target / STOP), i);
+      try { overlayLayer?.setOpacity?.(0); } catch (err) { /* non-fatal */ }
+    },
     fadeToSurvey(id, ms = 1800) {
       const i = SURVEYS.findIndex(s => s.id === id);
       if (i < 0) return;
@@ -289,16 +315,9 @@ export function initSpectrumBar(aladin, { onSettle, collapsed = false, onCollaps
         return;
       }
       const token = ++fadeToken;
-      // Pin the pair: whatever is on screen now stays the base…
-      const fromIdx = Math.round(fromV / STOP);
-      try { aladin.setBaseImageLayer(SURVEYS[fromIdx].id); } catch (err) { /* engine hiccup */ }
-      curBase = fromIdx;
-      // …and the destination is the one and only incoming layer.
-      try {
-        overlayLayer = aladin.setOverlayImageLayer(SURVEYS[i].id, 'dsa-blend')
-          || aladin.getOverlayImageLayer?.('dsa-blend') || overlayLayer;
-      } catch (err) { overlayLayer = null; }
-      curOver = i;
+      // Pin the pair: the on-screen survey stays the base, the destination
+      // is the one incoming layer (a no-op if primeSurvey already did this).
+      pinBlendPair(Math.round(fromV / STOP), i);
       const t0 = performance.now();
       const step = (t) => {
         // A user grab or another set/fade takes over instantly.

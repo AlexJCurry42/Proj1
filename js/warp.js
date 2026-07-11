@@ -15,6 +15,14 @@
 // Both modes decay in ~a quarter second, ignore pointer events, and are
 // disabled entirely under prefers-reduced-motion.
 
+// Programmatic camera flights ("Show me something cool") suppress the warp:
+// a three-second continuous zoom ramp would otherwise keep the blur at full
+// energy the whole way — six full-canvas composites per frame of exactly the
+// kind of extra GPU work that makes a flight stutter on a phone. The effect
+// is feedback for USER zooms; a scripted flight is its own animation.
+let suppressed = false;
+export function setWarpSuppressed(v) { suppressed = v; }
+
 export function initWarpEffect(aladin, onZoom = (fn) => aladin.on('zoomChanged', fn)) {
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
@@ -80,6 +88,7 @@ export function initWarpEffect(aladin, onZoom = (fn) => aladin.on('zoomChanged',
   let lastT = 0;
 
   onZoom(() => {
+    if (suppressed) { lastFov = null; return; } // and no dz spike on resume
     let fov;
     try { fov = aladin.getFov()[0]; } catch (err) { return; }
     if (!(fov > 0)) return;

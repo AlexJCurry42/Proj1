@@ -3,9 +3,11 @@
 
 import { fetchJSON } from './net.js';
 import { attachRenderIfFamous } from './render3d.js';
-import { riseSet } from './astro.js';
+import { riseSet, raDecToVec, vecToRaDec, angularSepDeg } from './astro.js';
 import { cachedObserver } from './observer.js';
 import { appNow } from './clock.js';
+import { SURVEYS } from './spectrum.js';
+import { setWarpSuppressed } from './warp.js';
 
 const SIMBAD_TAP_URL = 'https://simbad.cds.unistra.fr/simbad/sim-tap/sync';
 
@@ -386,39 +388,106 @@ export async function initTours(aladin, spectrum) {
     return bag.pop();
   }
 
-  // Each press is a three-act flight: rise (pull back so there's a sky to
-  // cross), glide (the engine's great-circle animation, while the spectrum
-  // scrubs to whichever imagery shows this object best), descend (eased zoom
-  // into the destination). Pressing again mid-flight cancels the rest of
-  // this one and starts the next from wherever the view is now.
+  // Each press is ONE continuous camera arc — the van Wijk & Nuij (2003)
+  // optimal pan-zoom path, the same math behind d3/Google-Earth flights.
+  // The old three-act choreography (rise, engine glide, descend) stopped
+  // dead twice at the act seams and guessed the glide's landing time; here
+  // position and zoom follow a single hyperbolic geodesic at constant
+  // perceived velocity, so the camera never halts or kinks mid-journey.
+  // Pressing again mid-flight starts the next from wherever the view is;
+  // touching the sky hands control back instantly.
   let flightToken = 0;
-  const easeInOutCubic = (u) => u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
-  function easeFov(toFov, ms, token) {
+  document.getElementById('sky-wrap')?.addEventListener('pointerdown', () => {
+    flightToken++;
+    setWarpSuppressed(false);
+  }, true);
+
+  const RHO = 1.42, RHO2 = RHO * RHO, RHO4 = RHO2 * RHO2;
+  function flyPath(toRa, toDec, toFov, token, onProgress) {
     return new Promise((resolve) => {
-      let from;
-      try { from = aladin.getFov()[0]; } catch (err) { resolve(false); return; }
-      if (!Number.isFinite(from) || Math.abs(from - toFov) < 0.001) { resolve(true); return; }
+      let ra0, dec0, w0;
+      try { [ra0, dec0] = aladin.getRaDec(); w0 = aladin.getFov()[0]; } catch (err) { resolve(false); return; }
+      if (!Number.isFinite(w0) || w0 <= 0) { resolve(false); return; }
+      const p0 = raDecToVec(ra0, dec0);
+      const p1 = raDecToVec(toRa, toDec);
+      const d = angularSepDeg(p0, p1); // pan distance, degrees
+      const w1 = Math.max(0.02, toFov); // "width" = field of view
+
+      // The path: u(s) = pan progress along the great circle (0..d), w(s) =
+      // field of view. Both come from one hyperbolic geodesic in (u, w)
+      // space — it widens exactly enough to cross the distance and narrows
+      // into the target with no separate zoom-out/zoom-in phases.
+      let S, uOf, wOf;
+      if (d < 0.02) { // pure zoom: the geodesic degenerates to an exponential
+        S = Math.abs(Math.log(w1 / w0)) / RHO;
+        const k = w1 < w0 ? -1 : 1;
+        uOf = () => 0;
+        wOf = (s) => w0 * Math.exp(k * RHO * s);
+      } else {
+        const b0 = (w1 * w1 - w0 * w0 + RHO4 * d * d) / (2 * w0 * RHO2 * d);
+        const b1 = (w1 * w1 - w0 * w0 - RHO4 * d * d) / (2 * w1 * RHO2 * d);
+        const r0 = Math.log(Math.sqrt(b0 * b0 + 1) - b0);
+        const r1 = Math.log(Math.sqrt(b1 * b1 + 1) - b1);
+        S = (r1 - r0) / RHO;
+        uOf = (s) => (w0 / RHO2) * (Math.cosh(r0) * Math.tanh(RHO * s + r0) - Math.sinh(r0));
+        wOf = (s) => w0 * Math.cosh(r0) / Math.cosh(RHO * s + r0);
+      }
+      if (!(S > 1e-6) || !Number.isFinite(S)) { // already there
+        try { aladin.gotoRaDec(toRa, toDec); aladin.setFoV(w1); } catch (err) { /* engine hiccup */ }
+        resolve(true);
+        return;
+      }
+      // Constant perceived velocity: duration scales with path length.
+      const ms = Math.min(4200, Math.max(1800, S * 820));
+
+      // True slerp along the great circle (vecMix is an nlerp — fine for
+      // short drawing segments, visibly non-uniform across half the sky).
+      const om = d * Math.PI / 180, so = Math.sin(om);
+      const posAt = (f) => {
+        if (so < 1e-6) return [toRa, toDec];
+        const ka = Math.sin((1 - f) * om) / so;
+        const kb = Math.sin(f * om) / so;
+        const { ra, dec } = vecToRaDec([
+          p0[0] * ka + p1[0] * kb, p0[1] * ka + p1[1] * kb, p0[2] * ka + p1[2] * kb
+        ]);
+        return [ra, dec];
+      };
+
       const t0 = performance.now();
+      let expected = null; // what WE last set, read back (engine may clamp)
       const step = (t) => {
         if (token !== flightToken) { resolve(false); return; }
-        const u = Math.min(1, (t - t0) / ms);
-        try { aladin.setFoV(from + (toFov - from) * easeInOutCubic(u)); } catch (err) { /* engine hiccup */ }
-        if (u < 1) requestAnimationFrame(step); else resolve(true);
+        // External steering — gyro tracking engaging, a search fly-to —
+        // moves the camera between our frames. Detect it and yield: two
+        // animators fighting over the view is the worst kind of jank.
+        if (expected) {
+          try {
+            const fovNow = aladin.getFov()[0];
+            const [raNow, decNow] = aladin.getRaDec();
+            const posErr = angularSepDeg(raDecToVec(raNow, decNow), raDecToVec(expected[1], expected[2]));
+            if (Math.abs(fovNow - expected[0]) > expected[0] * 0.05 + 0.01 ||
+                posErr > Math.max(1, fovNow * 0.1)) {
+              resolve(false);
+              return;
+            }
+          } catch (err) { /* transient read failure: keep flying */ }
+        }
+        const u01 = Math.min(1, (t - t0) / ms);
+        const s = S * u01;
+        const frac = d < 0.02 ? u01 : Math.max(0, Math.min(1, uOf(s) / d));
+        const [ra, dec] = posAt(frac);
+        try {
+          aladin.setFoV(Math.max(0.02, wOf(s)));
+          aladin.gotoRaDec(ra, dec);
+          expected = [aladin.getFov()[0], ...aladin.getRaDec()];
+        } catch (err) { /* engine hiccup: skip this frame */ }
+        onProgress?.(u01, ms);
+        if (u01 < 1) { requestAnimationFrame(step); return; }
+        try { aladin.gotoRaDec(toRa, toDec); aladin.setFoV(w1); } catch (err) { /* engine hiccup */ }
+        resolve(true);
       };
       requestAnimationFrame(step);
     });
-  }
-  const pause = (ms, token) => new Promise((r) => setTimeout(() => r(token === flightToken), ms));
-
-  // Bring in the destination's best survey as ONE direct cross-fade
-  // (spectrum.fadeToSurvey), never a value scrub: scrubbing crosses every
-  // survey in between, and each crossing swaps the base layer and fetches
-  // tiles for imagery that's on screen for milliseconds — mid-flight, that
-  // read as lag and wavelength flicker. One overlay, one slow breath,
-  // spanning the glide and most of the descent.
-  function glideSpectrum(surveyId, ms) {
-    if (!spectrum || !surveyId) return;
-    spectrum.fadeToSurvey(surveyId, ms);
   }
 
   btn.addEventListener('click', async () => {
@@ -426,8 +495,7 @@ export async function initTours(aladin, spectrum) {
     const token = ++flightToken;
     showToast(`${t.name} — ${t.caption}`, 'info', 12000);
 
-    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (reduceMotion || typeof aladin.animateToRaDec !== 'function') {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       aladin.gotoRaDec(t.ra, t.dec);
       if (spectrum && t.survey) {
         const v = spectrum.valueForSurveyId(t.survey);
@@ -437,20 +505,41 @@ export async function initTours(aladin, spectrum) {
       return;
     }
 
-    // Act 1 — rise: if we're zoomed in tight, pull back first so the glide
-    // reads as travel across the sky rather than an anonymous smear.
-    let cur = 60;
-    try { cur = aladin.getFov()[0]; } catch (err) { /* keep default */ }
-    if (cur < 25) {
-      if (!await easeFov(Math.min(60, Math.max(cur * 4, 35)), 750, token)) return;
+    // Unlock the zoom floor for the destination survey now, so the descent
+    // can't slam into the CURRENT survey's floor mid-path (the fade's settle
+    // re-locks the proper range on arrival).
+    const destFloor = SURVEYS.find(s => s.id === t.survey)?.minFov;
+    try { aladin.setFoVRange?.(Math.min(destFloor ?? 0.02, t.fov_deg), 320); } catch (err) { /* older builds */ }
+
+    // Destination tiles start fetching NOW, behind an invisible overlay, so
+    // the reveal later is a pure opacity ramp instead of a cold tile load.
+    spectrum?.primeSurvey?.(t.survey);
+    setWarpSuppressed(true); // a scripted flight is its own animation
+
+    // The wavelength reveal rides the final 45% of the arc — the fast pan
+    // happens in one steady light, and the new survey breathes in as the
+    // camera settles onto the destination.
+    let fadeStarted = false;
+    const startFade = (msLeft) => {
+      if (fadeStarted || !spectrum || !t.survey) return;
+      fadeStarted = true;
+      spectrum.fadeToSurvey(t.survey, Math.max(700, msLeft + 500));
+    };
+
+    let landed = false;
+    try {
+      landed = await flyPath(t.ra, t.dec, t.fov_deg, token, (u01, ms) => {
+        if (u01 >= 0.55) startFade(ms * (1 - u01));
+      });
+      if (landed) startFade(900); // short hop that never crossed 55%
+    } finally {
+      if (token === flightToken) {
+        setWarpSuppressed(false);
+        // Canceled before any fade could settle: re-lock the zoom limits
+        // for the survey we're actually still on.
+        if (!landed && !fadeStarted) spectrum?.setValue?.(spectrum.getValue(), { settle: true });
+      }
     }
-    // Act 2 — glide, while the destination's wavelength breathes in as a
-    // single cross-fade timed to finish partway down the descent.
-    try { aladin.animateToRaDec(t.ra, t.dec, 1.6); } catch (err) { aladin.gotoRaDec(t.ra, t.dec); }
-    glideSpectrum(t.survey, 2400);
-    if (!await pause(1650, token)) return;
-    // Act 3 — descend into the destination.
-    await easeFov(t.fov_deg, 1200, token);
   });
 }
 
