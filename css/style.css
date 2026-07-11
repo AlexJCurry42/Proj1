@@ -259,6 +259,14 @@ body.redlight :is(#horizon-canvas, #satellite-canvas){ filter: sepia(1) saturate
 
 #top-bar-right{ display: flex; align-items: center; gap: 8px; }
 
+/* "Show me something cool": the serendipity button */
+#cool-btn{
+  width: auto; padding: 0 14px; gap: 7px;
+  font-size: 13.5px; font-weight: 600; white-space: nowrap;
+}
+#cool-btn .icon{ width: 15px; height: 15px; color: #ffd60a; }
+#cool-btn:active .icon{ transform: rotate(72deg) scale(1.2); transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1); }
+
 .glass-select{
   height: 40px; padding: 0 30px 0 14px;
   max-width: 150px; text-overflow: ellipsis; white-space: nowrap; overflow: hidden;
@@ -852,7 +860,10 @@ body.redlight .render-canvas{ filter: sepia(1) saturate(4) hue-rotate(-50deg) br
 /* ================= Phones (bottom sheets) ================= */
 @media (max-width: 640px){
   #top-bar{ gap: 6px; }
-  .glass-select{ padding: 0 26px 0 10px; font-size: 13px; max-width: 104px; }
+  #top-bar-right{ gap: 6px; }
+  /* Room for the serendipity button: About is reachable via the brand logo */
+  #about-toggle{ display: none; }
+  #cool-btn{ font-size: 12px; padding: 0 10px; gap: 6px; }
 
   /* Full-width grabber = a generous drag/tap target for dismissing sheets */
   .sheet-grabber{

@@ -418,7 +418,7 @@ async function main() {
     }
   });
 
-  initTours(aladin);
+  initTours(aladin, spectrum);
   // Motion tracking switches on the horizon/compass overlay for orientation;
   // the hook is filled in below once the layer dock exists.
   let onTrackingStartHook = null;

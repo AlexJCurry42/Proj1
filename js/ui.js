@@ -336,28 +336,32 @@ function makeSheetDraggable(sheet, scroller, onDismiss) {
   sheet.querySelector('.sheet-grabber')?.addEventListener('click', onDismiss);
 }
 
-// -------------------------------------------------------------------- Tours ---
+// ------------------------------------------------- Show me something cool ---
 
-export async function initTours(aladin) {
+export async function initTours(aladin, spectrum) {
   let tours;
   try {
     tours = (await fetchJSON('data/tours.json')).destinations;
   } catch (err) {
-    showToast('Could not load guided tour destinations.', 'error');
+    showToast('Could not load the sky destinations.', 'error');
     return;
   }
-  const select = document.getElementById('tour-select');
-  for (const t of tours) {
-    const opt = document.createElement('option');
-    opt.value = t.id;
-    opt.textContent = t.name;
-    select.appendChild(opt);
+  const btn = document.getElementById('cool-btn');
+  if (!btn) return;
+
+  // A shuffle bag: every press is a surprise, and nothing repeats until all
+  // fifty destinations have been seen once.
+  let bag = [];
+  function draw() {
+    if (!bag.length) bag = [...tours].sort(() => Math.random() - 0.5);
+    return bag.pop();
   }
 
-  // Each selection is a three-act flight: rise (pull back so there's a sky to
-  // cross), glide (the engine's great-circle animation), descend (eased zoom
-  // into the destination). Picking another tour mid-flight cancels the rest
-  // of this one and starts the new flight from wherever the view is now.
+  // Each press is a three-act flight: rise (pull back so there's a sky to
+  // cross), glide (the engine's great-circle animation, while the spectrum
+  // scrubs to whichever imagery shows this object best), descend (eased zoom
+  // into the destination). Pressing again mid-flight cancels the rest of
+  // this one and starts the next from wherever the view is now.
   let flightToken = 0;
   const easeInOutCubic = (u) => u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
   function easeFov(toFov, ms, token) {
@@ -377,16 +381,36 @@ export async function initTours(aladin) {
   }
   const pause = (ms, token) => new Promise((r) => setTimeout(() => r(token === flightToken), ms));
 
-  select.addEventListener('change', async () => {
-    const t = tours.find(x => x.id === select.value);
-    select.value = '';
-    if (!t) return;
+  // Glide the spectrum slider to the destination's best survey — a smooth
+  // scrub through the wavelengths rather than an instant swap.
+  function glideSpectrum(surveyId, ms, token) {
+    if (!spectrum || !surveyId) return;
+    const to = spectrum.valueForSurveyId(surveyId);
+    if (to == null) return;
+    const from = spectrum.getValue();
+    if (Math.abs(to - from) < 1) return;
+    const t0 = performance.now();
+    const step = (t) => {
+      if (token !== flightToken) return;
+      const u = Math.min(1, (t - t0) / ms);
+      spectrum.setValue(from + (to - from) * easeInOutCubic(u), { settle: u >= 1 });
+      if (u < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
+
+  btn.addEventListener('click', async () => {
+    const t = draw();
     const token = ++flightToken;
-    showToast(t.caption, 'info', 12000);
+    showToast(`${t.name} — ${t.caption}`, 'info', 12000);
 
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (reduceMotion || typeof aladin.animateToRaDec !== 'function') {
       aladin.gotoRaDec(t.ra, t.dec);
+      if (spectrum && t.survey) {
+        const v = spectrum.valueForSurveyId(t.survey);
+        if (v != null) spectrum.setValue(v, { settle: true });
+      }
       aladin.setFoV(t.fov_deg);
       return;
     }
@@ -398,8 +422,9 @@ export async function initTours(aladin) {
     if (cur < 25) {
       if (!await easeFov(Math.min(60, Math.max(cur * 4, 35)), 750, token)) return;
     }
-    // Act 2 — glide.
+    // Act 2 — glide, scrubbing the light itself along the way.
     try { aladin.animateToRaDec(t.ra, t.dec, 1.6); } catch (err) { aladin.gotoRaDec(t.ra, t.dec); }
+    glideSpectrum(t.survey, 1400, token);
     if (!await pause(1650, token)) return;
     // Act 3 — descend into the destination.
     await easeFov(t.fov_deg, 1200, token);
