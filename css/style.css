@@ -908,3 +908,51 @@ body.redlight .render-canvas{ filter: sepia(1) saturate(4) hue-rotate(-50deg) br
   #zoom-stack{ display: none; } /* pinch is the natural gesture on phones */
 
 }
+
+/* ================= Time scrubber (clock button, popover, chip) ================= */
+#time-panel{
+  position: fixed; z-index: 60;
+  left: calc(12px + var(--safe-left));
+  bottom: calc(70px + var(--safe-bottom));
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 14px; width: 236px;
+  animation: pop-in 0.2s var(--spring);
+}
+#time-panel[hidden]{ display: none; }
+.time-title{ font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+#time-input{
+  height: 40px; padding: 0 10px;
+  border-radius: 10px; border: 0.5px solid var(--hairline);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary); font: 500 14px var(--font);
+  color-scheme: dark; /* dark native picker on iOS/Android/desktop */
+}
+#time-now{ width: 100%; font-size: 13px; font-weight: 600; }
+
+/* Clock button glows amber while the sky is time-shifted */
+#time-btn.time-active{
+  background: rgba(255, 214, 10, 0.22);
+  border-color: rgba(255, 214, 10, 0.5);
+  color: #ffd60a;
+}
+
+/* Amber "you are time-traveling" chip, floating above the clock button */
+#time-chip{
+  position: fixed; z-index: 44;
+  left: calc(12px + var(--safe-left));
+  bottom: calc(70px + var(--safe-bottom));
+  padding: 6px 12px; border-radius: 999px;
+  border: 0.5px solid rgba(255, 214, 10, 0.45);
+  background: rgba(58, 47, 4, 0.55);
+  -webkit-backdrop-filter: var(--blur);
+  backdrop-filter: var(--blur);
+  box-shadow: var(--liquid-edge);
+  color: #ffd60a; font: 600 11.5px var(--font);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em; white-space: nowrap; cursor: pointer;
+  animation: pop-in 0.2s var(--spring);
+}
+#time-chip[hidden]{ display: none; }
+@media (prefers-reduced-motion: reduce){
+  #time-panel, #time-chip{ animation: none; }
+}

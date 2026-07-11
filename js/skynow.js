@@ -10,6 +10,7 @@
 import { showToast } from './ui.js';
 import { flyTo } from './search.js';
 import { D2R, R2D, altAzToRaDec, zenithRaDec, raDecToVec, vecToRaDec, vecMix } from './astro.js';
+import { appNow, isTimeShifted } from './clock.js';
 import { requestObserver, seedObserver } from './observer.js';
 
 // Re-exports kept for compatibility (tests and older callers).
@@ -83,12 +84,16 @@ export function initSkyNow(aladin, { onTrackingStart } = {}) {
   }
 
   function oneShotZenith(latitude, longitude) {
-    const { ra, dec } = zenithRaDec(latitude, longitude);
+    // Follows the time scrubber: "Sky Now" becomes "Sky Then" when scrubbed.
+    const now = appNow();
+    const { ra, dec } = zenithRaDec(latitude, longitude, now);
     flyTo(aladin, ra, dec, 100);
-    const now = new Date();
     const hh = String(now.getHours()).padStart(2, '0');
     const mm = String(now.getMinutes()).padStart(2, '0');
-    showToast(`Your sky at ${hh}:${mm} — centered on the point straight overhead.`, 'info', 8000);
+    const when = isTimeShifted()
+      ? `${now.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} ${hh}:${mm}`
+      : `${hh}:${mm}`;
+    showToast(`Your sky at ${when} — centered on the point straight overhead.`, 'info', 8000);
   }
 
   async function startTracking(latitude, longitude) {
@@ -172,7 +177,10 @@ export function initSkyNow(aladin, { onTrackingStart } = {}) {
       }
 
       const az = azOffset != null ? rel.az + azOffset : rel.az;
-      const { ra, dec } = altAzToRaDec(rel.alt, ((az % 360) + 360) % 360, latitude, longitude);
+      // appNow(): with the clock scrubbed, pointing the phone somewhere shows
+      // what will be in that direction at the scrubbed time — the sky, layers
+      // and tracker all agree on one moment.
+      const { ra, dec } = altAzToRaDec(rel.alt, ((az % 360) + 360) % 360, latitude, longitude, appNow());
       const v = raDecToVec(ra, dec);
       target = target ? vecMix(target, v, 0.3) : v;
     };

@@ -10,6 +10,7 @@
 
 import { getOverlay, haloText } from './overlay.js';
 import { altAzToRaDec } from './astro.js';
+import { appNow, timeOffsetMs } from './clock.js';
 export { requestObserver } from './observer.js';
 
 const CARDINALS = [
@@ -21,7 +22,7 @@ export function initHorizonLayer(aladin, observer) {
   // alt/az (observer frame, now) -> screen px via the shared projector.
   function draw(ctx, view, state) {
     const alpha = state.alpha;
-    const date = new Date();
+    const date = appNow(); // follows the time scrubber — YOUR horizon, THEN
     const proj = (altDeg, azDeg) => {
       const { ra, dec } = altAzToRaDec(altDeg, azDeg, observer.lat, observer.lon, date);
       return view.proj(ra, dec);
@@ -99,7 +100,7 @@ export function initHorizonLayer(aladin, observer) {
   const ctl = getOverlay(aladin).addLayer({
     z: 20,
     draw,
-    extraSig: () => String(Math.floor(performance.now() / 10000)) // sidereal drift
+    extraSig: () => `${Math.floor(performance.now() / 10000)}|${timeOffsetMs()}` // sidereal drift + time scrubs
   });
   return { show: () => ctl.show(), hide: () => ctl.hide() };
 }

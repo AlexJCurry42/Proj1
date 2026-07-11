@@ -3,6 +3,9 @@
 
 import { fetchJSON } from './net.js';
 import { attachRenderIfFamous } from './render3d.js';
+import { riseSet } from './astro.js';
+import { cachedObserver } from './observer.js';
+import { appNow } from './clock.js';
 
 const SIMBAD_TAP_URL = 'https://simbad.cds.unistra.fr/simbad/sim-tap/sync';
 
@@ -240,6 +243,7 @@ export function renderDetailPanel(obj) {
   rows.push(row('Dec (ICRS)', `${toSexagesimalDec(obj.dec)} / ${obj.dec.toFixed(5)}°`));
   if (obj.mag !== undefined && obj.mag !== null) rows.push(row('Magnitude', obj.mag));
   if (obj.distanceText) rows.push(row('Distance', obj.distanceText));
+  for (const r of visibilityRows(obj)) rows.push(r);
   for (const [label, value] of obj.extraRows || []) rows.push(row(label, value));
 
   const nameForLinks = encodeURIComponent(obj.name || '');
@@ -268,6 +272,33 @@ export function renderDetailPanel(obj) {
 
 function row(label, value) {
   return `<div class="drow"><span>${escapeHtml(label)}</span><span>${escapeHtml(String(value))}</span></div>`;
+}
+
+// "Visible tonight" rows: is this object up in YOUR sky, and when does it
+// rise and set? Shown only when the observer's location is already known —
+// some feature the user chose (horizon, satellites, Sky Now) asked for it;
+// the detail panel itself never triggers a permission prompt. Uses the app
+// clock, so the rows follow the time scrubber.
+function visibilityRows(obj) {
+  if (obj.skyVisibility === false) return []; // e.g. satellites: too fast for fixed-point rise/set
+  const obs = cachedObserver();
+  if (!obs || !Number.isFinite(obj.ra) || !Number.isFinite(obj.dec)) return [];
+  const rows = [];
+  try {
+    const rs = riseSet(obj.ra, obj.dec, obs.lat, obs.lon, appNow());
+    rows.push(row('In your sky', rs.altNow >= 0
+      ? `Up now — ${Math.round(rs.altNow)}° above the horizon`
+      : 'Below the horizon right now'));
+    const fmt = (d) => d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+    if (rs.circumpolar) {
+      rows.push(row('Rises / sets', 'Never sets from your latitude — up every clear night'));
+    } else if (rs.neverRises) {
+      rows.push(row('Rises / sets', 'Never rises from your latitude'));
+    } else {
+      rows.push(row('Rises / sets', `Rises ${fmt(rs.rise)} · sets ${fmt(rs.set)}`));
+    }
+  } catch (err) { /* a bad coordinate must not break the panel */ }
+  return rows;
 }
 
 const escapeDiv = document.createElement('div');

@@ -115,6 +115,9 @@
     <button id="gyro-toggle" class="glass-btn" aria-pressed="false" aria-label="Toggle gyroscope sky tracking" title="Follow my phone's motion">
       <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M15.4 8.6l-1.8 4.8-4.8 1.8 1.8-4.8z"/></svg>
     </button>
+    <button id="time-btn" class="glass-btn" aria-pressed="false" aria-label="Show the sky at another date and time" title="Time travel">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3.2 2"/></svg>
+    </button>
   </div>
   <form id="search-form" role="search" autocomplete="off">
     <svg class="icon search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><line x1="15.8" y1="15.8" x2="20" y2="20"/></svg>
@@ -138,6 +141,14 @@
 
 <!-- View-center coordinates: a single whisper of text -->
 <span id="coords-hud" aria-live="off"></span>
+
+<!-- Time scrubber: popover above the clock button; amber chip while shifted -->
+<div id="time-panel" class="glass-panel" role="dialog" aria-label="Show the sky at another time" hidden>
+  <label for="time-input" class="time-title">Show the sky at&hellip;</label>
+  <input id="time-input" type="datetime-local" aria-label="Date and time to show the sky for" />
+  <button id="time-now" class="glass-btn small wide">Back to now</button>
+</div>
+<button id="time-chip" hidden aria-label="The sky is time-shifted — tap to adjust or reset"></button>
 
 <!-- About & credits -->
 <div id="about-modal" role="dialog" aria-label="About and credits" hidden>

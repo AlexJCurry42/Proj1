@@ -27,6 +27,7 @@ import { initSkyNow } from './skynow.js';
 import { SURVEYS, STOP, MAX_VALUE, DEFAULT_VALUE, initSpectrumBar } from './spectrum.js';
 import { readPref, writePref } from './prefs.js';
 import { initMarkerFades } from './markerfade.js';
+import { appNow, setAppTime, isTimeShifted, onTimeChange } from './clock.js';
 
 const SGR_A_STAR = { ra: 266.41683, dec: -29.007811 };
 
@@ -152,7 +153,7 @@ async function main() {
   // stale index.html with fresh JS, and a missing element in one widget must
   // cost that widget, not the sky.
   for (const initChrome of [initRedlightToggle, initAboutModal, initDetailPanelClose,
-                            initKeyboard, initDockCollapse]) {
+                            initKeyboard, initDockCollapse, initTimeControl]) {
     try { initChrome(); } catch (err) { console.error('chrome init failed:', err); }
   }
 
@@ -753,6 +754,65 @@ async function main() {
   }
 }
 
+// --------------------------------------------------------- Time scrubber ---
+// One clock button, one popover: scrub the whole sky to any date and time.
+// Everything time-dependent (Solar System, horizon, satellites, Sky Now,
+// rise/set rows) reads js/clock.js, so a single setAppTime moves it all.
+function initTimeControl() {
+  const btn = document.getElementById('time-btn');
+  const panel = document.getElementById('time-panel');
+  const input = document.getElementById('time-input');
+  const nowBtn = document.getElementById('time-now');
+  const chip = document.getElementById('time-chip');
+  if (!btn || !panel || !input || !nowBtn || !chip) return;
+
+  const pad = (n) => String(n).padStart(2, '0');
+  // datetime-local speaks LOCAL wall-clock time with no zone suffix.
+  const toLocalInputValue = (d) =>
+    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+
+  function refresh() {
+    const shifted = isTimeShifted();
+    btn.setAttribute('aria-pressed', String(shifted));
+    btn.classList.toggle('time-active', shifted);
+    chip.hidden = !shifted;
+    if (shifted) {
+      chip.textContent = appNow().toLocaleString(undefined, {
+        weekday: 'short', month: 'short', day: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+      });
+    }
+  }
+  onTimeChange(refresh);
+
+  function openPanel() {
+    input.value = toLocalInputValue(appNow());
+    panel.hidden = false;
+    input.focus({ preventScroll: true });
+  }
+  btn.addEventListener('click', () => {
+    if (panel.hidden) openPanel(); else panel.hidden = true;
+  });
+  chip.addEventListener('click', openPanel); // the amber chip reopens the scrubber
+  document.addEventListener('pointerdown', (e) => {
+    if (!panel.hidden && !panel.contains(e.target) && !btn.contains(e.target) && !chip.contains(e.target)) {
+      panel.hidden = true;
+    }
+  });
+  input.addEventListener('change', () => {
+    const d = new Date(input.value);
+    if (!Number.isNaN(d.getTime())) setAppTime(d);
+  });
+  nowBtn.addEventListener('click', () => {
+    setAppTime(null);
+    panel.hidden = true;
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !panel.hidden) panel.hidden = true;
+  });
+  refresh();
+}
+
 async function initPlanetsLayer(aladin) {
   const catPlanets = A.catalog({
     name: 'Solar System planets',
@@ -785,14 +845,14 @@ async function initPlanetsLayer(aladin) {
     onClick: null
   });
 
-  const EPHEMERIS_NOTE = 'Computed client-side for the moment the app opened. Validated against a VSOP87-class ephemeris: typically within 1′ (Saturn up to ~9′), 1800–2050.';
+  const EPHEMERIS_NOTE = 'Computed client-side for the time shown above (the clock button scrubs it). Validated against a VSOP87-class ephemeris: typically within 1′ (Saturn up to ~9′), 1800–2050.';
   const EPHEMERIS_SOURCE = 'Self-contained ephemeris (see js/planets.js); JPL approximate elements / Astronomical Almanac low-precision formulae.';
 
   function build() {
     for (const c of [catPlanets, catSun, catMoon]) {
       if (typeof c.removeAll === 'function') c.removeAll();
     }
-    const now = new Date();
+    const now = appNow();
     catPlanets.addSources(computePlanetPositions(now).map(p => A.source(p.ra, p.dec, {
       name: PLANET_LABELS[p.body],
       _detail: {
@@ -800,7 +860,7 @@ async function initPlanetsLayer(aladin) {
         typeLabel: 'Solar System planet',
         ra: p.ra,
         dec: p.dec,
-        distanceText: `${p.distanceAu.toFixed(3)} AU from Earth (today)`,
+        distanceText: `${p.distanceAu.toFixed(3)} AU from Earth (at the time shown)`,
         extraRows: [['Position computed', now.toUTCString()]],
         approxNote: EPHEMERIS_NOTE,
         source: EPHEMERIS_SOURCE
@@ -814,7 +874,7 @@ async function initPlanetsLayer(aladin) {
         typeLabel: 'G-type main-sequence star',
         ra: sun.ra,
         dec: sun.dec,
-        distanceText: `${sun.distanceAu.toFixed(4)} AU from Earth (today)`,
+        distanceText: `${sun.distanceAu.toFixed(4)} AU from Earth (at the time shown)`,
         extraRows: [['Position computed', now.toUTCString()]],
         approxNote: EPHEMERIS_NOTE,
         source: EPHEMERIS_SOURCE
@@ -828,7 +888,7 @@ async function initPlanetsLayer(aladin) {
         typeLabel: "Earth's natural satellite",
         ra: moon.ra,
         dec: moon.dec,
-        distanceText: `${Math.round(moon.distanceKm).toLocaleString()} km from Earth's center (today)`,
+        distanceText: `${Math.round(moon.distanceKm).toLocaleString()} km from Earth's center (at the time shown)`,
         extraRows: [['Position computed', now.toUTCString()]],
         approxNote: 'Geocentric position from the Astronomical Almanac lunar formulae, computed when the app opened (validated: typically ~5′). From your location on Earth’s surface the Moon can appear up to ~1° away from this point (parallax).',
         source: EPHEMERIS_SOURCE
@@ -838,8 +898,10 @@ async function initPlanetsLayer(aladin) {
 
   // Positions are computed once, for the moment the app launches — each
   // marker's detail panel records that timestamp. (The Moon moves ~0.5°/hour,
-  // so a long-lived tab will drift; reloading recomputes.)
+  // so a long-lived tab will drift; reloading recomputes.) The one exception:
+  // scrubbing the time control rebuilds everything for the chosen moment.
   build();
+  onTimeChange(() => build());
   for (const c of [catPlanets, catSun, catMoon]) aladin.addCatalog(c);
   return { catalogs: [catPlanets, catSun, catMoon], count: 11 };
 }

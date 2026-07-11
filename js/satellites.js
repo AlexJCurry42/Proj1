@@ -13,6 +13,7 @@ import { twoline2satrec } from './vendor/satellite/io.js';
 import { propagate, gstime } from './vendor/satellite/propagation.js';
 import { eciToEcf, ecfToLookAngles, degreesToRadians } from './vendor/satellite/transforms.js';
 import { altAzToRaDec, R2D } from './astro.js';
+import { appNow, timeOffsetMs } from './clock.js';
 import { fetchText } from './net.js';
 import { showToast, renderDetailPanel } from './ui.js';
 import { getOverlay, haloText } from './overlay.js';
@@ -45,7 +46,7 @@ function lookAngles(sat, observerGd, date) {
 function nextPasses(sat, observerGd, maxPasses = 3) {
   const passes = [];
   let cur = null;
-  const start = Date.now();
+  const start = appNow().getTime();
   for (let s = 0; s <= 86400 && passes.length < maxPasses; s += 30) {
     const la = lookAngles(sat, observerGd, new Date(start + s * 1000));
     const el = la ? la.elevation * R2D : -90;
@@ -92,10 +93,25 @@ export async function initSatellitesLayer(aladin, observer) {
 
   let hits = []; // last-drawn screen positions, for tap lookup
 
+  // SGP4 accuracy decays fast away from the element epoch (km/day of
+  // along-track drift), so when the time scrubber travels more than a few
+  // days the satellites bow out rather than plot confident-looking nonsense.
+  const MAX_SCRUB_DAYS = 5;
+  const scrubbedTooFar = () => Math.abs(timeOffsetMs()) > MAX_SCRUB_DAYS * 86400000;
+  let scrubNoteShown = false;
+
   function draw(ctx, view, state) {
     const alpha = state.alpha;
     hits = [];
-    const date = new Date();
+    if (scrubbedTooFar()) {
+      if (!scrubNoteShown && state.alpha > 0.5) {
+        scrubNoteShown = true;
+        showToast(`Satellites hide beyond ±${MAX_SCRUB_DAYS} days of time travel — orbit data can't be propagated that far accurately.`, 'info', 7000);
+      }
+      return;
+    }
+    scrubNoteShown = false;
+    const date = appNow();
     for (const sat of sats) {
       const la = lookAngles(sat, observerGd, date);
       if (!la) continue;
@@ -168,6 +184,8 @@ export async function initSatellitesLayer(aladin, observer) {
       name: sat.isISS ? 'International Space Station' : sat.name,
       typeLabel: sat.isISS ? 'Crewed space station, low Earth orbit' : 'Artificial satellite',
       ra, dec,
+      skyVisibility: false, // moves too fast for fixed-point rise/set rows
+
       distanceText: `${Math.round(rangeKm).toLocaleString()} km from you right now`,
       extraRows: [
         ['Above your horizon', `${Math.round(el)}° up`],

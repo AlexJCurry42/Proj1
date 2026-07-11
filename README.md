@@ -27,8 +27,14 @@ catalog** (~13,000 objects, magnitude-tiered by zoom), live
 **satellites** with ISS pass predictions (SGP4, computed on-device),
 and **Sky Now** — one tap flies to your zenith, and with the compass
 toggle on, the view tracks the phone live (sensor-smoothed gyro +
-compass, computed entirely on-device). Two projections: orbit the
-celestial sphere from outside, or stand inside it, planetarium style.
+compass, computed entirely on-device). A **time scrubber** (the clock
+button) shows the sky for any date and time — Solar System positions,
+the horizon overlay, satellites and Sky Now all follow one shared app
+clock, with an amber chip marking the shift. Once your location is
+known, every object's detail panel adds **visible-tonight rows**: is it
+up right now, and when does it rise and set from where you stand. Two
+projections: orbit the celestial sphere from outside, or stand inside
+it, planetarium style.
 
 Also: instant search suggestions from the curated catalogs, shareable
 permalinks for any view (plus a native share button), installable as a
@@ -61,7 +67,8 @@ css/style.css        Liquid-glass design system, one --spring motion token
 js/app.js            App entry point: engine init, layer dock, permalinks
 js/overlay.js        UNIFIED overlay engine: one canvas + one loop for every
                      sky-drawn layer (goes fully idle when nothing animates)
-js/astro.js          Shared spherical math: vectors, alt-az↔RA/Dec, GMST
+js/astro.js          Shared spherical math: vectors, alt-az↔RA/Dec, GMST, rise/set
+js/clock.js          Shared app clock: the time scrubber's single source of truth
 js/prefs.js          Shared localStorage preferences (one namespace/codec)
 js/observer.js       Shared geolocation (one permission flow, session cache)
 js/conesearch.js     Shared live TAP cone-search layer skeleton
@@ -84,8 +91,31 @@ js/markers.js        Shared catalog-marker helpers
 js/net.js            Shared fetch-with-timeout-and-retry helper
 sw.js                Service worker: network-first shell cache (offline PWA)
 data/*.json|csv|txt  Curated + Action-refreshed data
-.github/workflows/   Exoplanet, constellation, OpenNGC and TLE data pipelines
+tests/unit.mjs       Unit tests: astro math, ephemeris, clock, SGP4 (plain Node)
+tests/health-check.mjs  Live-endpoint health check (replays every service call)
+package.json         No dependencies — exists so Node runs the tests as ES modules
+.github/workflows/   Data pipelines + the daily test & health-check workflow
 ```
+
+## Tests
+
+Both suites are dependency-free — plain Node ≥ 18, nothing to install:
+
+```sh
+node tests/unit.mjs          # pure math: sidereal time, transforms, rise/set,
+                             # the ephemeris (anchored to equinox/solstice
+                             # ground truth), the app clock, vendored SGP4
+node tests/health-check.mjs  # live: replays every CDS/VizieR/NASA/CelesTrak/
+                             # Commons call the app makes, exact queries and
+                             # columns, and fails on drift
+```
+
+`.github/workflows/health-check.yml` runs both daily (and on any push that
+touches `tests/`), so endpoint drift — TAP column renames, retired HiPS IDs,
+moved Commons files — surfaces in the Actions tab instead of in a user's
+browser. Browser-level behavior (overlay engine, layer toggles, motion
+tracking) is exercised separately with Playwright against a locally-served
+copy of the real Aladin engine during development.
 
 ## Data sources & attribution
 
@@ -136,13 +166,12 @@ drifts, the UI degrades to the procedural render without a broken image.
 
 - **This was built and tested in a network-sandboxed environment.** The
   sandbox's outbound network policy blocks the CDS, NASA/IPAC and VizieR
-  domains this app depends on, so while every integration was written against
-  each service's real, documented API (HiPS survey IDs, TAP/ADQL endpoints,
-  Sesame resolver), **it could not be exercised against live traffic during
-  development.** Please verify end-to-end behavior (tile loading, TAP
-  queries, search) the first time you run it with real internet access, and
-  file corrections for any endpoint/column-name drift — CDS occasionally
-  renames HiPS catalog service paths and VizieR table columns.
+  domains this app depends on, so every integration was written against
+  each service's real, documented API but could not be exercised against
+  live traffic during development. The daily health-check Action
+  (`tests/health-check.mjs`) now replays every live call — exact queries,
+  exact column names — so endpoint drift is caught within a day; check the
+  Actions tab if a live layer misbehaves.
 - **Satellite positions depend on TLE freshness.** SGP4 accuracy decays
   within days of the element epoch; the daily CelesTrak snapshot keeps the
   ISS good to well under a degree, but if the Action stops running the app
@@ -159,8 +188,15 @@ drifts, the UI degrades to the procedural render without a broken image.
   `astronomy-engine`: Sun and most planets agree to ≲1′, Jupiter/Saturn to
   ~10′ worst-case (the table's documented weakness), the Moon to ~5′ typical
   after correcting its of-date series to J2000. Positions are computed once,
-  at app launch; a long-lived tab will slowly drift (Moon ~0.5°/hour) until
-  reloaded.
+  at app launch (and recomputed whenever the time scrubber moves); a
+  long-lived tab will slowly drift (Moon ~0.5°/hour) until reloaded or
+  scrubbed.
+- **Time-scrubbed satellites are gated.** SGP4 accuracy decays km/day away
+  from the TLE epoch, so the satellite layer hides itself beyond ±5 days of
+  time travel rather than plot confident-looking nonsense. Rise/set rows in
+  the detail panel treat the object's coordinates as fixed — exact for stars
+  and deep-sky objects, approximate for planets, and up to ~½ hour off for
+  the fast-moving Moon.
 - **Messier/NGC/IC layer is a curated subset, not the full NGC/IC catalogs.**
   It includes all 110 Messier objects plus roughly 30 additional famous
   NGC/IC objects — not the complete ~13,000-object NGC/IC catalogs.
@@ -184,8 +220,8 @@ drifts, the UI degrades to the procedural render without a broken image.
 
 ## Roadmap
 
-- Verify and, if needed, correct HiPS survey IDs / TAP column names against
-  live CDS/VizieR/NASA endpoints once network access is available.
+- Act on the daily health-check Action's findings: correct any HiPS survey
+  IDs / TAP column names the live replay flags as drifted.
 - Expand the black hole layer with intermediate-mass black hole candidates
   (e.g. in dense globular clusters) as the literature matures.
 - Add unit conversion toggles (magnitude systems, distance units).

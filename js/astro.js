@@ -95,3 +95,53 @@ export function altAzToRaDec(altDeg, azDeg, latDeg, lonEastDeg, date = new Date(
   const lst = gmstDeg(date) + lonEastDeg;
   return { ra: normRa(lst - haDeg), dec };
 }
+
+/** Equatorial (RA/Dec) → horizontal (alt/az) for an observer — the inverse. */
+export function raDecToAltAz(raDeg, decDeg, latDeg, lonEastDeg, date = new Date()) {
+  const H = (gmstDeg(date) + lonEastDeg - raDeg) * D2R; // hour angle
+  const dec = decDeg * D2R, lat = latDeg * D2R;
+  const sinAlt = Math.sin(dec) * Math.sin(lat) + Math.cos(dec) * Math.cos(lat) * Math.cos(H);
+  const alt = Math.asin(Math.max(-1, Math.min(1, sinAlt))) * R2D;
+  let az = Math.atan2(
+    -Math.sin(H) * Math.cos(dec),
+    Math.sin(dec) * Math.cos(lat) - Math.cos(dec) * Math.sin(lat) * Math.cos(H)
+  ) * R2D;
+  if (az < 0) az += 360;
+  return { alt, az };
+}
+
+// Earth's rotation against the stars: sidereal degrees of hour angle per ms.
+const SIDEREAL_DEG_PER_MS = 360.98564736629 / 86400000;
+
+/**
+ * Rise, transit and set for a fixed point on the celestial sphere, seen by an
+ * observer. Solves the hour angle H₀ where the object crosses the effective
+ * horizon (default −0.567°: standard atmospheric refraction), then converts
+ * hour angles to the NEXT clock times at the sidereal rate.
+ *
+ * Returns { altNow, transitAlt, circumpolar, neverRises, rise, set, transit }
+ * — rise/set are Dates (null when circumpolar or never up); transit is the
+ * next upper culmination. Solar System bodies drift in RA/Dec, so for them
+ * the times are approximate (fine for planets; the Moon can be off ~½ h).
+ */
+export function riseSet(raDeg, decDeg, latDeg, lonEastDeg, date = new Date(), horizonAltDeg = -0.567) {
+  const lat = latDeg * D2R, dec = decDeg * D2R;
+  const altNow = raDecToAltAz(raDeg, decDeg, latDeg, lonEastDeg, date).alt;
+  const transitAlt = 90 - Math.abs(latDeg - decDeg);
+  const haNow = wrap180(gmstDeg(date) + lonEastDeg - raDeg);
+  const nextAtHa = (haDeg) =>
+    new Date(date.getTime() + (((haDeg - haNow) % 360 + 360) % 360) / SIDEREAL_DEG_PER_MS);
+  const cosH0 = (Math.sin(horizonAltDeg * D2R) - Math.sin(lat) * Math.sin(dec)) /
+    (Math.cos(lat) * Math.cos(dec));
+  if (cosH0 < -1) {
+    return { altNow, transitAlt, circumpolar: true, neverRises: false, rise: null, set: null, transit: nextAtHa(0) };
+  }
+  if (cosH0 > 1) {
+    return { altNow, transitAlt, circumpolar: false, neverRises: true, rise: null, set: null, transit: nextAtHa(0) };
+  }
+  const h0 = Math.acos(cosH0) * R2D;
+  return {
+    altNow, transitAlt, circumpolar: false, neverRises: false,
+    rise: nextAtHa(-h0), set: nextAtHa(h0), transit: nextAtHa(0)
+  };
+}
