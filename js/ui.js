@@ -1,4 +1,4 @@
-// Deep Sky Atlas — UI chrome: toasts, object detail panel, tours, onboarding,
+// Deep Sky Atlas — UI chrome: toasts, object detail panel, sky destinations,
 // about/credits modal, red-light night-vision mode.
 
 import { fetchJSON } from './net.js';
@@ -205,8 +205,6 @@ export function initKeyboard() {
     // Let the search field's native Escape (clear text) win while focused.
     if (e.target && e.target.id === 'search-input') return;
     if (document.getElementById('lightbox')) { closeLightbox(); return; }
-    const onboarding = document.getElementById('onboarding');
-    if (!onboarding.hidden) { document.getElementById('onboarding-skip').click(); return; }
     const about = document.getElementById('about-modal');
     if (!about.hidden) { document.getElementById('about-close').click(); return; }
     if (!detailPanel().hidden) closeDetailPanel();
@@ -431,58 +429,10 @@ export async function initTours(aladin, spectrum) {
   });
 }
 
-// --------------------------------------------------------------- Onboarding ---
-
-const ONBOARDING_STEPS = [
-  { title: 'Explore the sky', body: 'Drag to pan, pinch to zoom. This is the real sky — more detail and more objects reveal themselves the deeper you go.' },
-  { title: 'Light up the sky', body: 'The menu on the left holds the universe: constellations, black holes, exoplanets, whole catalogs. Switch on a layer and tap any glowing marker for its story.' },
-  { title: 'Search the universe', body: 'Try "Cygnus X-1" or "Orion Nebula" — or pick a Tour for a guided flight to the sky’s greatest hits.' }
-];
-
-function onboardingSeen(set) {
-  // localStorage so a launched tool greets each person once, not once per
-  // tab; sessionStorage fallback keeps private-mode users covered.
-  try {
-    if (set) localStorage.setItem('dsa-onboarding-shown', '1');
-    else return localStorage.getItem('dsa-onboarding-shown');
-  } catch (err) {
-    if (set) sessionStorage.setItem('dsa-onboarding-shown', '1');
-    else return sessionStorage.getItem('dsa-onboarding-shown');
-  }
-  return null;
-}
-
-export function initOnboarding() {
-  if (onboardingSeen(false)) return;
-  const overlay = document.getElementById('onboarding');
-  const stepsEl = document.getElementById('onboarding-steps');
-  const dotsEl = document.getElementById('onboarding-dots');
-  let step = 0;
-
-  function render() {
-    const s = ONBOARDING_STEPS[step];
-    stepsEl.innerHTML = `<div class="onboarding-step"><strong>${s.title}</strong><p>${s.body}</p></div>`;
-    dotsEl.innerHTML = ONBOARDING_STEPS.map((_, i) => `<span${i === step ? ' class="active"' : ''}></span>`).join('');
-    document.getElementById('onboarding-prev').disabled = step === 0;
-    document.getElementById('onboarding-next').textContent = step === ONBOARDING_STEPS.length - 1 ? 'Start exploring' : 'Continue';
-  }
-
-  function dismiss() {
-    overlay.hidden = true;
-    onboardingSeen(true);
-  }
-
-  document.getElementById('onboarding-next').addEventListener('click', () => {
-    if (step < ONBOARDING_STEPS.length - 1) { step++; render(); } else { dismiss(); }
-  });
-  document.getElementById('onboarding-prev').addEventListener('click', () => {
-    if (step > 0) { step--; render(); }
-  });
-  document.getElementById('onboarding-skip').addEventListener('click', dismiss);
-
-  render();
-  overlay.hidden = false;
-}
+// NOTE: the modal first-run onboarding was retired deliberately — a welcome
+// dialog stands between a new user and the sky. Discovery happens in place
+// instead: the view-mode and "Show me something cool" buttons breathe until
+// first pressed (see the .nudge pattern in app.js/style.css).
 
 // --------------------------------------------------------------- About modal ---
 

@@ -205,7 +205,7 @@ const NGC_TYPE_LABEL = {
  *   FoV ≥ 50°:  mag ≤ 8    ·  20–50°: mag ≤ 10
  *   7–20°:      mag ≤ 12   ·  < 7°:   everything
  */
-export async function loadNgcFull(aladin, onZoom = (fn) => aladin.on('zoomChanged', fn)) {
+export async function loadNgcFull(aladin, onZoom = (fn) => aladin.on('zoomChanged', fn), excludeIds = null) {
   let data;
   try {
     data = await fetchJSON('data/ngc_full.json');
@@ -216,7 +216,9 @@ export async function loadNgcFull(aladin, onZoom = (fn) => aladin.on('zoomChange
 
   // Tiers by magnitude; unmeasured-magnitude objects land in the last tier.
   const tiers = [[], [], [], []];
+  let skipped = 0;
   for (const [name, type, ra, dec, mag, common] of data.objects) {
+    if (excludeIds && excludeIds.has(String(name).replace(/\s+/g, '').toUpperCase())) { skipped++; continue; }
     const src = A.source(ra, dec, {
       _detail: {
         name: common ? `${name} — ${common}` : name,
@@ -254,7 +256,7 @@ export async function loadNgcFull(aladin, onZoom = (fn) => aladin.on('zoomChange
   rebuild();
   onZoom(debounce(rebuild, 200));
 
-  return { catalog: cat, count: data.objects.length };
+  return { catalog: cat, count: data.objects.length - skipped };
 }
 
 /**
@@ -325,7 +327,11 @@ export async function loadMessierNgc(aladin, onZoom = (fn) => aladin.on('zoomCha
   onZoom(debounce(applyDensity, 250));
   applyDensity();
 
-  return { catalogs: Object.values(catalogs), count: all.length };
+  // ids let the full-NGC layer skip objects the curated set already shows
+  // (the showpieces are a subset of OpenNGC — without this, M31 would get
+  // both its curated marker and a plain 'NGC 224' dot on top).
+  const ids = new Set(all.map(e => String(e.obj.id).replace(/\s+/g, '').toUpperCase()));
+  return { catalogs: Object.values(catalogs), count: all.length, ids };
 }
 
 /**

@@ -10,7 +10,7 @@
 import {
   showToast, renderDetailPanel, showDetailLoading, closeDetailPanel,
   fetchSimbadNear, humanObjectType, toSexagesimalRA, toSexagesimalDec,
-  initTours, initOnboarding, initAboutModal, initRedlightToggle,
+  initTours, initAboutModal, initRedlightToggle,
   initDetailPanelClose, initKeyboard
 } from './ui.js';
 import { runSearch, getHistory, addToHistory, flyTo } from './search.js';
@@ -44,6 +44,25 @@ function writePref(key, value) {
   try { localStorage.setItem('dsa-' + key, JSON.stringify(value)); } catch (err) { /* private mode */ }
 }
 const savedLayers = readPref('layers', {});
+// Migration: the two deep-sky toggles merged into one. If a returning user
+// had either of the old switches on, the merged switch comes on.
+if ('Messier & NGC' in savedLayers || 'NGC & IC (full)' in savedLayers) {
+  if (!('Deep sky' in savedLayers)) {
+    savedLayers['Deep sky'] = savedLayers['Messier & NGC'] === true || savedLayers['NGC & IC (full)'] === true;
+  }
+  delete savedLayers['Messier & NGC'];
+  delete savedLayers['NGC & IC (full)'];
+  writePref('layers', savedLayers);
+}
+
+// A quiet section header inside the layer dock (visual only).
+function addDockSection(listEl, title) {
+  const li = document.createElement('li');
+  li.className = 'dock-section';
+  li.setAttribute('aria-hidden', 'true');
+  li.textContent = title;
+  listEl.appendChild(li);
+}
 
 let toggleSeq = 0;
 function addToggle(listEl, { label, color, checked = true, sub = false, onToggle }) {
@@ -268,12 +287,12 @@ function parseViewHash() {
 
 async function main() {
   // Aladin-independent chrome first, so a sky-engine failure still leaves a
-  // working shell (dock, about modal, red-light mode, onboarding). Each piece
-  // is fault-isolated: right after a deploy the HTTP cache can briefly pair a
+  // working shell (dock, about modal, red-light mode). Each piece is
+  // fault-isolated: right after a deploy the HTTP cache can briefly pair a
   // stale index.html with fresh JS, and a missing element in one widget must
   // cost that widget, not the sky.
   for (const initChrome of [initRedlightToggle, initAboutModal, initDetailPanelClose,
-                            initKeyboard, initOnboarding, initDockCollapse]) {
+                            initKeyboard, initDockCollapse]) {
     try { initChrome(); } catch (err) { console.error('chrome init failed:', err); }
   }
 
@@ -445,14 +464,19 @@ async function main() {
     }
   }
   viewBtn.setAttribute('aria-pressed', String(viewMode === 'inside'));
-  // First-discovery nudge: the button breathes until it has been pressed
-  // once, ever. One tap retires the animation for good.
-  if (readPref('viewhint', false) !== true) viewBtn.classList.add('nudge');
+  // First-discovery nudges (the replacement for modal onboarding): the two
+  // doorway buttons breathe until each has been pressed once, ever.
+  function nudgeUntilPressed(btn, prefKey) {
+    if (!btn || readPref(prefKey, false) === true) return;
+    btn.classList.add('nudge');
+    btn.addEventListener('click', () => {
+      btn.classList.remove('nudge');
+      writePref(prefKey, true);
+    }, { once: true });
+  }
+  nudgeUntilPressed(viewBtn, 'viewhint');
+  nudgeUntilPressed(document.getElementById('cool-btn'), 'coolhint');
   viewBtn.addEventListener('click', () => {
-    if (viewBtn.classList.contains('nudge')) {
-      viewBtn.classList.remove('nudge');
-      writePref('viewhint', true);
-    }
     applyViewMode(viewMode === 'inside' ? 'globe' : 'inside');
   });
 
@@ -624,6 +648,8 @@ async function main() {
   // the star of the show. Everything else builds ready-to-go but starts
   // hidden; the user's own toggle choices persist and override from then on.
 
+  addDockSection(catalogList, 'Sky guides');
+
   // Horizon & compass: YOUR horizon on the sky. Needs location (on-device
   // only); lazy so no permission prompt fires until the user asks for it.
   const horizonRef = { ctl: null, busy: false };
@@ -692,34 +718,41 @@ async function main() {
   });
   syncBorders();
 
-  const messierRef = {};
-  const messierToggle = addToggle(catalogList, {
-    label: 'Messier & NGC', color: '#ffd60a', checked: false,
-    onToggle: v => setCatalogVisible(messierRef.catalogs, v)
-  });
-  loadMessierNgc(aladin, onZoom).then(({ catalogs, count }) => {
-    messierRef.catalogs = catalogs;
-    messierToggle.setCount(count);
-    setCatalogVisible(catalogs, messierToggle.isChecked());
-  });
+  addDockSection(catalogList, 'Catalogs');
 
-  // The complete OpenNGC catalog (~13k objects), lazy: nothing downloads
-  // until the switch is flipped. Density is magnitude-tiered by zoom.
-  const ngcRef = { loading: false };
-  const ngcToggle = addToggle(catalogList, {
-    label: 'NGC & IC (full)', color: '#66b7ff', checked: false,
+  // Deep sky: one switch for everything beyond the Solar System's furniture.
+  // The ~140 curated showpieces (typed colors, photos, renders) are the
+  // always-ready bright tier; the complete OpenNGC catalog (~12k objects,
+  // magnitude-tiered by zoom, deduped against the showpieces) lazy-loads the
+  // first time the switch is flipped.
+  const deepRef = { curated: null, curatedCount: 0, ids: null, full: null, loadingFull: false };
+  const updateDeepCount = () => {
+    const full = deepRef.fullCount || 0;
+    deepToggle.setCount((deepRef.curatedCount + full).toLocaleString());
+  };
+  const deepToggle = addToggle(catalogList, {
+    label: 'Deep sky', color: '#ffd60a', checked: false,
     onToggle: async (v) => {
-      if (v && !ngcRef.catalog && !ngcRef.loading) {
-        ngcRef.loading = true;
-        const { catalog, count } = await loadNgcFull(aladin, onZoom);
-        ngcRef.catalog = catalog;
-        ngcRef.loading = false;
-        if (count > 0) ngcToggle.setCount(count.toLocaleString());
-        setCatalogVisible(catalog, ngcToggle.isChecked());
+      setCatalogVisible(deepRef.curated, v);
+      if (v && !deepRef.full && !deepRef.loadingFull) {
+        deepRef.loadingFull = true;
+        const { catalog, count } = await loadNgcFull(aladin, onZoom, deepRef.ids || undefined);
+        deepRef.full = catalog;
+        deepRef.fullCount = count;
+        deepRef.loadingFull = false;
+        updateDeepCount();
+        setCatalogVisible(catalog, deepToggle.isChecked());
       } else {
-        setCatalogVisible(ngcRef.catalog, v);
+        setCatalogVisible(deepRef.full, v);
       }
     }
+  });
+  loadMessierNgc(aladin, onZoom).then(({ catalogs, count, ids }) => {
+    deepRef.curated = catalogs;
+    deepRef.curatedCount = count;
+    deepRef.ids = ids;
+    updateDeepCount();
+    setCatalogVisible(catalogs, deepToggle.isChecked());
   });
 
   const planetsRef = {};
@@ -798,6 +831,7 @@ async function main() {
   });
 
   // ----------------------------------------------------------- Black holes ---
+  addDockSection(catalogList, 'Black holes');
   // Two sources under one switch: the curated stellar-mass list (rich
   // physics-driven renders, literature citations) plus a live SIMBAD layer
   // of everything catalogued as a (candidate) black hole, so the toggle
