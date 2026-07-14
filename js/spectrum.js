@@ -75,25 +75,64 @@ export function initSpectrumBar(aladin, { onSettle, collapsed = false, onCollaps
     chipTimer = setTimeout(() => chip.classList.remove('visible'), 2000);
   }
 
+  function setBase(i) {
+    try { aladin.setBaseImageLayer(SURVEYS[i].id); } catch (err) { /* mid-drag hiccup */ }
+    curBase = i;
+  }
+  function pointOverlay(i) {
+    if (curOver === i && overlayLayer) return;
+    try {
+      overlayLayer = aladin.setOverlayImageLayer(SURVEYS[i].id, 'dsa-blend')
+        || aladin.getOverlayImageLayer?.('dsa-blend') || overlayLayer;
+    } catch (err) { overlayLayer = null; }
+    curOver = i;
+  }
+  const setOpacity = (o) => { try { overlayLayer?.setOpacity?.(o); } catch (err) { /* non-fatal */ } };
+
+  // Crossing a stop used to jitter: the base swapped to a survey the engine
+  // hadn't finished setting up, and in the same breath the opaque overlay
+  // that could have covered the work was re-pointed elsewhere — one or more
+  // frames showed a half-initialized layer. The choreography now never
+  // exposes a fresh layer: whatever swaps does so UNDER cover of a warm,
+  // fully-opaque layer of the survey already on screen, and the cover is
+  // held for a few frames before moving on.
+  let overlayHold = 0; // frames the redundant opaque cover outlives an up-crossing
+
   function applyEngine(v) {
     const idx = Math.min(Math.floor(v / STOP), SURVEYS.length - 2);
     const frac = (v - idx * STOP) / STOP;
-    if (idx !== curBase) {
-      try { aladin.setBaseImageLayer(SURVEYS[idx].id); } catch (err) { /* mid-drag hiccup */ }
-      curBase = idx;
-    }
     const overIdx = idx + 1;
-    if (frac > 0.001) {
-      if (overIdx !== curOver) {
-        try {
-          overlayLayer = aladin.setOverlayImageLayer(SURVEYS[overIdx].id, 'dsa-blend')
-            || aladin.getOverlayImageLayer?.('dsa-blend') || overlayLayer;
-        } catch (err) { overlayLayer = null; }
-        curOver = overIdx;
+
+    if (idx !== curBase) {
+      if (curBase !== -1 && idx === curBase - 1 && curOver !== idx) {
+        // Adjacent DOWN-crossing mid-scrub: the survey on screen is the OLD
+        // base. Cover with it first (warm tiles — it was just the base),
+        // then swap the cold new base fully hidden beneath.
+        pointOverlay(overIdx);
+        setOpacity(Math.max(smoothstep(frac), 0.999));
+        setBase(idx);
+        overlayHold = 0;
+      } else {
+        // UP-crossing, or a fade/jump landing on a stop: swap the base, and
+        // if the current overlay already mirrors the new base (the opaque
+        // cover of a scrub crossing, or a completed direct fade), HOLD it a
+        // few frames so the fresh base is never seen mid-initialization.
+        // An unrelated overlay (multi-stop jump) is never held — that would
+        // freeze the wrong survey on screen.
+        setBase(idx);
+        overlayHold = curOver === idx ? 4 : 0;
       }
-      try { overlayLayer?.setOpacity?.(smoothstep(frac)); } catch (err) { /* non-fatal */ }
+    }
+
+    if (overlayHold > 0 && curOver !== overIdx) {
+      overlayHold--;
+      setOpacity(1); // the cover mirrors the new base: visually seamless
+    } else if (frac > 0.001) {
+      overlayHold = 0;
+      pointOverlay(overIdx);
+      setOpacity(smoothstep(frac));
     } else {
-      try { overlayLayer?.setOpacity?.(0); } catch (err) { /* non-fatal */ }
+      setOpacity(0);
     }
 
     const near = Math.round(v / STOP);
@@ -205,11 +244,14 @@ export function initSpectrumBar(aladin, { onSettle, collapsed = false, onCollaps
   });
   track.addEventListener('pointerup', (e) => {
     if (gesture === 'pending') {
-      // A clean tap: glide to the tapped point.
+      // A clean tap picks a survey: ONE direct cross-fade to the nearest
+      // stop. (Gliding the value there walked through every survey in
+      // between — each crossing a base swap and a burst of tile loads,
+      // which read as jitter. Live pair-blending stays for real drags,
+      // where the finger sets the pace.)
       showChip();
-      target = valueFromPointer(e.clientY);
-      settlePending = true;
-      animate();
+      const stopIdx = Math.round(valueFromPointer(e.clientY) / STOP);
+      api.fadeToSurvey(SURVEYS[stopIdx].id, 650);
     }
     gesture = null;
     release();
@@ -222,16 +264,14 @@ export function initSpectrumBar(aladin, { onSettle, collapsed = false, onCollaps
   track.addEventListener('keydown', (e) => {
     const stopIdx = Math.round(target / STOP);
     let next = null;
-    if (e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === 'PageDown') next = Math.min(SURVEYS.length - 1, stopIdx + 1) * STOP;
-    else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft' || e.key === 'PageUp') next = Math.max(0, stopIdx - 1) * STOP;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === 'PageDown') next = Math.min(SURVEYS.length - 1, stopIdx + 1);
+    else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft' || e.key === 'PageUp') next = Math.max(0, stopIdx - 1);
     else if (e.key === 'Home') next = 0;
-    else if (e.key === 'End') next = MAX_VALUE;
+    else if (e.key === 'End') next = SURVEYS.length - 1;
     if (next == null) return;
     e.preventDefault();
     showChip();
-    target = next;
-    settlePending = true;
-    animate();
+    api.fadeToSurvey(SURVEYS[next].id, 550); // one direct fade, like taps
   });
 
   window.addEventListener('resize', () => paint(value));
@@ -269,17 +309,8 @@ export function initSpectrumBar(aladin, { onSettle, collapsed = false, onCollaps
   // Pin the blend pair: base = the survey on screen now, overlay = the
   // incoming one (created only if it isn't already the 'dsa-blend' layer).
   function pinBlendPair(fromIdx, toIdx) {
-    if (curBase !== fromIdx) {
-      try { aladin.setBaseImageLayer(SURVEYS[fromIdx].id); } catch (err) { /* engine hiccup */ }
-      curBase = fromIdx;
-    }
-    if (curOver !== toIdx || !overlayLayer) {
-      try {
-        overlayLayer = aladin.setOverlayImageLayer(SURVEYS[toIdx].id, 'dsa-blend')
-          || aladin.getOverlayImageLayer?.('dsa-blend') || overlayLayer;
-      } catch (err) { overlayLayer = null; }
-      curOver = toIdx;
-    }
+    if (curBase !== fromIdx) setBase(fromIdx);
+    pointOverlay(toIdx);
   }
   const api = {
     setValue(v, { settle = false } = {}) {
@@ -311,9 +342,11 @@ export function initSpectrumBar(aladin, { onSettle, collapsed = false, onCollaps
       if (i < 0) return;
       const toV = i * STOP;
       const fromV = target;
-      if (Math.round(fromV) === toV) { api.setValue(toV, { settle: true }); return; }
-      if (!motionOK()) {
+      // Taps and keyboard steps show the chip before fading; every exit
+      // from here must schedule its retirement or it lingers forever.
+      if (Math.round(fromV) === toV || !motionOK()) {
         api.setValue(toV, { settle: true });
+        scheduleChipHide();
         return;
       }
       const token = ++fadeToken;
@@ -332,6 +365,7 @@ export function initSpectrumBar(aladin, { onSettle, collapsed = false, onCollaps
         if (u < 1) { requestAnimationFrame(step); return; }
         // Fully opaque: swapping the base underneath is invisible.
         api.setValue(toV, { settle: true });
+        scheduleChipHide();
       };
       requestAnimationFrame(step);
     }

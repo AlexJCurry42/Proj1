@@ -750,9 +750,8 @@ async function main() {
 
   // -------------------------------------------------------------- Display ---
   addDockSection(catalogList, 'Display');
-  // Animations: motion is on by default; the OS reduce-motion flag turns it
-  // off by default (many desktops ship that way without the user choosing
-  // it). This switch is the explicit override, either direction, and it
+  // Animations: ON by default for everybody (see js/motion.js for why the
+  // OS reduce-motion flag is deliberately not the default). This one switch
   // governs EVERYTHING — flights, layer fades, constellation reveals, warp,
   // and all CSS animation (via body.reduce-motion).
   addToggle(catalogList, {

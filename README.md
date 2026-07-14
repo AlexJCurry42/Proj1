@@ -39,11 +39,9 @@ it, planetarium style.
 Also: instant search suggestions from the curated catalogs, shareable
 permalinks for any view (plus a native share button), installable as a
 PWA with an offline-cached shell, red-light night-vision mode, an
-**Animations switch** in the layer dock (defaults follow the OS
-reduced-motion preference — which many desktops set without asking —
-and the switch overrides it in either direction, governing flights,
-fades, reveals and all CSS motion), and preferences that persist
-locally. **No tracking, no analytics, no
+**Animations switch** in the layer dock (on by default for everyone;
+flipping it off makes every flight, fade, reveal and CSS transition
+instant, persistently), and preferences that persist locally. **No tracking, no analytics, no
 accounts — ever.** MIT licensed (code); all data and imagery remain
 under their providers' licenses, credited in-app.
 
