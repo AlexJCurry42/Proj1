@@ -127,6 +127,22 @@ export function initHorizonLock(aladin, onPosition) {
   let raf = null;
   let lastMoveT = 0;
 
+  // NEVER rotate while a pointer is down. The engine anchors an active drag
+  // to the sky point under the finger, computed in the current rotation
+  // frame — rotating mid-drag breaks that anchor and the pan lands
+  // somewhere random (worst on horizontal drags, which change the zenith
+  // tilt the most). The lock levels the view as the gesture ENDS instead.
+  let pointerDown = false;
+  const wrap = document.getElementById('sky-wrap');
+  wrap?.addEventListener('pointerdown', () => { pointerDown = true; }, true);
+  const gestureEnd = () => {
+    if (!pointerDown) return;
+    pointerDown = false;
+    wake(); // the settle moment: ease level now
+  };
+  window.addEventListener('pointerup', gestureEnd, true);
+  window.addEventListener('pointercancel', gestureEnd, true);
+
   // Screen tilt of the zenith direction at the view center, in degrees
   // (0 = zenith reads straight up); null when it can't be measured.
   function zenithTilt() {
@@ -136,7 +152,10 @@ export function initHorizonLock(aladin, onPosition) {
     const c = raDecToVec(ra0, dec0);
     const z = raDecToVec(zen.ra, zen.dec);
     const dot = c[0] * z[0] + c[1] * z[1] + c[2] * z[2];
-    if (Math.abs(dot) > 0.996) return null; // looking ~at zenith/nadir: "up" is undefined there
+    // Within ~10° of the zenith/nadir "up" is ill-defined and flips 180°
+    // as the center crosses over — chasing that reads as a violent spin,
+    // so the lock stands down in the whole neighborhood.
+    if (Math.abs(dot) > 0.985) return null;
     // Unit tangent at the view center, pointing along the great circle
     // toward the zenith; project a small step along it and measure the
     // screen angle of that step.
@@ -159,6 +178,10 @@ export function initHorizonLock(aladin, onPosition) {
     raf = null;
     if (!enabled || !observer) return;
     if (performance.now() - lastMoveT > 2600) return; // the view is at rest: stand down
+    if (pointerDown) { // finger owns the view: watch, don't steer
+      raf = requestAnimationFrame(frame);
+      return;
+    }
     const err = zenithTilt();
     if (err != null && Math.abs(err) > 3) { // deadband: an assist, not a cage
       let rot = 0;
