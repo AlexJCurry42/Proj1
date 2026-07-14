@@ -1,8 +1,9 @@
-# Fetches the Yale Bright Star Catalogue (V/50) to V ≤ 6.5 from VizieR TAP
-# into data/brightstars.json for the star-bloom overlay (js/starbloom.js).
-# The catalog is static, so monthly is generous — the schedule mostly guards
-# against the snapshot going missing. Until this has run once, the app uses
-# the curated data/brightstars_seed.json (~50 brightest stars).
+# Fetches the star catalog for the star-bloom overlay (js/starbloom.js)
+# into data/brightstars.json: the Yale Bright Star Catalogue (V/50, V ≤ 6.5)
+# for the bright anchor, extended with Tycho-2 (I/259) down to VT ≤ 8.3 —
+# DSS2 plate cores stay visibly blotched to ~8th magnitude, so the bloom
+# must reach that deep. Catalogs are static; monthly guards the snapshot.
+# Until this has run once, the app uses data/brightstars_seed.json.
 
 name: Fetch bright stars
 
@@ -41,6 +42,15 @@ jobs:
             --data-urlencode 'format=csv' \
             --data-urlencode 'query=SELECT RAJ2000, DEJ2000, Vmag, "B-V" FROM "V/50/catalog" WHERE Vmag <= 6.5' \
             -o /tmp/bsc.csv
+          # Faint extension: Tycho-2 mean positions are native decimal
+          # degrees; VT/BT convert to Johnson V and B−V below.
+          curl -fsS --retry 3 --retry-delay 15 --max-time 300 -G \
+            'https://tapvizier.cds.unistra.fr/TAPVizieR/tap/sync' \
+            --data-urlencode 'request=doQuery' \
+            --data-urlencode 'lang=adql' \
+            --data-urlencode 'format=csv' \
+            --data-urlencode 'query=SELECT RAmdeg, DEmdeg, VTmag, BTmag FROM "I/259/tyc2" WHERE VTmag <= 8.4' \
+            -o /tmp/tyc2.csv || true
           python3 - <<'EOF'
           import csv, json, re
 
@@ -76,13 +86,42 @@ jobs:
 
           assert len(stars) > 5000, f'only {len(stars)} stars parsed — V/50 schema drift?'
           assert any(abs(s[0] - 101.287) < 0.05 and abs(s[1] + 16.716) < 0.05 for s in stars), 'Sirius missing'
+
+          # Tycho-2 faint extension (best effort — the BSC core above is
+          # already a working dataset if this file is absent or drifts).
+          tyc = 0
+          try:
+              with open('/tmp/tyc2.csv') as f:
+                  for row in csv.DictReader(f):
+                      keys = {k.lower().strip(): k for k in row}
+                      try:
+                          ra = float(row[keys['ramdeg']])
+                          de = float(row[keys['demdeg']])
+                          vt = float(row[keys['vtmag']])
+                      except (TypeError, ValueError, KeyError):
+                          continue
+                      try:
+                          btvt = float(row[keys['btmag']]) - vt
+                          v = round(vt - 0.090 * btvt, 2)
+                          bv = round(0.850 * btvt, 2)
+                      except (TypeError, ValueError, KeyError):
+                          v, bv = round(vt, 2), None
+                      if v <= 6.5:
+                          continue  # the BSC tier already covers it
+                      stars.append([round(ra, 4), round(de, 4), v, bv])
+                      tyc += 1
+          except OSError:
+              pass
+          if tyc:
+              assert tyc > 15000, f'only {tyc} Tycho-2 stars — I/259 schema drift?'
+
           stars.sort(key=lambda s: s[2])
           with open('data/brightstars.json', 'w') as f:
               json.dump({
-                  'source': 'Yale Bright Star Catalogue (V/50) via VizieR TAP, V <= 6.5',
+                  'source': 'Yale Bright Star Catalogue (V/50) V<=6.5 + Tycho-2 (I/259) to VT<=8.4, via VizieR TAP',
                   'stars': stars
               }, f, separators=(',', ':'))
-          print(f'wrote {len(stars)} stars')
+          print(f'wrote {len(stars)} stars ({tyc} from Tycho-2)')
           EOF
 
       - name: Commit if changed

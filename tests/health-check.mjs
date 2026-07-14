@@ -36,14 +36,29 @@ const HIPS_SURVEYS = [
   'P/NVSS'
 ];
 
+// Availability vs drift: a timeout, 5xx or 429 means the SERVICE is having
+// a moment — the runner reports it as a warning and moves on. Only a
+// healthy service answering with the wrong shape (missing columns, absent
+// records, 4xx on a known-good query) is drift, and only drift fails.
 async function get(url, init = {}) {
-  const res = await fetch(url, {
-    redirect: 'follow',
-    ...init,
-    headers: { 'user-agent': UA, ...(init.headers || {}) },
-    signal: AbortSignal.timeout(TIMEOUT_MS)
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status} from ${url.slice(0, 120)}`);
+  let res;
+  try {
+    res = await fetch(url, {
+      redirect: 'follow',
+      ...init,
+      headers: { 'user-agent': UA, ...(init.headers || {}) },
+      signal: AbortSignal.timeout(TIMEOUT_MS)
+    });
+  } catch (err) {
+    const e = new Error(`network: ${err.message} (${url.slice(0, 100)})`);
+    e.transient = true;
+    throw e;
+  }
+  if (!res.ok) {
+    const e = new Error(`HTTP ${res.status} from ${url.slice(0, 120)}`);
+    e.transient = res.status >= 500 || res.status === 429;
+    throw e;
+  }
   return res;
 }
 
@@ -159,14 +174,15 @@ check('NASA Exoplanet Archive TAP — pscomppars columns (snapshot Action)', asy
 // Every spectrum-rail survey must still exist in the CDS MocServer registry
 // with a live HiPS service URL.
 check('CDS MocServer — all 7 spectrum-rail HiPS surveys exist', async () => {
-  const missing = [];
+  const missing = [];      // 200 responses without the survey: real drift
+  const unreachable = [];  // timeouts/5xx: the registry is down, not the surveys
   for (const id of HIPS_SURVEYS) {
     const url = `${MOCSERVER}?ID=*${encodeURIComponent(id)}&get=record&fmt=json&fields=ID,hips_service_url`;
     let records;
     try {
       records = await getJSON(url);
     } catch (err) {
-      missing.push(`${id} (${err.message})`);
+      (err.transient ? unreachable : missing).push(`${id} (${err.message})`);
       continue;
     }
     const hit = (Array.isArray(records) ? records : []).find(
@@ -175,6 +191,11 @@ check('CDS MocServer — all 7 spectrum-rail HiPS surveys exist', async () => {
     if (!hit) missing.push(id);
   }
   if (missing.length) throw new Error(`surveys missing from MocServer: ${missing.join('; ')}`);
+  if (unreachable.length) {
+    const e = new Error(`MocServer unavailable for: ${unreachable.join('; ')}`);
+    e.transient = true;
+    throw e;
+  }
 });
 
 // The Gaia DR3 progressive catalog (js/catalogs.js initGaiaHips). The axel
@@ -249,8 +270,8 @@ check('Wikimedia Commons — every renders.json photo file still resolves', asyn
   // Strictly sequential with a gap, and 429s get a patient retry: Commons
   // rate-limits bursts, and a rate limit is not filename drift. Only a hard
   // 4xx (404/410: the file is gone or renamed) fails the check.
-  const broken = [];
-  const rateLimited = [];
+  const broken = [];       // hard 4xx: the file is gone or renamed — drift
+  const unavailable = [];  // 429/5xx/network: Commons is having a moment
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   for (const file of files) {
     const url = `${COMMONS_FILEPATH}${encodeURIComponent(file)}?width=64`;
@@ -269,19 +290,26 @@ check('Wikimedia Commons — every renders.json photo file still resolves', asyn
       if (status !== 429) break;
       await sleep(15000 * (attempt + 1)); // back off and let the limiter cool
     }
-    if (status === 429) rateLimited.push(file);
-    else if (status !== 200) broken.push(`${file} (${typeof status === 'number' ? `HTTP ${status}` : status})`);
+    if (status === 200) { /* healthy */ }
+    else if (typeof status === 'number' && status < 500 && status !== 429) {
+      broken.push(`${file} (HTTP ${status})`);
+    } else {
+      unavailable.push(`${file} (${typeof status === 'number' ? `HTTP ${status}` : status})`);
+    }
     await sleep(400);
   }
-  if (rateLimited.length) {
-    console.log(`      (inconclusive — still rate-limited after retries: ${rateLimited.join('; ')})`);
-  }
   if (broken.length) throw new Error(`${broken.length} photo(s) no longer resolve: ${broken.join('; ')}`);
+  if (unavailable.length) {
+    const e = new Error(`Commons unavailable for ${unavailable.length} file(s): ${unavailable.slice(0, 4).join('; ')}…`);
+    e.transient = true;
+    throw e;
+  }
 });
 
 // -------------------------------------------------------------- runner ---
 
 let failed = 0;
+let inconclusive = 0;
 for (const { name, fn } of checks) {
   let lastErr = null;
   for (let attempt = 1; attempt <= 2; attempt++) {
@@ -294,13 +322,19 @@ for (const { name, fn } of checks) {
       if (attempt === 1) await new Promise((r) => setTimeout(r, 4000));
     }
   }
-  if (lastErr) {
+  if (!lastErr) {
+    console.log(`  ok  ${name}`);
+  } else if (lastErr.transient) {
+    // The service is down or rate-limiting — that's an availability blip,
+    // not schema drift, and the next scheduled run will re-check it.
+    inconclusive++;
+    console.log(`WARN  ${name}\n      service unavailable right now (not drift): ${lastErr.message}`);
+  } else {
     failed++;
     console.error(`FAIL  ${name}\n      ${lastErr.message}`);
-  } else {
-    console.log(`  ok  ${name}`);
   }
 }
 
-console.log(`\n${checks.length - failed} of ${checks.length} live checks passed`);
+console.log(`\n${checks.length - failed - inconclusive} of ${checks.length} live checks passed`
+  + (inconclusive ? `, ${inconclusive} inconclusive (service outage — see WARN)` : ''));
 if (failed) process.exitCode = 1;
