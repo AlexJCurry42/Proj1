@@ -375,12 +375,18 @@ input[type="range"]::-moz-range-thumb{
   border-bottom: 0.5px solid rgba(255,255,255,0.06);
 }
 .toggle-list li:last-child{ border-bottom: none; }
-/* Nested sub-option (e.g. Boundaries under Constellations) */
+/* Nested sub-options (Boundaries, Clean bright stars): simple square
+   checkboxes, quieter than the full switches — slightly opaque by design
+   so they read as refinements of the row above, not peers. */
 .toggle-list li.toggle-sub{
   padding: 5px 2px 7px 24px;
   border-bottom-color: rgba(255,255,255,0.04);
+  opacity: 0.8;
+  transition: opacity 0.18s ease;
 }
+.toggle-list li.toggle-sub:hover{ opacity: 1; }
 .toggle-list li.toggle-sub .toggle-label{ font-size: 12.5px; color: var(--text-secondary); }
+.toggle-list li.toggle-sub .legend-dot{ width: 7px; height: 7px; box-shadow: 0 0 4px currentColor; }
 .toggle-list li.toggle-sub.disabled{ opacity: 0.35; pointer-events: none; }
 .legend-dot{
   width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;

@@ -1,0 +1,97 @@
+# Fetches the Yale Bright Star Catalogue (V/50) to V ≤ 6.5 from VizieR TAP
+# into data/brightstars.json for the star-bloom overlay (js/starbloom.js).
+# The catalog is static, so monthly is generous — the schedule mostly guards
+# against the snapshot going missing. Until this has run once, the app uses
+# the curated data/brightstars_seed.json (~50 brightest stars).
+
+name: Fetch bright stars
+
+on:
+  push:
+    paths:
+      - '.github/workflows/bright-stars.yml'
+  schedule:
+    - cron: '7 3 3 * *' # monthly, 3rd day 03:07 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Query VizieR TAP and convert
+        run: |
+          # Primary: VizieR's computed decimal-degree columns. Fallback:
+          # the catalog's native sexagesimal strings, parsed locally.
+          curl -fsS --retry 3 --retry-delay 15 -G \
+            'https://tapvizier.cds.unistra.fr/TAPVizieR/tap/sync' \
+            --data-urlencode 'request=doQuery' \
+            --data-urlencode 'lang=adql' \
+            --data-urlencode 'format=csv' \
+            --data-urlencode 'query=SELECT _RAJ2000, _DEJ2000, Vmag, "B-V" FROM "V/50/catalog" WHERE Vmag <= 6.5' \
+            -o /tmp/bsc.csv || \
+          curl -fsS --retry 3 --retry-delay 15 -G \
+            'https://tapvizier.cds.unistra.fr/TAPVizieR/tap/sync' \
+            --data-urlencode 'request=doQuery' \
+            --data-urlencode 'lang=adql' \
+            --data-urlencode 'format=csv' \
+            --data-urlencode 'query=SELECT RAJ2000, DEJ2000, Vmag, "B-V" FROM "V/50/catalog" WHERE Vmag <= 6.5' \
+            -o /tmp/bsc.csv
+          python3 - <<'EOF'
+          import csv, json, re
+
+          def parse_pos(ra_s, de_s):
+              # decimal degrees straight through; sexagesimal parsed
+              try:
+                  return float(ra_s), float(de_s)
+              except ValueError:
+                  pass
+              rp = re.split(r'[\s:]+', ra_s.strip())
+              dp = re.split(r'[\s:]+', de_s.strip())
+              ra = (float(rp[0]) + float(rp[1]) / 60 + float(rp[2]) / 3600) * 15
+              sign = -1 if dp[0].strip().startswith('-') else 1
+              de = sign * (abs(float(dp[0])) + float(dp[1]) / 60 + float(dp[2]) / 3600)
+              return ra, de
+
+          stars = []
+          with open('/tmp/bsc.csv') as f:
+              for row in csv.DictReader(f):
+                  keys = {k.lower().strip(): k for k in row}
+                  ra_k = keys.get('_raj2000') or keys.get('raj2000')
+                  de_k = keys.get('_dej2000') or keys.get('dej2000')
+                  try:
+                      ra, de = parse_pos(row[ra_k], row[de_k])
+                      v = float(row[keys['vmag']])
+                  except (TypeError, ValueError, KeyError, IndexError):
+                      continue
+                  try:
+                      bv = round(float(row[keys['b-v']]), 2)
+                  except (TypeError, ValueError, KeyError):
+                      bv = None
+                  stars.append([round(ra, 4), round(de, 4), round(v, 2), bv])
+
+          assert len(stars) > 5000, f'only {len(stars)} stars parsed — V/50 schema drift?'
+          assert any(abs(s[0] - 101.287) < 0.05 and abs(s[1] + 16.716) < 0.05 for s in stars), 'Sirius missing'
+          stars.sort(key=lambda s: s[2])
+          with open('data/brightstars.json', 'w') as f:
+              json.dump({
+                  'source': 'Yale Bright Star Catalogue (V/50) via VizieR TAP, V <= 6.5',
+                  'stars': stars
+              }, f, separators=(',', ':'))
+          print(f'wrote {len(stars)} stars')
+          EOF
+
+      - name: Commit if changed
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add data/brightstars.json
+          git diff --cached --quiet || git commit -m "Refresh bright star catalog [skip ci]"
+          # Data workflows can race each other on push day: rebase onto
+          # whatever a sibling Action just committed before pushing.
+          git pull --rebase origin "$GITHUB_REF_NAME"
+          git push

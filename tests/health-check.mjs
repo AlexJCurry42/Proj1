@@ -128,6 +128,21 @@ check('VizieR TAP — Milliquas VII/294 (AGN & quasars layer)', async () => {
     ['RAJ2000', 'DEJ2000', 'Name', 'z', 'Rmag', 'Type'], 'Milliquas');
 });
 
+// The star-bloom pipeline (.github/workflows/bright-stars.yml): Yale BSC
+// via VizieR TAP, decimal-degree columns preferred, sexagesimal fallback.
+check('VizieR TAP — Yale Bright Star Catalogue V/50 (star bloom pipeline)', async () => {
+  const primary = `SELECT TOP 5 _RAJ2000, _DEJ2000, Vmag, "B-V" FROM "V/50/catalog" WHERE Vmag <= 2`;
+  const fallback = `SELECT TOP 5 RAJ2000, DEJ2000, Vmag, "B-V" FROM "V/50/catalog" WHERE Vmag <= 2`;
+  try {
+    expectColumns(await getJSON(tapUrl(VIZIER_TAP, primary)),
+      ['_RAJ2000', '_DEJ2000', 'Vmag', 'B-V'], 'BSC (decimal columns)');
+  } catch (err) {
+    expectColumns(await getJSON(tapUrl(VIZIER_TAP, fallback)),
+      ['RAJ2000', 'DEJ2000', 'Vmag', 'B-V'], `BSC fallback (decimal query failed: ${err.message})`);
+    console.log('      (V/50 decimal columns unavailable — the Action falls back to sexagesimal parsing)');
+  }
+});
+
 // -------------------------------------------------- NASA Exoplanet TAP ---
 // The weekly snapshot Action's exact column list (exoplanet-snapshot.yml);
 // also the browser's silent live-upgrade probe (js/catalogs.js).

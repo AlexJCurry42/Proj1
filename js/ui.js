@@ -561,7 +561,7 @@ export function initAboutModal() {
       <li><strong>Aladin Lite</strong> &mdash; CDS, Observatoire de Strasbourg &amp; CNRS</li>
       <li>DSS2, SDSS9, 2MASS, AllWISE/unWISE, Pan-STARRS DR1, Fermi and radio HiPS surveys, distributed via the CDS HiPS service</li>
     </ul>
-    <p class="hint">Why do bright stars look blotchy up close? The DSS2 optical imagery comes from photographic sky-survey plates: a bright star saturated the emulsion, and the red and blue exposures were taken years apart, so their images don't quite align — the orange/blue/black cores are plate artifacts, not real structure. Other bands (2MASS, Pan-STARRS) have their own, different bright-star artifacts.</p>
+    <p class="hint">Why do bright stars look blotchy up close? The DSS2 optical imagery comes from photographic sky-survey plates: a bright star saturated the emulsion, and the red and blue exposures were taken years apart, so their images don't quite align — the orange/blue/black cores are plate artifacts, not real structure. Other bands (2MASS, Pan-STARRS) have their own, different bright-star artifacts. The <strong>Clean bright stars</strong> checkbox (layer dock → Display) covers those cores with a synthetic glow — positioned, sized and colored from the Yale Bright Star Catalogue — and can be switched off any time to see the raw observations.</p>
     <h3>Catalogs</h3>
     <ul>
       <li><strong>SIMBAD</strong> astronomical database &mdash; CDS, Strasbourg</li>

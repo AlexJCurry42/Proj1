@@ -13,7 +13,7 @@
 // NOTE: never list Action-generated data files (exoplanets_snapshot,
 // constellations_lines/names/borders) here — they may not exist on a fresh
 // deploy and one 404 fails the entire install. Runtime caching covers them.
-const VERSION = 'dsa-shell-v43';
+const VERSION = 'dsa-shell-v44';
 
 const SHELL = [
   './',
@@ -41,6 +41,7 @@ const SHELL = [
   'js/search.js',
   'js/skynow.js',
   'js/spectrum.js',
+  'js/starbloom.js',
   'js/suggest.js',
   'js/ui.js',
   'js/warp.js',
@@ -61,6 +62,7 @@ const SHELL = [
   'js/vendor/satellite/propagation/sgp4.js',
   'js/vendor/satellite/propagation/sgp4init.js',
   'data/blackholes_stellar.json',
+  'data/brightstars_seed.json',
   'data/blackholes_supermassive.json',
   'data/constellations.json',
   'data/messier_ngc.json',

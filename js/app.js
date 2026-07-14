@@ -22,6 +22,7 @@ import { makePlanetIcon, makeGlowDot } from './markers.js';
 import { initWarpEffect } from './warp.js';
 import { loadConstellations, loadConstellationBorders } from './constellations.js';
 import { initHorizonLayer, initHorizonLock, requestObserver } from './horizon.js';
+import { initStarBloom } from './starbloom.js';
 import { querySuggestions, suggestionCoords } from './suggest.js';
 import { initSkyNow } from './skynow.js';
 import { SURVEYS, STOP, MAX_VALUE, DEFAULT_VALUE, initSpectrumBar } from './spectrum.js';
@@ -801,6 +802,25 @@ async function main() {
   addToggle(catalogList, {
     label: 'Animations', color: '#bf5af2', checked: motionOK(), persist: false,
     onToggle: (v) => setAnimationsEnabled(v)
+  });
+  // Star bloom: synthetic glows over the blotchy saturated plate cores of
+  // bright stars (the one artifact the imagery itself can't fix — see the
+  // About panel). On by default because it's what most people expect stars
+  // to look like; a checkbox because it retouches the view, and switching
+  // back to the raw observations must stay one tap away.
+  const bloomRef = { ctl: null, busy: false };
+  const bloomToggle = addToggle(catalogList, {
+    label: 'Clean bright stars', color: '#fff2b0', checked: true, sub: true,
+    onToggle: async (v) => {
+      if (v && !bloomRef.ctl && !bloomRef.busy) {
+        bloomRef.busy = true;
+        try { bloomRef.ctl = await initStarBloom(aladin); } catch (err) { /* data missing */ }
+        bloomRef.busy = false;
+        if (!bloomRef.ctl) { bloomToggle.setChecked(false); return; }
+      }
+      if (!bloomRef.ctl) return;
+      if (bloomToggle.isChecked()) bloomRef.ctl.show(); else bloomRef.ctl.hide();
+    }
   });
 
   window.addEventListener('error', (e) => {

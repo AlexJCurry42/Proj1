@@ -85,6 +85,7 @@ js/spectrum.js       Vertical spectrum rail: scrub imagery gamma-ray → radio
 js/skynow.js         Sky Now + gyro/compass tracking (all math on-device)
 js/horizon.js        Local horizon, cardinal directions & zenith (overlay layer)
 js/satellites.js     ISS + bright satellites: live SGP4 (overlay layer)
+js/starbloom.js      "Clean bright stars": catalog glows over plate artifacts
 js/vendor/satellite/ Vendored satellite.js SGP4 submodules (MIT)
 js/constellations.js 88 constellations: figures, names, boundaries (overlay layer)
 js/catalogs.js       SIMBAD/Gaia layers, Deep sky (Messier+OpenNGC), exoplanets
@@ -141,6 +142,7 @@ copy of the real Aladin engine during development.
 | **Event Horizon Telescope / GRAVITY Collaboration** | Sgr A* and M87* flagship entries | EHT Collaboration 2019/2022; GRAVITY Collaboration 2019/2022 |
 | **OpenNGC** | Full NGC/IC catalog layer (~13,000 objects) | Mattia Verga, CC-BY-SA-4.0, `github.com/mattiaverga/OpenNGC` (monthly snapshot) |
 | **CelesTrak** | ISS + bright satellite orbital elements (TLEs) | Dr. T.S. Kelso, `celestrak.org` (daily snapshot); propagated on-device with SGP4 (`satellite.js`, MIT) |
+| **Yale Bright Star Catalogue (V/50)** | "Clean bright stars" bloom overlay (positions, V magnitudes, B−V colors) | Hoffleit & Warren 1991, via VizieR TAP (monthly snapshot; curated seed until first fetch) |
 
 Every curated JSON file carries a `source` field per entry, and an
 `approx: true` flag wherever the literature disagrees or a value (especially
@@ -186,10 +188,12 @@ drifts, the UI degrades to the procedural render without a broken image.
   apart (so their star images are misaligned), and the JPEG tile encoding
   adds chroma blocking on the clipped cores. The per-survey zoom floors stop
   *over*-magnification of plate grain, but a resolved bright-star core shows
-  its artifacts at legitimate zooms too. The app explains this to the user
-  once, in context; the only real cure would be drawing synthetic stars over
-  the imagery, which this app deliberately doesn't do (observations are
-  never retouched).
+  its artifacts at legitimate zooms too. The app explains this once, in
+  context, and ships the classic planetarium cure as a default-on
+  **"Clean bright stars"** checkbox (layer dock → Display): a synthetic
+  glow — positioned, sized and tinted from the Yale Bright Star Catalogue —
+  covers the saturated cores. Because it retouches the view, it is always
+  one tap from off, and the raw observations are never altered underneath.
 - **Satellite positions depend on TLE freshness.** SGP4 accuracy decays
   within days of the element epoch; the daily CelesTrak snapshot keeps the
   ISS good to well under a degree, but if the Action stops running the app
