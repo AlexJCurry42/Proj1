@@ -20,8 +20,14 @@ in-browser from published parameters. Renders are explicitly labeled as
 illustrations, never passed off as observations.
 
 For stargazers: all 88 constellations (figures, names, optional
-boundaries), a **horizon & compass overlay** that draws YOUR horizon,
-cardinal directions and zenith on the sky, guided **tours** that fly
+boundaries), a **horizon & compass overlay** — on by default — that
+draws YOUR horizon, cardinal directions and zenith on the sky, plus a
+moderate **horizon lock** that gently re-levels the view while you pan
+so "up" stays up (deadbanded and rate-capped: an assist, not a cage),
+an adaptive **coordinate grid** (the engine's RA/Dec graticule: spacing
+re-scales with zoom, labels carry the coordinates, and the lines curve
+exactly as the projection does, making any distortion visible),
+guided **tours** that fly
 three-act flights to the sky's greatest hits, the complete **NGC/IC
 catalog** (~13,000 objects, magnitude-tiered by zoom), live
 **satellites** with ISS pass predictions (SGP4, computed on-device),

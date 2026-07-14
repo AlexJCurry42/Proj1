@@ -9,8 +9,9 @@
 // Privacy: the observer's location is consumed entirely on-device.
 
 import { getOverlay, haloText } from './overlay.js';
-import { altAzToRaDec } from './astro.js';
+import { altAzToRaDec, zenithRaDec, raDecToVec, vecToRaDec, D2R, R2D } from './astro.js';
 import { appNow, timeOffsetMs } from './clock.js';
+import { motionOK } from './motion.js';
 export { requestObserver } from './observer.js';
 
 const CARDINALS = [
@@ -103,4 +104,79 @@ export function initHorizonLayer(aladin, observer) {
     extraSig: () => `${Math.floor(performance.now() / 10000)}|${timeOffsetMs()}` // sidereal drift + time scrubs
   });
   return { show: () => ctl.show(), hide: () => ctl.hide() };
+}
+
+/**
+ * The horizon lock: a moderate up-is-up assist. Panning a sphere lets the
+ * sky roll until "up" on screen points anywhere, which is what makes the
+ * spherical views disorienting. While the user moves (and for a beat
+ * after), this gently rotates the view so the direction toward THEIR
+ * zenith reads as screen-up — the horizon levels itself out. It is an
+ * assist, not a cage: small tilts inside the deadband are left alone,
+ * corrections are rate-capped, and it goes fully idle when the view rests.
+ *
+ * Engine rotation convention (probed empirically): setRotation/getRotation
+ * are in degrees, and a world direction's on-screen position angle equals
+ * its angle at rotation 0 MINUS the rotation — so adding the measured tilt
+ * error to the current rotation re-levels the view. gotoRaDec preserves
+ * rotation, so the lock composes cleanly with pans, flights and tracking.
+ */
+export function initHorizonLock(aladin, onPosition) {
+  let observer = null;
+  let enabled = false;
+  let raf = null;
+  let lastMoveT = 0;
+
+  // Screen tilt of the zenith direction at the view center, in degrees
+  // (0 = zenith reads straight up); null when it can't be measured.
+  function zenithTilt() {
+    let ra0, dec0, fov;
+    try { [ra0, dec0] = aladin.getRaDec(); fov = aladin.getFov()[0]; } catch (err) { return null; }
+    const zen = zenithRaDec(observer.lat, observer.lon, appNow());
+    const c = raDecToVec(ra0, dec0);
+    const z = raDecToVec(zen.ra, zen.dec);
+    const dot = c[0] * z[0] + c[1] * z[1] + c[2] * z[2];
+    if (Math.abs(dot) > 0.996) return null; // looking ~at zenith/nadir: "up" is undefined there
+    // Unit tangent at the view center, pointing along the great circle
+    // toward the zenith; project a small step along it and measure the
+    // screen angle of that step.
+    const t = [z[0] - dot * c[0], z[1] - dot * c[1], z[2] - dot * c[2]];
+    const tl = Math.hypot(t[0], t[1], t[2]) || 1;
+    const s = Math.min(4, Math.max(0.05, fov * 0.12)) * D2R;
+    const cs = Math.cos(s), sn = Math.sin(s) / tl;
+    const { ra, dec } = vecToRaDec([
+      c[0] * cs + t[0] * sn, c[1] * cs + t[1] * sn, c[2] * cs + t[2] * sn
+    ]);
+    let p0, p1;
+    try { p0 = aladin.world2pix(ra0, dec0); p1 = aladin.world2pix(ra, dec); } catch (err) { return null; }
+    if (!p0 || !p1) return null;
+    const dx = p1[0] - p0[0], dy = p1[1] - p0[1];
+    if (dx * dx + dy * dy < 4) return null; // too short to trust
+    return Math.atan2(dx, -dy) * R2D;
+  }
+
+  function frame() {
+    raf = null;
+    if (!enabled || !observer) return;
+    if (performance.now() - lastMoveT > 2600) return; // the view is at rest: stand down
+    const err = zenithTilt();
+    if (err != null && Math.abs(err) > 3) { // deadband: an assist, not a cage
+      let rot = 0;
+      try { rot = aladin.getRotation(); } catch (err2) { return; }
+      // Ease toward level, capped per frame; instant when animations are off.
+      const stepDeg = motionOK() ? Math.max(-1.5, Math.min(1.5, err * 0.09)) : err;
+      try { aladin.setRotation(rot + stepDeg); } catch (err2) { /* engine hiccup */ }
+    }
+    raf = requestAnimationFrame(frame);
+  }
+  const wake = () => {
+    lastMoveT = performance.now();
+    if (!raf && enabled && observer) raf = requestAnimationFrame(frame);
+  };
+  onPosition(wake);
+
+  return {
+    setObserver(obs) { observer = obs; },
+    setEnabled(v) { enabled = v; if (v) wake(); }
+  };
 }

@@ -21,7 +21,7 @@ import { computePlanetPositions, computeSunPosition, computeMoonPosition, PLANET
 import { makePlanetIcon, makeGlowDot } from './markers.js';
 import { initWarpEffect } from './warp.js';
 import { loadConstellations, loadConstellationBorders } from './constellations.js';
-import { initHorizonLayer, requestObserver } from './horizon.js';
+import { initHorizonLayer, initHorizonLock, requestObserver } from './horizon.js';
 import { querySuggestions, suggestionCoords } from './suggest.js';
 import { initSkyNow } from './skynow.js';
 import { SURVEYS, STOP, MAX_VALUE, DEFAULT_VALUE, initSpectrumBar } from './spectrum.js';
@@ -81,8 +81,10 @@ function addToggle(listEl, { label, color, checked = true, sub = false, persist 
     }
     onToggle(input.checked);
   });
-  // A lazily-created layer the user had enabled last visit must initialize now.
-  if (initial && !checked) queueMicrotask(() => onToggle(true));
+  // Any layer that starts enabled — by default or from last visit — must
+  // initialize now; lazy layers guard themselves against double-init.
+  // (persist:false switches manage their own boot state, e.g. Animations.)
+  if (initial && persist) queueMicrotask(() => onToggle(true));
   return {
     setCount: (n) => { li.querySelector('.toggle-count').textContent = n; },
     isChecked: () => input.checked,
@@ -537,17 +539,23 @@ async function main() {
 
   addDockSection(catalogList, 'Sky guides');
 
-  // Horizon & compass: YOUR horizon on the sky. Needs location (on-device
-  // only); lazy so no permission prompt fires until the user asks for it.
+  // Horizon & compass: YOUR horizon on the sky — ON by default (it's the
+  // main defense against getting lost in the spherical views). Needs
+  // location (on-device only); if permission is declined the switch turns
+  // itself back off and never nags. Alongside the drawn overlay comes the
+  // horizon LOCK: while the user pans, the view gently re-levels so their
+  // zenith reads as up.
   const horizonRef = { ctl: null, busy: false };
+  const horizonLock = initHorizonLock(aladin, onPosition);
   const horizonToggle = addToggle(catalogList, {
-    label: 'Horizon & compass', color: '#63d68b', checked: false,
+    label: 'Horizon & compass', color: '#63d68b', checked: true,
     onToggle: async (v) => {
       if (v && !horizonRef.ctl && !horizonRef.busy) {
         horizonRef.busy = true;
         try {
           const obs = await requestObserver();
           horizonRef.ctl = initHorizonLayer(aladin, obs);
+          horizonLock.setObserver(obs);
         } catch (err) {
           showToast('The horizon overlay needs your location to know which sky is yours — it never leaves this device.', 'error', 8000);
           horizonToggle.setChecked(false);
@@ -555,7 +563,9 @@ async function main() {
         horizonRef.busy = false;
       }
       if (!horizonRef.ctl) return;
-      if (horizonToggle.isChecked()) horizonRef.ctl.show(); else horizonRef.ctl.hide();
+      const on = horizonToggle.isChecked();
+      horizonLock.setEnabled(on);
+      if (on) horizonRef.ctl.show(); else horizonRef.ctl.hide();
     }
   });
   // Gyro tracking brings its own orientation context: the horizon, cardinal
@@ -567,8 +577,23 @@ async function main() {
       catch (err) { return; }
     }
     if (!horizonToggle.isChecked()) horizonToggle.setChecked(true);
+    horizonLock.setObserver({ lat, lon });
+    horizonLock.setEnabled(true);
     horizonRef.ctl.show();
   };
+
+  // Coordinate grid: the engine's own adaptive RA/Dec graticule. Line
+  // spacing re-scales with zoom, labels carry the coordinates, and the
+  // lines curve exactly as the projection does — which is the honest way
+  // to SHOW the distortion instead of pretending there is none.
+  addToggle(catalogList, {
+    label: 'Coordinate grid', color: '#5ac8fa', checked: false,
+    onToggle: (v) => {
+      try {
+        aladin.setCooGrid?.({ enabled: v, color: '#7894d2', opacity: 0.55, labelSize: 11 });
+      } catch (err) { /* older engine builds */ }
+    }
+  });
 
   const constRef = {};
   const bordersRef = { loading: false };
