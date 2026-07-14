@@ -174,6 +174,16 @@ export function initHorizonLock(aladin, onPosition) {
     return Math.atan2(dx, -dy) * R2D;
   }
 
+  // MODERATE means bounded: each episode of activity may level the view by
+  // at most EPISODE_BUDGET degrees, at a slow glide. A fast swipe that
+  // leaves a huge tilt gets a graceful partial correction, never a spin —
+  // repeated gestures level the rest a step at a time. (The first version
+  // corrected at 90°/s until done; after a quick swipe with ~100° of error
+  // that read as the view whipping around on its own.)
+  const EPISODE_BUDGET = 28; // deg of total correction per activity episode
+  const STEP_MAX = 0.6;      // deg per frame ≈ 36°/s — a glide, not a snap
+  let budget = 0;
+
   function frame() {
     raf = null;
     if (!enabled || !observer) return;
@@ -183,18 +193,25 @@ export function initHorizonLock(aladin, onPosition) {
       return;
     }
     const err = zenithTilt();
-    if (err != null && Math.abs(err) > 3) { // deadband: an assist, not a cage
+    // Deadband below, and above: past ~150° "level" is ambiguous (an almost
+    // upside-down view flips correction direction on measurement noise).
+    if (err != null && Math.abs(err) > 3 && Math.abs(err) < 150 && budget > 0) {
       let rot = 0;
       try { rot = aladin.getRotation(); } catch (err2) { return; }
-      // Ease toward level, capped per frame; instant when animations are off.
-      const stepDeg = motionOK() ? Math.max(-1.5, Math.min(1.5, err * 0.09)) : err;
+      const stepDeg = motionOK()
+        ? Math.max(-STEP_MAX, Math.min(STEP_MAX, err * 0.06))
+        : Math.max(-budget, Math.min(budget, err)); // no animations: one capped snap
+      budget -= Math.abs(stepDeg);
       try { aladin.setRotation(rot + stepDeg); } catch (err2) { /* engine hiccup */ }
     }
     raf = requestAnimationFrame(frame);
   }
   const wake = () => {
     lastMoveT = performance.now();
-    if (!raf && enabled && observer) raf = requestAnimationFrame(frame);
+    if (!raf && enabled && observer) {
+      budget = EPISODE_BUDGET; // a fresh episode of activity, a fresh allowance
+      raf = requestAnimationFrame(frame);
+    }
   };
   onPosition(wake);
 
