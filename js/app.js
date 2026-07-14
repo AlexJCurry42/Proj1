@@ -275,6 +275,25 @@ async function main() {
   spectrum.setValue(initialSpectrum);
   applyFovLimits();
 
+  // Bright stars in DSS2 show orange/blue/black blotched cores at ANY zoom
+  // deep enough to resolve them. That is the survey data, not a bug: the
+  // stars saturated the photographic emulsion, the red and blue plates were
+  // exposed years apart (so their images don't align), and JPEG tiles add
+  // chroma blocking on the clipped cores. The app can't repaint a
+  // photographic survey — but it can explain, once, at the moment the user
+  // is probably looking at it.
+  let artifactNoteShown = readPref('artifactnote', false) === true;
+  const maybeExplainPlateArtifacts = debounce(() => {
+    if (artifactNoteShown) return;
+    let fov;
+    try { fov = aladin.getFov()[0]; } catch (err) { return; }
+    if (fov > 2.5 || spectrum.nearestSurveyId() !== 'P/DSS2/color') return;
+    artifactNoteShown = true;
+    writePref('artifactnote', true);
+    showToast('Colored blotches on bright stars are artifacts of the photographic survey plates — the star saturated the emulsion, and the red and blue exposures were taken years apart. Not real structure. Scrub the spectrum rail for a cleaner band.', 'info', 14000);
+  }, 800);
+  onZoom(maybeExplainPlateArtifacts);
+
   // Keep the URL hash in sync with the view (debounced, replaceState so the
   // back button isn't spammed) — every view is a shareable permalink.
   function currentViewUrl() {

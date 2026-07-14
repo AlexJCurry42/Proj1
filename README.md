@@ -174,6 +174,16 @@ drifts, the UI degrades to the procedural render without a broken image.
   (`tests/health-check.mjs`) now replays every live call — exact queries,
   exact column names — so endpoint drift is caught within a day; check the
   Actions tab if a live layer misbehaves.
+- **Bright stars show colored blotched cores in DSS2 — at any deep zoom.**
+  This is in the survey data, not the renderer: bright stars saturated the
+  photographic emulsion, the red and blue plate exposures were taken years
+  apart (so their star images are misaligned), and the JPEG tile encoding
+  adds chroma blocking on the clipped cores. The per-survey zoom floors stop
+  *over*-magnification of plate grain, but a resolved bright-star core shows
+  its artifacts at legitimate zooms too. The app explains this to the user
+  once, in context; the only real cure would be drawing synthetic stars over
+  the imagery, which this app deliberately doesn't do (observations are
+  never retouched).
 - **Satellite positions depend on TLE freshness.** SGP4 accuracy decays
   within days of the element epoch; the daily CelesTrak snapshot keeps the
   ISS good to well under a degree, but if the Action stops running the app
