@@ -12,6 +12,7 @@ import { flyTo } from './search.js';
 import { D2R, R2D, altAzToRaDec, zenithRaDec, raDecToVec, vecToRaDec, vecMix } from './astro.js';
 import { appNow, isTimeShifted } from './clock.js';
 import { requestObserver, seedObserver } from './observer.js';
+import { motionOK } from './motion.js';
 
 // Re-exports kept for compatibility (tests and older callers).
 export { gmstDeg, zenithRaDec, altAzToRaDec } from './astro.js';
@@ -67,7 +68,7 @@ export function initSkyNow(aladin, { onTrackingStart } = {}) {
     let from;
     try { from = aladin.getFov()[0]; } catch (err) { return; }
     if (!Number.isFinite(from) || Math.abs(from - toFov) < 0.5) return;
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    if (!motionOK()) {
       try { aladin.setFoV(toFov); } catch (err) { /* engine hiccup */ }
       return;
     }

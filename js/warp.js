@@ -13,7 +13,10 @@
 // doppler-tinted (blue-shifted flying in, red-shifted pulling back).
 //
 // Both modes decay in ~a quarter second, ignore pointer events, and are
-// disabled entirely under prefers-reduced-motion.
+// disabled while animations are off (js/motion.js — OS preference or the
+// dock's Animations switch).
+
+import { motionOK } from './motion.js';
 
 // Programmatic camera flights ("Show me something cool") suppress the warp:
 // a three-second continuous zoom ramp would otherwise keep the blur at full
@@ -24,7 +27,8 @@ let suppressed = false;
 export function setWarpSuppressed(v) { suppressed = v; }
 
 export function initWarpEffect(aladin, onZoom = (fn) => aladin.on('zoomChanged', fn)) {
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  // No init-time reduced-motion bail: the Animations toggle can flip
+  // mid-session, so the check lives in the zoom handler instead.
 
   const canvas = document.createElement('canvas');
   canvas.id = 'warp-canvas';
@@ -88,7 +92,7 @@ export function initWarpEffect(aladin, onZoom = (fn) => aladin.on('zoomChanged',
   let lastT = 0;
 
   onZoom(() => {
-    if (suppressed) { lastFov = null; return; } // and no dz spike on resume
+    if (suppressed || !motionOK()) { lastFov = null; return; } // and no dz spike on resume
     let fov;
     try { fov = aladin.getFov()[0]; } catch (err) { return; }
     if (!(fov > 0)) return;

@@ -18,9 +18,10 @@
 // and gets back a controller: show({reveal}) / hide() / dirty().
 // state carries {alpha, revealStart} so layers can run entry animations.
 
-const REDUCE_MOTION = typeof window !== 'undefined' &&
-  window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-const FADE_TAU = REDUCE_MOTION ? 1 : 110;
+import { motionOK } from './motion.js';
+
+// Checked live (not cached at load): the Animations toggle can flip mid-session.
+const fadeTau = () => (motionOK() ? 110 : 1);
 
 let inst = null;
 
@@ -80,7 +81,7 @@ export function getOverlay(aladin) {
     let everyFrame = false;
     for (const L of layers) {
       const st = L.state;
-      st.alpha += (st.target - st.alpha) * (1 - Math.exp(-dt / FADE_TAU));
+      st.alpha += (st.target - st.alpha) * (1 - Math.exp(-dt / fadeTau()));
       if (Math.abs(st.target - st.alpha) > 0.004) fading = true;
       else st.alpha = st.target;
       if (st.revealStart != null && now - st.revealStart > (L.revealSpan || 2500)) st.revealStart = null;
@@ -138,7 +139,7 @@ export function getOverlay(aladin) {
       return {
         show({ reveal = false } = {}) {
           L.state.target = 1;
-          if (reveal && !REDUCE_MOTION) L.state.revealStart = performance.now();
+          if (reveal && motionOK()) L.state.revealStart = performance.now();
           dirty = true;
           ensureLoop();
         },
@@ -153,7 +154,7 @@ export function getOverlay(aladin) {
       };
     },
     wake: ensureLoop,
-    reduceMotion: REDUCE_MOTION
+    get reduceMotion() { return !motionOK(); }
   };
   return inst;
 }

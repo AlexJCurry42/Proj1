@@ -8,6 +8,7 @@ import { cachedObserver } from './observer.js';
 import { appNow } from './clock.js';
 import { SURVEYS } from './spectrum.js';
 import { setWarpSuppressed } from './warp.js';
+import { motionOK } from './motion.js';
 
 const SIMBAD_TAP_URL = 'https://simbad.cds.unistra.fr/simbad/sim-tap/sync';
 
@@ -495,7 +496,7 @@ export async function initTours(aladin, spectrum) {
     const token = ++flightToken;
     showToast(`${t.name} — ${t.caption}`, 'info', 12000);
 
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    if (!motionOK()) {
       aladin.gotoRaDec(t.ra, t.dec);
       if (spectrum && t.survey) {
         const v = spectrum.valueForSurveyId(t.survey);

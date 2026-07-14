@@ -2,6 +2,7 @@
 
 import { showToast } from './ui.js';
 import { fetchText } from './net.js';
+import { motionOK } from './motion.js';
 
 const SESAME_URL = 'https://cds.unistra.fr/cgi-bin/nph-sesame/-oxp/SNVA?';
 
@@ -74,10 +75,9 @@ export function getHistory() {
   return searchHistory;
 }
 
-/** Fly the Aladin view to a target, respecting prefers-reduced-motion. */
+/** Fly the Aladin view to a target, respecting the animations switch. */
 export function flyTo(aladin, ra, dec, fovDeg = 0.6) {
-  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (reduceMotion || typeof aladin.animateToRaDec !== 'function') {
+  if (!motionOK() || typeof aladin.animateToRaDec !== 'function') {
     aladin.gotoRaDec(ra, dec);
     aladin.setFoV(fovDeg);
   } else {

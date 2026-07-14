@@ -17,6 +17,8 @@
 // data pixel fills a screen pixel. Zooming past it just magnifies plate
 // grain — on DSS2 the misregistered red/blue plates dissolve into orange,
 // blue and black blotches — so the app stops where the data does.
+import { motionOK } from './motion.js';
+
 export const SURVEYS = [
   { id: 'P/Fermi/color', name: 'Fermi', band: 'Gamma-ray — the violent universe', minFov: 1.0 },
   { id: 'P/SDSS9/color', name: 'SDSS9', band: 'Optical — Sloan digital survey', minFov: 0.05 },
@@ -310,7 +312,7 @@ export function initSpectrumBar(aladin, { onSettle, collapsed = false, onCollaps
       const toV = i * STOP;
       const fromV = target;
       if (Math.round(fromV) === toV) { api.setValue(toV, { settle: true }); return; }
-      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      if (!motionOK()) {
         api.setValue(toV, { settle: true });
         return;
       }

@@ -175,9 +175,7 @@ body.redlight #overlay-canvas{ filter: sepia(1) saturate(6) hue-rotate(-50deg) b
   82%{ transform: translateY(2px); }
   90%{ transform: translateY(-1px); }
 }
-@media (prefers-reduced-motion: reduce){
-  .glass-btn.nudge, .glass-btn.nudge .icon{ animation: none; }
-}
+
 
 /* ================= Top bar ================= */
 #top-bar{
@@ -358,7 +356,7 @@ input[type="range"]::-moz-range-thumb{
 .toggle-list li:nth-child(10){ animation-delay: 0.27s; }
 .toggle-list li:nth-child(n+11){ animation-delay: 0.3s; }
 @keyframes row-in{ from{ opacity: 0; transform: translateY(6px); } }
-@media (prefers-reduced-motion: reduce){ .toggle-list li{ animation: none; } }
+
 
 /* Quiet section headers inside the dock */
 .toggle-list li.dock-section{
@@ -450,7 +448,7 @@ input[type="range"]::-moz-range-thumb{
 }
 @keyframes panel-in{ from{ opacity: 0; transform: translateX(18px); } }
 @keyframes sheet-in{ from{ opacity: 0; transform: translateY(26px); } }
-@media (prefers-reduced-motion: reduce){ #detail-panel{ animation: none; } }
+
 #detail-panel[hidden]{ display: none; }
 #detail-panel:not([hidden]){ animation: panel-in 0.34s var(--spring); }
 @keyframes panel-in{
@@ -685,9 +683,7 @@ input[type="range"]::-moz-range-thumb{
   100%{ box-shadow: 0 0 0 0 rgba(10, 132, 255, 0); }
 }
 @keyframes acquire-spin{ to{ transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce){
-  #gyro-toggle.acquiring, #gyro-toggle.acquiring .icon{ animation: none; }
-}
+
 #skynow-btn .icon{ width: 15px; height: 15px; }
 #skynow-btn[aria-pressed="true"]{
   background: rgba(10, 132, 255, 0.30);
@@ -845,9 +841,18 @@ body.redlight .render-canvas{ filter: sepia(1) saturate(4) hue-rotate(-50deg) br
   .toggle-list li:hover{ background: rgba(255, 255, 255, 0.035); }
 }
 
-/* ================= Reduced motion ================= */
-@media (prefers-reduced-motion: reduce){
-  *{ animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
+/* ================= Animations off ================= */
+/* One global kill switch instead of per-site @media rules. js/motion.js puts
+   .reduce-motion on <body> when animations are off — by OS preference
+   (prefers-reduced-motion) or by the dock's Animations switch, whose user
+   choice overrides the OS in either direction. Durations go to ~0 rather
+   than `none` so animationend/transitionend listeners still fire. */
+body.reduce-motion *, body.reduce-motion *::before, body.reduce-motion *::after{
+  animation-duration: 0.001ms !important;
+  animation-delay: 0ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  transition-delay: 0ms !important;
 }
 
 /* ================= Phones (bottom sheets) ================= */
@@ -953,6 +958,4 @@ body.redlight .render-canvas{ filter: sepia(1) saturate(4) hue-rotate(-50deg) br
   animation: pop-in 0.2s var(--spring);
 }
 #time-chip[hidden]{ display: none; }
-@media (prefers-reduced-motion: reduce){
-  #time-panel, #time-chip{ animation: none; }
-}
+

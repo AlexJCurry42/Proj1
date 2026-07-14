@@ -10,9 +10,9 @@
 
 import { getOverlay } from './overlay.js';
 import { smoothstep } from './astro.js';
+import { motionOK } from './motion.js';
 
 const FADE_MS = 320;
-const REDUCE_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 function parseColor(c) {
   if (typeof c !== 'string') return null;
@@ -93,7 +93,7 @@ export function initMarkerFades(aladin) {
     const shape = cat.shape && typeof cat.shape === 'object' && typeof cat.shape.getContext === 'function' ? cat.shape : null;
     let sources = null;
     try { sources = cat.getSources?.() || cat.sources || null; } catch (err) { /* progressive cat */ }
-    if (REDUCE_MOTION || !shape || !sources || !sources.length || sources.length > 1200) {
+    if (!motionOK() || !shape || !sources || !sources.length || sources.length > 1200) {
       try { visible ? cat.show?.() : cat.hide?.(); } catch (err) { /* best effort */ }
       return;
     }

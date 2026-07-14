@@ -7,6 +7,7 @@
 
 import { fetchJSON } from './net.js';
 import { openLightbox } from './ui.js';
+import { motionOK } from './motion.js';
 
 const TYPE_IDS = { rocky: 0, gas_giant: 1, ice_giant: 2, lava: 3, star: 4, black_hole: 5, cloudy: 6, black_hole_binary: 7 };
 
@@ -435,7 +436,7 @@ function startRender(shared, entry) {
   gl.uniform1f(U.uDim, params.dim ?? 1);
   gl.uniform1f(U.uQ, params.q ?? 0.8);
 
-  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const reduceMotion = !motionOK();
   shared.t0 = performance.now();
 
   function frame() {

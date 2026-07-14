@@ -28,6 +28,7 @@ import { SURVEYS, STOP, MAX_VALUE, DEFAULT_VALUE, initSpectrumBar } from './spec
 import { readPref, writePref } from './prefs.js';
 import { initMarkerFades } from './markerfade.js';
 import { appNow, setAppTime, isTimeShifted, onTimeChange } from './clock.js';
+import { motionOK, setAnimationsEnabled, initMotion } from './motion.js';
 
 const SGR_A_STAR = { ra: 266.41683, dec: -29.007811 };
 
@@ -59,8 +60,10 @@ function addDockSection(listEl, title) {
 }
 
 let toggleSeq = 0;
-function addToggle(listEl, { label, color, checked = true, sub = false, onToggle }) {
-  const saved = Object.prototype.hasOwnProperty.call(savedLayers, label) ? savedLayers[label] : undefined;
+function addToggle(listEl, { label, color, checked = true, sub = false, persist = true, onToggle }) {
+  // persist:false = the switch's state lives elsewhere (e.g. the Animations
+  // switch persists through js/motion.js), so keep it out of the layers pref.
+  const saved = persist && Object.prototype.hasOwnProperty.call(savedLayers, label) ? savedLayers[label] : undefined;
   const initial = saved ?? checked;
   const id = `tgl-${++toggleSeq}`;
   const li = document.createElement('li');
@@ -72,8 +75,10 @@ function addToggle(listEl, { label, color, checked = true, sub = false, onToggle
   listEl.appendChild(li);
   const input = li.querySelector('input');
   input.addEventListener('change', () => {
-    savedLayers[label] = input.checked;
-    writePref('layers', savedLayers);
+    if (persist) {
+      savedLayers[label] = input.checked;
+      writePref('layers', savedLayers);
+    }
     onToggle(input.checked);
   });
   // A lazily-created layer the user had enabled last visit must initialize now.
@@ -86,8 +91,10 @@ function addToggle(listEl, { label, color, checked = true, sub = false, onToggle
     // the saved preference in sync but does NOT re-fire onToggle.
     setChecked: (v) => {
       input.checked = v;
-      savedLayers[label] = v;
-      writePref('layers', savedLayers);
+      if (persist) {
+        savedLayers[label] = v;
+        writePref('layers', savedLayers);
+      }
     }
   };
 }
@@ -152,7 +159,7 @@ async function main() {
   // fault-isolated: right after a deploy the HTTP cache can briefly pair a
   // stale index.html with fresh JS, and a missing element in one widget must
   // cost that widget, not the sky.
-  for (const initChrome of [initRedlightToggle, initAboutModal, initDetailPanelClose,
+  for (const initChrome of [initMotion, initRedlightToggle, initAboutModal, initDetailPanelClose,
                             initKeyboard, initDockCollapse, initTimeControl]) {
     try { initChrome(); } catch (err) { console.error('chrome init failed:', err); }
   }
@@ -246,7 +253,7 @@ async function main() {
     let fov = 60;
     try { fov = aladin.getFov()[0]; } catch (err) { /* engine mid-init */ }
     const finish = () => { try { aladin.setFoVRange?.(floor, max); } catch (err) { /* older builds */ } };
-    if (fov >= floor || window.matchMedia('(prefers-reduced-motion: reduce)').matches) { finish(); return; }
+    if (fov >= floor || !motionOK()) { finish(); return; }
     // Ease out to the new floor over ~450 ms, then lock the range.
     const from = fov, t0 = performance.now();
     const step = (t) => {
@@ -739,6 +746,18 @@ async function main() {
         setCatalogVisible(milliquasCat, v);
       }
     }
+  });
+
+  // -------------------------------------------------------------- Display ---
+  addDockSection(catalogList, 'Display');
+  // Animations: motion is on by default; the OS reduce-motion flag turns it
+  // off by default (many desktops ship that way without the user choosing
+  // it). This switch is the explicit override, either direction, and it
+  // governs EVERYTHING — flights, layer fades, constellation reveals, warp,
+  // and all CSS animation (via body.reduce-motion).
+  addToggle(catalogList, {
+    label: 'Animations', color: '#bf5af2', checked: motionOK(), persist: false,
+    onToggle: (v) => setAnimationsEnabled(v)
   });
 
   window.addEventListener('error', (e) => {
