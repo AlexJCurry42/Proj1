@@ -532,7 +532,6 @@ async function main() {
   // One flat overlay menu, a switch per celestial family; heavyweight layers
   // still lazy-create on first enable.
   const catalogList = document.getElementById('layer-dock-list');
-  const bhList = catalogList;
 
   // First-load default: ONLY the Solar System layer is on — the sky itself is
   // the star of the show. Everything else builds ready-to-go but starts
@@ -596,8 +595,18 @@ async function main() {
     }
   });
 
-  const constRef = {};
+  const constRef = { loading: false };
   const bordersRef = { loading: false };
+  function ensureConstellations() {
+    if (constRef.catalogs || constRef.loading) return;
+    constRef.loading = true;
+    loadConstellations(aladin).then(({ catalogs, count }) => {
+      constRef.catalogs = catalogs;
+      constRef.loading = false;
+      constToggle.setCount(count);
+      setCatalogVisible(catalogs, constToggle.isChecked());
+    });
+  }
 
   // Boundaries live as a sub-checkbox of Constellations: visible only when
   // its parent is on, and following the parent off/on.
@@ -618,16 +627,15 @@ async function main() {
   }
   const constToggle = addToggle(catalogList, {
     label: 'Constellations', color: '#7aa0ff', checked: false,
-    onToggle: (v) => { setCatalogVisible(constRef.catalogs, v); syncBorders(); }
+    onToggle: (v) => {
+      if (v) ensureConstellations(); // lazy: boot stays light, first flip loads
+      setCatalogVisible(constRef.catalogs, v);
+      syncBorders();
+    }
   });
   const bordersToggle = addToggle(catalogList, {
     label: 'Boundaries', color: '#39496b', checked: false, sub: true,
     onToggle: () => syncBorders()
-  });
-  loadConstellations(aladin).then(({ catalogs, count }) => {
-    constRef.catalogs = catalogs;
-    constToggle.setCount(count);
-    setCatalogVisible(catalogs, constToggle.isChecked());
   });
   syncBorders();
 
@@ -638,34 +646,26 @@ async function main() {
   // always-ready bright tier; the complete OpenNGC catalog (~12k objects,
   // magnitude-tiered by zoom, deduped against the showpieces) lazy-loads the
   // first time the switch is flipped.
-  const deepRef = { curated: null, curatedCount: 0, ids: null, full: null, loadingFull: false };
-  const updateDeepCount = () => {
-    const full = deepRef.fullCount || 0;
-    deepToggle.setCount((deepRef.curatedCount + full).toLocaleString());
-  };
+  const deepRef = { curated: null, curatedCount: 0, ids: null, full: null, loading: false };
   const deepToggle = addToggle(catalogList, {
     label: 'Deep sky', color: '#ffd60a', checked: false,
     onToggle: async (v) => {
-      setCatalogVisible(deepRef.curated, v);
-      if (v && !deepRef.full && !deepRef.loadingFull) {
-        deepRef.loadingFull = true;
-        const { catalog, count } = await loadNgcFull(aladin, onZoom, deepRef.ids || undefined);
-        deepRef.full = catalog;
-        deepRef.fullCount = count;
-        deepRef.loadingFull = false;
-        updateDeepCount();
-        setCatalogVisible(catalog, deepToggle.isChecked());
-      } else {
-        setCatalogVisible(deepRef.full, v);
+      // Everything is lazy now — curated showpieces AND the full OpenNGC
+      // catalog load together on the first flip, nothing at boot.
+      if (v && !deepRef.curated && !deepRef.loading) {
+        deepRef.loading = true;
+        const { catalogs, count, ids } = await loadMessierNgc(aladin, onZoom);
+        deepRef.curated = catalogs;
+        deepRef.curatedCount = count;
+        deepRef.ids = ids;
+        const full = await loadNgcFull(aladin, onZoom, ids || undefined);
+        deepRef.full = full.catalog;
+        deepRef.loading = false;
+        deepToggle.setCount((count + (full.count || 0)).toLocaleString());
       }
+      setCatalogVisible(deepRef.curated, deepToggle.isChecked());
+      setCatalogVisible(deepRef.full, deepToggle.isChecked());
     }
-  });
-  loadMessierNgc(aladin, onZoom).then(({ catalogs, count, ids }) => {
-    deepRef.curated = catalogs;
-    deepRef.curatedCount = count;
-    deepRef.ids = ids;
-    updateDeepCount();
-    setCatalogVisible(catalogs, deepToggle.isChecked());
   });
 
   const planetsRef = {};
@@ -749,12 +749,22 @@ async function main() {
   // physics-driven renders, literature citations) plus a live SIMBAD layer
   // of everything catalogued as a (candidate) black hole, so the toggle
   // genuinely means "all known".
-  const stellarRef = {};
+  const stellarRef = { loading: false };
   let simbadBhCat = null;
-  const stellarToggle = addToggle(bhList, {
+  const stellarToggle = addToggle(catalogList, {
     label: 'Black holes', color: '#ff9f0a', checked: false,
     onToggle: (v) => {
-      setCatalogVisible(stellarRef.catalog, v);
+      if (v && !stellarRef.catalog && !stellarRef.loading) {
+        stellarRef.loading = true;
+        loadStellarBlackHoles(aladin).then(({ catalog, count }) => {
+          stellarRef.catalog = catalog;
+          stellarRef.loading = false;
+          if (count) stellarToggle.setCount(count);
+          setCatalogVisible(catalog, stellarToggle.isChecked());
+        });
+      } else {
+        setCatalogVisible(stellarRef.catalog, v);
+      }
       if (v && !simbadBhCat) {
         simbadBhCat = initSimbadBlackHolesLayer(aladin, onZoom, onPosition);
       } else {
@@ -763,25 +773,27 @@ async function main() {
       }
     }
   });
-  loadStellarBlackHoles(aladin).then(({ catalog, count }) => {
-    stellarRef.catalog = catalog;
-    stellarToggle.setCount(count);
-    setCatalogVisible(catalog, stellarToggle.isChecked());
-  });
 
-  const flagshipRef = {};
-  const flagshipToggle = addToggle(bhList, {
+  const flagshipRef = { loading: false };
+  const flagshipToggle = addToggle(catalogList, {
     label: 'Supermassive', color: '#ffd60a', checked: false,
-    onToggle: v => setCatalogVisible(flagshipRef.catalog, v)
-  });
-  loadFlagshipSupermassive(aladin).then(({ catalog, count }) => {
-    flagshipRef.catalog = catalog;
-    flagshipToggle.setCount(count);
-    setCatalogVisible(catalog, flagshipToggle.isChecked());
+    onToggle: (v) => {
+      if (v && !flagshipRef.catalog && !flagshipRef.loading) {
+        flagshipRef.loading = true;
+        loadFlagshipSupermassive(aladin).then(({ catalog, count }) => {
+          flagshipRef.catalog = catalog;
+          flagshipRef.loading = false;
+          if (count) flagshipToggle.setCount(count);
+          setCatalogVisible(catalog, flagshipToggle.isChecked());
+        });
+      } else {
+        setCatalogVisible(flagshipRef.catalog, v);
+      }
+    }
   });
 
   let milliquasCat = null;
-  addToggle(bhList, {
+  addToggle(catalogList, {
     label: 'AGN & quasars', color: '#ff453a', checked: false,
     onToggle: (v) => {
       if (v && !milliquasCat) {
@@ -831,7 +843,22 @@ async function main() {
   });
 
   // PWA: cache the app shell so revisits load instantly (sky data stays live).
+  // The shell is cache-first per VERSION (see sw.js); when a NEW version's
+  // worker takes over mid-session, reload once so the page runs the fresh
+  // code immediately — this is what keeps "deploy, then test on the phone"
+  // honest despite cache-first assets.
   if ('serviceWorker' in navigator && location.protocol === 'https:') {
+    const hadController = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      // First-ever install also fires this (clients.claim); only reload on
+      // a genuine version change, and only once per session (loop guard).
+      if (!hadController) return;
+      try {
+        if (sessionStorage.getItem('dsa-swreloaded')) return;
+        sessionStorage.setItem('dsa-swreloaded', '1');
+      } catch (err) { return; }
+      location.reload();
+    });
     navigator.serviceWorker.register('sw.js').catch(() => { /* shell caching is optional */ });
   }
 }

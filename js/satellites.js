@@ -100,6 +100,38 @@ export async function initSatellitesLayer(aladin, observer) {
   const scrubbedTooFar = () => Math.abs(timeOffsetMs()) > MAX_SCRUB_DAYS * 86400000;
   let scrubNoteShown = false;
 
+  // SGP4 is the expensive half of this layer (~180 propagations); on-screen
+  // motion between frames is sub-pixel at most zooms. So orbits recompute at
+  // 10 Hz and every frame only RE-PROJECTS the cached sky positions — the
+  // cheap half — keeping the pan/zoom loop light while satellites stay live.
+  let track = [];      // [{sat, ra, dec, el, rangeKm, cueRa, cueDec}]
+  let lastPropT = 0;
+  function propagate10Hz() {
+    const now = performance.now();
+    if (now - lastPropT < 100 && track.length) return;
+    lastPropT = now;
+    track = [];
+    const date = appNow();
+    for (const sat of sats) {
+      const la = lookAngles(sat, observerGd, date);
+      if (!la) continue;
+      const el = la.elevation * R2D;
+      if (el < 0) continue; // below the observer's horizon
+      const { ra, dec } = altAzToRaDec(el, la.azimuth * R2D, observer.lat, observer.lon, date);
+      const rec = { sat, ra, dec, el, rangeKm: la.rangeSat, cueRa: null, cueDec: null };
+      if (sat.isISS) {
+        // Motion cue: where it will be in 30 s.
+        const la2 = lookAngles(sat, observerGd, new Date(date.getTime() + 30000));
+        if (la2 && la2.elevation > 0) {
+          const n = altAzToRaDec(la2.elevation * R2D, la2.azimuth * R2D, observer.lat, observer.lon, date);
+          rec.cueRa = n.ra;
+          rec.cueDec = n.dec;
+        }
+      }
+      track.push(rec);
+    }
+  }
+
   function draw(ctx, view, state) {
     const alpha = state.alpha;
     hits = [];
@@ -111,23 +143,16 @@ export async function initSatellitesLayer(aladin, observer) {
       return;
     }
     scrubNoteShown = false;
-    const date = appNow();
-    for (const sat of sats) {
-      const la = lookAngles(sat, observerGd, date);
-      if (!la) continue;
-      const el = la.elevation * R2D;
-      if (el < 0) continue; // below the observer's horizon
-      const { ra, dec } = altAzToRaDec(el, la.azimuth * R2D, observer.lat, observer.lon, date);
+    propagate10Hz();
+    for (const rec of track) {
+      const { sat, ra, dec, el, rangeKm } = rec;
       const p = view.proj(ra, dec);
       if (!p) continue;
-      hits.push({ x: p[0], y: p[1], sat, el, rangeKm: la.rangeSat, ra, dec });
+      hits.push({ x: p[0], y: p[1], sat, el, rangeKm, ra, dec });
 
       if (sat.isISS) {
-        // Motion cue: where it will be in 30 s.
-        const la2 = lookAngles(sat, observerGd, new Date(date.getTime() + 30000));
-        if (la2 && la2.elevation > 0) {
-          const n = altAzToRaDec(la2.elevation * R2D, la2.azimuth * R2D, observer.lat, observer.lon, date);
-          const q = view.proj(n.ra, n.dec);
+        if (rec.cueRa != null) {
+          const q = view.proj(rec.cueRa, rec.cueDec);
           if (q && Math.hypot(q[0] - p[0], q[1] - p[1]) < 0.4 * Math.max(view.W, view.H)) {
             ctx.strokeStyle = `rgba(159, 232, 255, ${0.5 * alpha})`;
             ctx.lineWidth = 1.2;

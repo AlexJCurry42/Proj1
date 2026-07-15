@@ -116,19 +116,29 @@ jobs:
               assert tyc > 15000, f'only {tyc} Tycho-2 stars — I/259 schema drift?'
 
           stars.sort(key=lambda s: s[2])
+          # Two files: the small bright tier loads with the app; the big
+          # faint tier is fetched lazily on idle / first deep zoom
+          # (js/starbloom.js) so it never sits on the boot path.
+          bright = [s for s in stars if s[2] <= 6.5]
+          faint = [s for s in stars if s[2] > 6.5]
           with open('data/brightstars.json', 'w') as f:
               json.dump({
-                  'source': 'Yale Bright Star Catalogue (V/50) V<=6.5 + Tycho-2 (I/259) to VT<=8.4, via VizieR TAP',
-                  'stars': stars
+                  'source': 'Yale Bright Star Catalogue (V/50) via VizieR TAP, V <= 6.5',
+                  'stars': bright
               }, f, separators=(',', ':'))
-          print(f'wrote {len(stars)} stars ({tyc} from Tycho-2)')
+          with open('data/brightstars_faint.json', 'w') as f:
+              json.dump({
+                  'source': 'Tycho-2 (I/259) via VizieR TAP, 6.5 < V <= ~8.4 (VT/BT converted to V, B-V)',
+                  'stars': faint
+              }, f, separators=(',', ':'))
+          print(f'wrote {len(bright)} bright + {len(faint)} faint stars ({tyc} from Tycho-2)')
           EOF
 
       - name: Commit if changed
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
-          git add data/brightstars.json
+          git add data/brightstars.json data/brightstars_faint.json
           git diff --cached --quiet || git commit -m "Refresh bright star catalog [skip ci]"
           # Data workflows can race each other on push day: rebase onto
           # whatever a sibling Action just committed before pushing.

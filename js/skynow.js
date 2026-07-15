@@ -14,8 +14,6 @@ import { appNow, isTimeShifted } from './clock.js';
 import { requestObserver, seedObserver } from './observer.js';
 import { motionOK } from './motion.js';
 
-// Re-exports kept for compatibility (tests and older callers).
-export { gmstDeg, zenithRaDec, altAzToRaDec } from './astro.js';
 
 /**
  * Where is the phone pointing? W3C device orientation (α,β,γ) rotates the

@@ -142,7 +142,7 @@ copy of the real Aladin engine during development.
 | **Event Horizon Telescope / GRAVITY Collaboration** | Sgr A* and M87* flagship entries | EHT Collaboration 2019/2022; GRAVITY Collaboration 2019/2022 |
 | **OpenNGC** | Full NGC/IC catalog layer (~13,000 objects) | Mattia Verga, CC-BY-SA-4.0, `github.com/mattiaverga/OpenNGC` (monthly snapshot) |
 | **CelesTrak** | ISS + bright satellite orbital elements (TLEs) | Dr. T.S. Kelso, `celestrak.org` (daily snapshot); propagated on-device with SGP4 (`satellite.js`, MIT) |
-| **Yale Bright Star Catalogue (V/50)** | "Clean bright stars" bloom overlay (positions, V magnitudes, B−V colors) | Hoffleit & Warren 1991, via VizieR TAP (monthly snapshot; curated seed until first fetch) |
+| **Yale Bright Star Catalogue (V/50) + Tycho-2 (I/259)** | "Clean bright stars" bloom overlay (positions, V magnitudes, B−V colors); bright tier loads with the app, the faint Tycho-2 tier lazy-loads on idle | Hoffleit & Warren 1991; Høg et al. 2000 — via VizieR TAP (monthly snapshot; curated seed until first fetch) |
 
 Every curated JSON file carries a `source` field per entry, and an
 `approx: true` flag wherever the literature disagrees or a value (especially

@@ -3,17 +3,24 @@
 // HiPS tiles, TAP queries, photographs — is cross-origin and passes straight
 // through to the network, always live.
 //
-// Strategy: EVERYTHING same-origin is network-first with cache fallback.
-// Stale-while-revalidate was tried first and burned us badly: it serves the
-// previous deploy's JS on the first load after every update, so users test
-// fixes one version behind. Network-first costs a conditional request per
-// asset (cheap 304s via Pages etags) and guarantees fresh code; the cache
-// exists purely to keep the installed PWA working offline.
+// Strategy, per resource class (this ordering is why warm loads are fast):
+//  · navigations — network-first (a fresh index.html whenever online),
+//    cache fallback offline;
+//  · Action-refreshed data (data/…) — stale-while-revalidate: served from
+//    cache instantly, refreshed in the background for next time (these
+//    files change without a VERSION bump, so cache-first would stick);
+//  · versioned shell (js/css/icons) — CACHE-FIRST: immutable within a
+//    VERSION, zero network round-trips on warm loads. Deploys bump VERSION,
+//    the browser re-checks sw.js on navigation, the new worker installs a
+//    fresh cache and takes over — and app.js reloads the page once when
+//    that happens mid-session, so "test right after deploy" still works.
+// (Pure network-first was the previous strategy; it paid one conditional
+// request per asset per load — dozens of RTTs on mobile, felt like bloat.)
 
 // NOTE: never list Action-generated data files (exoplanets_snapshot,
 // constellations_lines/names/borders) here — they may not exist on a fresh
 // deploy and one 404 fails the entire install. Runtime caching covers them.
-const VERSION = 'dsa-shell-v47';
+const VERSION = 'dsa-shell-v48';
 
 const SHELL = [
   './',
@@ -94,26 +101,55 @@ self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET' || url.origin !== location.origin) return; // sky data: always live
 
-  const cacheKey = e.request.mode === 'navigate' ? './' : e.request;
-  // cache:'no-cache' forces an etag revalidation instead of trusting the HTTP
-  // cache. Without it, GitHub Pages' max-age=600 lets "network-first" hand
-  // back files cached at different moments — a stale index.html alongside a
-  // fresh app.js crashes boot right after every deploy. (Navigations must be
-  // re-requested by URL: fetch() rejects init options on mode:'navigate'.)
-  const fresh = e.request.mode === 'navigate'
-    ? fetch(e.request.url, { cache: 'no-cache' })
-    : fetch(e.request, { cache: 'no-cache' });
+  // Navigations: network-first so a fresh deploy's index.html is never
+  // missed; cache fallback keeps the installed PWA opening offline.
+  // (cache:'no-cache' forces etag revalidation past GitHub Pages'
+  // max-age=600; navigations must be re-requested by URL because fetch()
+  // rejects init options on mode:'navigate'.)
+  if (e.request.mode === 'navigate') {
+    e.respondWith(
+      fetch(e.request.url, { cache: 'no-cache' })
+        .then((res) => {
+          if (res.ok) {
+            const copy = res.clone();
+            caches.open(VERSION).then((c) => c.put('./', copy));
+          }
+          return res;
+        })
+        .catch(() => caches.match('./').then((hit) => hit || Response.error()))
+    );
+    return;
+  }
+
+  // Action-refreshed data: stale-while-revalidate — instant from cache,
+  // silently refreshed behind for the next load.
+  if (url.pathname.includes('/data/')) {
+    e.respondWith(
+      caches.open(VERSION).then(async (c) => {
+        const hit = await c.match(e.request);
+        const refresh = fetch(e.request, { cache: 'no-cache' })
+          .then((res) => {
+            if (res.ok) c.put(e.request, res.clone());
+            return res;
+          })
+          .catch(() => null);
+        return hit || refresh.then((res) => res || Response.error());
+      })
+    );
+    return;
+  }
+
+  // Versioned shell: cache-first. Immutable within a VERSION — a warm load
+  // costs zero network round-trips.
   e.respondWith(
-    fresh
-      .then((res) => {
+    caches.match(e.request).then((hit) => hit ||
+      fetch(e.request, { cache: 'no-cache' }).then((res) => {
         if (res.ok) {
           const copy = res.clone();
-          caches.open(VERSION).then((c) => c.put(cacheKey, copy));
+          caches.open(VERSION).then((c) => c.put(e.request, copy));
         }
         return res;
       })
-      .catch(() =>
-        caches.match(cacheKey).then((hit) => hit || Response.error())
-      )
+    )
   );
 });

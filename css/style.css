@@ -38,7 +38,11 @@
   /* Motion: one spring for the whole app (iOS's standard curve) */
   --spring: cubic-bezier(0.32, 0.72, 0, 1);
 
-  --blur: saturate(200%) blur(26px) brightness(1.06);
+  /* 16px (was 26): backdrop blur is re-computed by the compositor every
+     frame the sky animates beneath, for every glass surface — the single
+     biggest UI-side GPU cost. 16px is visually near-identical on these
+     small panels and markedly cheaper on phones. */
+  --blur: saturate(180%) blur(16px) brightness(1.06);
   /* Liquid glass: a diagonal specular sheen + hairline top highlight that
      make panels read as curved, light-catching glass rather than flat tint */
   --sheen: linear-gradient(158deg, rgba(255,255,255,0.10), rgba(255,255,255,0.02) 34%, rgba(255,255,255,0) 62%, rgba(255,255,255,0.04) 100%);
@@ -258,21 +262,6 @@ body.redlight #overlay-canvas{ filter: sepia(1) saturate(6) hue-rotate(-50deg) b
 #cool-btn .icon{ width: 15px; height: 15px; color: #ffd60a; }
 #cool-btn:active .icon{ transform: rotate(72deg) scale(1.2); transition: transform 0.3s var(--spring); }
 
-.glass-select{
-  height: 40px; padding: 0 30px 0 14px;
-  max-width: 150px; text-overflow: ellipsis; white-space: nowrap; overflow: hidden;
-  border-radius: 999px; border: 0.5px solid var(--hairline);
-  background-color: var(--material);
-  -webkit-backdrop-filter: var(--blur);
-  backdrop-filter: var(--blur);
-  box-shadow: var(--liquid-edge);
-  color: var(--text-primary); font-size: 14px; font-weight: 500;
-  -webkit-appearance: none; appearance: none;
-  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23ebebf5' stroke-opacity='0.5' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  cursor: pointer;
-}
 
 /* ================= Brand ================= */
 #brand-btn{
@@ -808,7 +797,7 @@ input[type="range"]::-moz-range-thumb{
 
 /* ================= Red-light night-vision mode ================= */
 body.redlight #aladin-lite-div{ filter: sepia(1) saturate(6) hue-rotate(-50deg) brightness(0.85); }
-body.redlight :is(.glass-panel, .glass-btn, #search-form, .glass-select, .dropdown-list, .toast){
+body.redlight :is(.glass-panel, .glass-btn, #search-form, .dropdown-list, .toast){
   background: rgba(28, 4, 4, 0.75) !important;
   border-color: rgba(255, 69, 58, 0.25) !important;
 }
@@ -834,7 +823,7 @@ body.redlight .render-canvas{ filter: sepia(1) saturate(4) hue-rotate(-50deg) br
 
 /* ================= No-backdrop-filter fallback (older devices) ================= */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))){
-  .glass-panel, .glass-btn, .glass-select, #search-form, .dropdown-list, .toast{
+  .glass-panel, .glass-btn, #search-form, .dropdown-list, .toast{
     background: rgba(18, 18, 24, 0.94) !important;
   }
 }
@@ -842,7 +831,6 @@ body.redlight .render-canvas{ filter: sepia(1) saturate(4) hue-rotate(-50deg) br
 /* ================= Desktop hover refinements ================= */
 @media (hover: hover){
   .glass-btn:hover{ background: rgba(255, 255, 255, 0.10); }
-  .glass-select:hover{ background-color: rgba(255, 255, 255, 0.10); }
   .toggle-list li{ border-radius: 10px; transition: background 0.15s ease; }
   .toggle-list li:hover{ background: rgba(255, 255, 255, 0.035); }
 }
