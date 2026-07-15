@@ -98,7 +98,7 @@ js/render3d.js       WebGL procedural 3-D renders (planets, stars, black holes)
 js/warp.js           Star-streak warp feedback on zoom, fed by the live view
 js/markers.js        Shared catalog-marker helpers
 js/net.js            Shared fetch-with-timeout-and-retry helper
-sw.js                Service worker: network-first shell cache (offline PWA)
+sw.js                Service worker: cache-first shell, SWR data (offline PWA)
 data/*.json|csv|txt  Curated + Action-refreshed data
 tests/unit.mjs       Unit tests: astro math, ephemeris, clock, SGP4 (plain Node)
 tests/health-check.mjs  Live-endpoint health check (replays every service call)
