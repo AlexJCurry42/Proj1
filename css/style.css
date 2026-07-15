@@ -1033,6 +1033,24 @@ body.redlight #crosshair{
   padding: 12px 40px 12px 16px;
   animation: pop-in 0.24s var(--spring);
 }
+/* Phones: top-center would sit ON the layer dock and eat its taps — the
+   card lives above the bottom bar instead, and steps over the location
+   consent card when both are up (first run). */
+@media (max-width: 640px){
+  #center-card{
+    top: auto;
+    bottom: calc(76px + var(--safe-bottom));
+  }
+  #loc-card:not([hidden]) ~ #center-card{
+    bottom: calc(196px + var(--safe-bottom));
+  }
+}
+/* An info readout must never sit on top of something the user is USING:
+   while the time panel, detail panel or about dialog is open, the card
+   steps aside (it returns the moment they close). */
+#time-panel:not([hidden]) ~ #center-card,
+#detail-panel:not([hidden]) ~ #center-card,
+#about-modal:not([hidden]) ~ #center-card{ display: none; }
 #center-card[hidden]{ display: none; }
 #center-card #center-close{ position: absolute; top: 8px; right: 8px; }
 #center-card .center-head{ display: flex; align-items: baseline; gap: 8px; min-width: 0; }

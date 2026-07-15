@@ -125,23 +125,45 @@ export function initHorizonLock(aladin, onPosition) {
   let observer = null;
   let enabled = false;
   let raf = null;
-  let lastMoveT = 0;
+  let lastActivityT = 0;
 
-  // NEVER rotate while a pointer is down. The engine anchors an active drag
-  // to the sky point under the finger, computed in the current rotation
-  // frame — rotating mid-drag breaks that anchor and the pan lands
-  // somewhere random (worst on horizontal drags, which change the zenith
-  // tilt the most). The lock levels the view as the gesture ENDS instead.
+  // NEVER rotate while a pointer is down — and NEVER while the view is
+  // still coasting. The engine anchors both an active drag and the fling
+  // that follows it to a sky point computed in the current rotation frame;
+  // rotating mid-anchor breaks it, which read as "horizontal scrolling
+  // just doesn't work" (the fling died the instant the lock stepped in).
+  // Leveling begins only in the quiet AFTER the view comes to rest.
   let pointerDown = false;
+  let pointersDown = 0;
+  let multiTouch = false;     // pinch/two-finger: the user is steering deliberately
+  let movedInGesture = false; // taps must not trigger leveling
   const wrap = document.getElementById('sky-wrap');
-  wrap?.addEventListener('pointerdown', () => { pointerDown = true; }, true);
+  wrap?.addEventListener('pointerdown', () => {
+    pointersDown++;
+    if (pointersDown > 1) multiTouch = true;
+    if (!pointerDown) movedInGesture = false;
+    pointerDown = true;
+  }, true);
   const gestureEnd = () => {
     if (!pointerDown) return;
+    pointersDown = Math.max(0, pointersDown - 1);
+    if (pointersDown > 0) return;
     pointerDown = false;
-    wake(); // the settle moment: ease level now
+    if (multiTouch) {
+      // A pinch zoom or two-finger rotation is a deliberate act — leveling
+      // right on its heels read as the view "adjusting its angle on its
+      // own". Spend the episode instead of starting one.
+      multiTouch = false;
+      budget = 0;
+      return;
+    }
+    if (movedInGesture) wake(true); // a real pan ended: fresh allowance, level once at rest
   };
   window.addEventListener('pointerup', gestureEnd, true);
   window.addEventListener('pointercancel', gestureEnd, true);
+  // A drag released outside the window loses its pointerup — never leave
+  // the guard stuck (it silenced the lock until the next tap).
+  window.addEventListener('blur', () => { pointerDown = false; pointersDown = 0; multiTouch = false; });
 
   // Screen tilt of the zenith direction at the view center, in degrees
   // (0 = zenith reads straight up); null when it can't be measured.
@@ -174,46 +196,74 @@ export function initHorizonLock(aladin, onPosition) {
     return Math.atan2(dx, -dy) * R2D;
   }
 
-  // MODERATE means bounded: each episode of activity may level the view by
-  // at most EPISODE_BUDGET degrees, at a slow glide. A fast swipe that
-  // leaves a huge tilt gets a graceful partial correction, never a spin —
-  // repeated gestures level the rest a step at a time. (The first version
-  // corrected at 90°/s until done; after a quick swipe with ~100° of error
-  // that read as the view whipping around on its own.)
-  const EPISODE_BUDGET = 28; // deg of total correction per activity episode
-  const STEP_MAX = 0.6;      // deg per frame ≈ 36°/s — a glide, not a snap
+  // MODERATE means bounded and gated:
+  //  · REST first — no steering until REST_MS after the last position
+  //    event, so drags AND their inertia flings finish untouched;
+  //  · a FoV gate — zoomed onto an object the horizon isn't even in
+  //    frame, and a frame rotation there reads as the view "adjusting its
+  //    angle on its own"; authority fades out entirely below ~16° fields;
+  //  · rate-capped at STEP_MAX per frame (a glide, never a snap) with a
+  //    per-episode allowance that scales with the actual tilt, so a big
+  //    swipe levels fully instead of stalling partway (the old fixed 28°
+  //    budget plus a >150° skip zone left heavily-rolled views stuck —
+  //    "the lock just doesn't work");
+  //  · direction latched per episode: past ~170° the shorter way flips on
+  //    measurement noise, and re-deciding every frame oscillates.
+  const REST_MS = 320;
+  const STEP_MAX = 0.6; // deg per frame ≈ 36°/s
   let budget = 0;
+  let latchedSign = 0;
+
+  function fovScale() {
+    let fov;
+    try { fov = aladin.getFov()[0]; } catch (err) { return 0; }
+    return Math.max(0, Math.min(1, (fov - 16) / 14)); // 0 below 16°, full from 30°
+  }
 
   function frame() {
     raf = null;
     if (!enabled || !observer) return;
-    if (performance.now() - lastMoveT > 2600) return; // the view is at rest: stand down
-    if (pointerDown) { // finger owns the view: watch, don't steer
-      raf = requestAnimationFrame(frame);
-      return;
-    }
-    const err = zenithTilt();
-    // Deadband below, and above: past ~150° "level" is ambiguous (an almost
-    // upside-down view flips correction direction on measurement noise).
-    if (err != null && Math.abs(err) > 3 && Math.abs(err) < 150 && budget > 0) {
-      let rot = 0;
-      try { rot = aladin.getRotation(); } catch (err2) { return; }
-      const stepDeg = motionOK()
-        ? Math.max(-STEP_MAX, Math.min(STEP_MAX, err * 0.06))
-        : Math.max(-budget, Math.min(budget, err)); // no animations: one capped snap
-      budget -= Math.abs(stepDeg);
-      try { aladin.setRotation(rot + stepDeg); } catch (err2) { /* engine hiccup */ }
-    }
+    const now = performance.now();
+    if (now - lastActivityT > 2800) return; // the view is at rest: stand down
     raf = requestAnimationFrame(frame);
+    if (pointerDown) return;                 // finger owns the view: watch, don't steer
+    if (now - lastActivityT < REST_MS) return; // inertia still coasting: wait for quiet
+    const scale = fovScale();
+    if (scale <= 0 || budget <= 0) return;
+    let err = zenithTilt();
+    if (err == null || Math.abs(err) <= 3) { latchedSign = 0; return; }
+    if (latchedSign === 0) latchedSign = err >= 0 ? 1 : -1;
+    // Near 180° the short way is ambiguous; stay on the episode's latched
+    // side even when noise flips the measurement.
+    if (Math.abs(err) > 150 && (err >= 0 ? 1 : -1) !== latchedSign) err = latchedSign * (360 - Math.abs(err)) % 360;
+    let rot = 0;
+    try { rot = aladin.getRotation(); } catch (err2) { return; }
+    const cap = STEP_MAX * scale;
+    const stepDeg = motionOK()
+      ? Math.max(-cap, Math.min(cap, err * 0.06))
+      : Math.max(-budget, Math.min(budget, err)); // no animations: one capped snap
+    budget -= Math.abs(stepDeg);
+    try { aladin.setRotation(rot + stepDeg); } catch (err2) { /* engine hiccup */ }
+    // Steering is activity: keep the window open so the glide finishes its
+    // allowance instead of being cut off mid-level (bounded by the budget).
+    lastActivityT = now - REST_MS;
   }
-  const wake = () => {
-    lastMoveT = performance.now();
-    if (!raf && enabled && observer) {
-      budget = EPISODE_BUDGET; // a fresh episode of activity, a fresh allowance
-      raf = requestAnimationFrame(frame);
+  const wake = (fresh = false) => {
+    lastActivityT = performance.now();
+    if (!enabled || !observer) return;
+    if (fresh || !raf) {
+      // Allowance scales with the mess to clean up: small tilts get the
+      // gentle minimum, a hard swipe gets enough to actually finish.
+      const err = zenithTilt();
+      budget = Math.max(28, Math.min(120, Math.abs(err ?? 0) * 1.1));
+      latchedSign = 0;
     }
+    if (!raf) raf = requestAnimationFrame(frame);
   };
-  onPosition(wake);
+  onPosition(() => {
+    if (pointerDown) movedInGesture = true;
+    wake();
+  });
 
   return {
     setObserver(obs) { observer = obs; },

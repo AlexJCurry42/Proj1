@@ -417,6 +417,35 @@ await scenario('time: playback moves the Moon; Back to now stops and resets', as
   await ctx.close();
 });
 
+await scenario('coordinate grid: draws, rescales with zoom, keeps edge labels', async () => {
+  const { ctx, page } = await newPage(browser, baseURL);
+  const row = (label) => `[...document.querySelectorAll('#layer-dock-list li')].find(li => li.textContent.includes('${label}'))`;
+  const overlayInk = () => page.evaluate(() => {
+    const cv = document.getElementById('overlay-canvas');
+    const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
+    let n = 0;
+    for (let i = 3; i < d.length; i += 4) if (d[i] > 8) n++;
+    return n;
+  });
+  await page.waitForTimeout(900);
+  const before = await overlayInk();
+  await page.evaluate((sel) => eval(sel).querySelector('input').click(), row('Coordinate grid'));
+  await page.waitForTimeout(800);
+  const wide = await overlayInk();
+  assert(wide > before + 2000, `grid should add visible lines (ink ${before} -> ${wide})`);
+  // Zoom deep: the graticule must follow in real time, never vanish.
+  await page.evaluate(() => { window.__aladin.gotoRaDec(83.6, 22.0); window.__aladin.setFoV(1.5); });
+  await page.waitForTimeout(800);
+  const deep = await overlayInk();
+  assert(deep > 2000, `grid must survive a deep zoom (ink ${deep})`);
+  await page.evaluate((sel) => eval(sel).querySelector('input').click(), row('Coordinate grid'));
+  await page.waitForTimeout(600);
+  const off = await overlayInk();
+  assert(off < deep / 2, `grid must clear when toggled off (ink ${deep} -> ${off})`);
+  assert(page.__errors.length === 0, `page errors: ${page.__errors.join('; ')}`);
+  await ctx.close();
+});
+
 await scenario('center ID: a known object under the crosshair pops its card', async () => {
   const { ctx, page } = await newPage(browser, baseURL);
   // Park the crosshair on the Crab Nebula (M1) — curated AND toured, so the

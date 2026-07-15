@@ -30,6 +30,7 @@ import { addDockSection, addToggle, initDockCollapse } from './dock.js';
 import { initTimeControl } from './timeui.js';
 import { initSearchUI } from './searchui.js';
 import { initCenterId } from './centerid.js';
+import { initGridLayer } from './grid.js';
 import { showLocationCard, geoPermissionState } from './loccard.js';
 import { onTimeChange } from './clock.js';
 import { getOverlay } from './overlay.js';
@@ -433,16 +434,17 @@ async function main() {
     horizonRef.ctl.show();
   };
 
-  // Coordinate grid: the engine's own adaptive RA/Dec graticule. Line
-  // spacing re-scales with zoom, labels carry the coordinates, and the
-  // lines curve exactly as the projection does — which is the honest way
-  // to SHOW the distortion instead of pretending there is none.
+  // Coordinate grid: our own RA/Dec graticule on the overlay engine (the
+  // engine's built-in one snapped between spacing levels and let its labels
+  // drift with the sky). Spacing cross-fades continuously with zoom, and
+  // the labels are pinned to the screen edges — a scale readout that sits
+  // still while the sky moves under it.
+  const gridRef = { ctl: null };
   addToggle(catalogList, {
     label: 'Coordinate grid', color: '#5ac8fa', checked: false,
     onToggle: (v) => {
-      try {
-        aladin.setCooGrid?.({ enabled: v, color: '#7894d2', opacity: 0.55, labelSize: 11 });
-      } catch (err) { /* older engine builds */ }
+      if (v && !gridRef.ctl) gridRef.ctl = initGridLayer(aladin);
+      if (gridRef.ctl) (v ? gridRef.ctl.show() : gridRef.ctl.hide());
     }
   });
 

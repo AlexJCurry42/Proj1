@@ -105,7 +105,8 @@ export function getOverlay(aladin) {
     try {
       const [ra, dec] = aladin.getRaDec();
       fov = aladin.getFov()[0];
-      sig = `${ra.toFixed(5)},${dec.toFixed(5)},${fov.toFixed(4)},${W}x${H}`;
+      const rot = aladin.getRotation?.() ?? 0; // grid/horizon must track two-finger & lock rotations
+      sig = `${ra.toFixed(5)},${dec.toFixed(5)},${fov.toFixed(4)},${rot.toFixed(3)},${W}x${H}`;
     } catch (err) { /* engine mid-init: draw anyway */ }
     for (const L of layers) {
       if (L.extraSig && L.state.alpha > 0.004) sig += '|' + L.extraSig();
