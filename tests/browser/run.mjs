@@ -53,9 +53,19 @@ async function prepareFixture() {
       await writeFile(enginePath, Buffer.from(await res.arrayBuffer()));
     }
   }
+  // The engine ships in two shapes: the CDN api/v3 bundle is a classic
+  // script that assigns window.A itself; the npm dist (the usual ALADIN_JS
+  // override) is an ES module with a default export, which a classic tag
+  // can't even parse. Sniff the file and emit the matching tag — both keep
+  // the engine executing before app.js, like the tag they replace.
+  const engineSrc = await readFile(enginePath, 'utf8');
+  const isEsm = /\bexport\s*(\{|default\b)/.test(engineSrc.slice(-2000));
+  const engineTag = isEsm
+    ? '<script type="module">import A from "/tests/browser/.cache/aladin-local.js"; window.A = A;</script>'
+    : '<script src="/tests/browser/.cache/aladin-local.js" charset="utf-8" defer></script>';
   const html = (await readFile(path.join(ROOT, 'index.html'), 'utf8')).replace(
     /<script src="https:\/\/aladin\.cds\.unistra\.fr[^"]*" charset="utf-8" defer><\/script>/,
-    '<script type="module">import A from "/tests/browser/.cache/aladin-local.js"; window.A = A;</script>'
+    engineTag
   );
   await writeFile(path.join(CACHE, 'engine-test.html'), html);
 }
