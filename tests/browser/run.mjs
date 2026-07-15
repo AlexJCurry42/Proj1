@@ -136,7 +136,10 @@ async function newPage(browser, baseURL, { geolocation = true } = {}) {
   page.on('console', (m) => { page.__console.push(`[${m.type()}] ${m.text()}`.slice(0, 300)); });
   await page.addInitScript(INIT);
   page.__dataReqs = [];
-  page.on('request', (r) => { const u = r.url(); if (u.includes('/data/')) page.__dataReqs.push(u.split('/data/')[1]); });
+  // Only the app's own bundled data counts against the boot fetch budget —
+  // with real network the engine fetches survey metadata from CDS, and some
+  // of those URLs also contain "/data/" in their path.
+  page.on('request', (r) => { const u = r.url(); if (u.startsWith(`${baseURL}/data/`)) page.__dataReqs.push(u.split('/data/')[1]); });
   await page.goto(`${baseURL}/engine-test.html`);
   try {
     await page.waitForFunction(() => window.__aladin, null, { timeout: 60000 });
