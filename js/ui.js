@@ -7,7 +7,6 @@ import { riseSet, raDecToVec, vecToRaDec, angularSepDeg } from './astro.js';
 import { cachedObserver } from './observer.js';
 import { appNow } from './clock.js';
 import { SURVEYS } from './spectrum.js';
-import { setWarpSuppressed } from './warp.js';
 import { motionOK } from './motion.js';
 
 const SIMBAD_TAP_URL = 'https://simbad.cds.unistra.fr/simbad/sim-tap/sync';
@@ -400,7 +399,6 @@ export async function initTours(aladin, spectrum) {
   let flightToken = 0;
   document.getElementById('sky-wrap')?.addEventListener('pointerdown', () => {
     flightToken++;
-    setWarpSuppressed(false);
   }, true);
 
   const RHO = 1.42, RHO2 = RHO * RHO, RHO4 = RHO2 * RHO2;
@@ -515,7 +513,6 @@ export async function initTours(aladin, spectrum) {
     // Destination tiles start fetching NOW, behind an invisible overlay, so
     // the reveal later is a pure opacity ramp instead of a cold tile load.
     spectrum?.primeSurvey?.(t.survey);
-    setWarpSuppressed(true); // a scripted flight is its own animation
 
     // The wavelength reveal rides the final 45% of the arc — the fast pan
     // happens in one steady light, and the new survey breathes in as the
@@ -535,7 +532,6 @@ export async function initTours(aladin, spectrum) {
       if (landed) startFade(900); // short hop that never crossed 55%
     } finally {
       if (token === flightToken) {
-        setWarpSuppressed(false);
         // Canceled before any fade could settle: re-lock the zoom limits
         // for the survey we're actually still on.
         if (!landed && !fadeStarted) spectrum?.setValue?.(spectrum.getValue(), { settle: true });

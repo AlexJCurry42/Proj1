@@ -2,7 +2,7 @@
 
 **Pocket Planetarium** (formerly Deep Sky Atlas): an interactive, browser-based atlas of the entire sky — imagery across the
 electromagnetic spectrum, stars, galaxies, nebulae, exoplanets, Solar System
-planets, the ISS and bright satellites overhead, and a dedicated **black
+planets, the ISS overhead, and a dedicated **black
 holes** layer covering stellar-mass X-ray binaries and supermassive black
 holes (28 curated measured entries including the two EHT-imaged flagships,
 plus the full live AGN/quasar population).
@@ -30,12 +30,14 @@ exactly as the projection does, making any distortion visible),
 guided **tours** that fly
 three-act flights to the sky's greatest hits, the complete **NGC/IC
 catalog** (~13,000 objects, magnitude-tiered by zoom), live
-**satellites** with ISS pass predictions (SGP4, computed on-device),
+the **ISS** with live pass predictions (SGP4, computed on-device — part
+of the Solar System layer, appearing once your location is known),
 and **Sky Now** — one tap flies to your zenith, and with the compass
 toggle on, the view tracks the phone live (sensor-smoothed gyro +
 compass, computed entirely on-device). A **time scrubber** (the clock
-button) shows the sky for any date and time — Solar System positions,
-the horizon overlay, satellites and Sky Now all follow one shared app
+button) shows the sky for any date and time — and can PLAY it: time-lapse
+the whole sky at a minute, an hour, or a day per second — Solar System positions,
+the horizon overlay, the ISS and Sky Now all follow one shared app
 clock, with an amber chip marking the shift. Once your location is
 known, every object's detail panel adds **visible-tonight rows**: is it
 up right now, and when does it rise and set from where you stand. Two
@@ -72,7 +74,12 @@ file server (`npx serve`, `php -S`, etc.) works equally well.
 ```
 index.html           Page shell: top bar, layer dock, spectrum rail, bottom bar
 css/style.css        Liquid-glass design system, one --spring motion token
-js/app.js            App entry point: engine init, layer dock, permalinks
+js/app.js            App entry point: engine init + module composition
+js/dock.js           Layer-dock building blocks: toggles, sections, collapse
+js/timeui.js         Time scrubber UI: picker, time-lapse play, amber chip
+js/planetslayer.js   Solar System markers (Sun/Moon/planets) on the engine
+js/searchui.js       Search box UX: recents, suggestions, submit flow
+js/loccard.js        In-app location consent card (no cold browser prompts)
 js/overlay.js        UNIFIED overlay engine: one canvas + one loop for every
                      sky-drawn layer (goes fully idle when nothing animates)
 js/astro.js          Shared spherical math: vectors, alt-az↔RA/Dec, GMST, rise/set
@@ -84,7 +91,7 @@ js/markerfade.js     Marker cross-fades for layer toggles (overlay layer)
 js/spectrum.js       Vertical spectrum rail: scrub imagery gamma-ray → radio
 js/skynow.js         Sky Now + gyro/compass tracking (all math on-device)
 js/horizon.js        Local horizon, cardinal directions & zenith (overlay layer)
-js/satellites.js     ISS + bright satellites: live SGP4 (overlay layer)
+js/iss.js            The ISS in the Solar System layer: live SGP4 (overlay)
 js/starbloom.js      "Clean bright stars": catalog glows over plate artifacts
 js/vendor/satellite/ Vendored satellite.js SGP4 submodules (MIT)
 js/constellations.js 88 constellations: figures, names, boundaries (overlay layer)
@@ -95,7 +102,6 @@ js/search.js         CDS Sesame name resolver + coordinate parsing
 js/suggest.js        Instant search suggestions from the curated catalogs
 js/ui.js             Detail panel, toasts, sky destinations, about modal
 js/render3d.js       WebGL procedural 3-D renders (planets, stars, black holes)
-js/warp.js           Star-streak warp feedback on zoom, fed by the live view
 js/markers.js        Shared catalog-marker helpers
 js/net.js            Shared fetch-with-timeout-and-retry helper
 sw.js                Service worker: cache-first shell, SWR data (offline PWA)
@@ -194,14 +200,15 @@ drifts, the UI degrades to the procedural render without a broken image.
   glow — positioned, sized and tinted from the Yale Bright Star Catalogue —
   covers the saturated cores. Because it retouches the view, it is always
   one tap from off, and the raw observations are never altered underneath.
-- **Satellite positions depend on TLE freshness.** SGP4 accuracy decays
+- **The ISS position depends on TLE freshness.** SGP4 accuracy decays
   within days of the element epoch; the daily CelesTrak snapshot keeps the
   ISS good to well under a degree, but if the Action stops running the app
   warns once the data is >10 days old. ISS "passes" are above-horizon
   windows — actually *seeing* one also requires a dark sky with the station
-  sunlit.
-- **The NGC/IC and satellite layers need their data Actions to have run**
-  (`ngc-catalog.yml`, `satellite-tles.yml`) — on a fresh fork they show a
+  sunlit. The marker appears only once your location is known (from the
+  horizon consent or Sky Now); it never asks on its own.
+- **The NGC/IC layer and the ISS need their data Action to have run**
+  (`data-refresh.yml`) — on a fresh fork they show a
   "data refresh pending" note until the workflows commit their snapshots.
 - **Planet positions are geometric, not apparent.** The self-contained
   ephemeris (`js/planets.js`) uses the standard JPL low-precision Keplerian
@@ -213,8 +220,8 @@ drifts, the UI degrades to the procedural render without a broken image.
   at app launch (and recomputed whenever the time scrubber moves); a
   long-lived tab will slowly drift (Moon ~0.5°/hour) until reloaded or
   scrubbed.
-- **Time-scrubbed satellites are gated.** SGP4 accuracy decays km/day away
-  from the TLE epoch, so the satellite layer hides itself beyond ±5 days of
+- **The time-scrubbed ISS is gated.** SGP4 accuracy decays km/day away
+  from the TLE epoch, so the ISS hides itself beyond ±5 days of
   time travel rather than plot confident-looking nonsense. Rise/set rows in
   the detail panel treat the object's coordinates as fixed — exact for stars
   and deep-sky objects, approximate for planets, and up to ~½ hour off for

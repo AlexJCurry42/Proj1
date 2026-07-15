@@ -13,113 +13,31 @@ import {
   initTours, initAboutModal, initRedlightToggle,
   initDetailPanelClose, initKeyboard
 } from './ui.js';
-import { runSearch, getHistory, addToHistory, flyTo } from './search.js';
 import { initGaiaHips, initGalaxiesLayer, initSimbadBlackHolesLayer, loadMessierNgc, loadNgcFull, loadExoplanets } from './catalogs.js';
-import { initSatellitesLayer } from './satellites.js';
+import { initIssLayer } from './iss.js';
 import { loadStellarBlackHoles, loadFlagshipSupermassive, initMilliquasLayer } from './blackholes.js';
-import { computePlanetPositions, computeSunPosition, computeMoonPosition, PLANET_LABELS } from './planets.js';
-import { makePlanetIcon, makeGlowDot } from './markers.js';
-import { initWarpEffect } from './warp.js';
+import { initPlanetsLayer } from './planetslayer.js';
 import { loadConstellations, loadConstellationBorders } from './constellations.js';
 import { initHorizonLayer, initHorizonLock, requestObserver } from './horizon.js';
 import { initStarBloom } from './starbloom.js';
-import { querySuggestions, suggestionCoords } from './suggest.js';
 import { initSkyNow } from './skynow.js';
 import { SURVEYS, STOP, MAX_VALUE, DEFAULT_VALUE, initSpectrumBar } from './spectrum.js';
 import { readPref, writePref } from './prefs.js';
+import { onObserver, cachedObserver } from './observer.js';
 import { initMarkerFades } from './markerfade.js';
-import { appNow, setAppTime, isTimeShifted, onTimeChange } from './clock.js';
 import { motionOK, setAnimationsEnabled, initMotion } from './motion.js';
+import { addDockSection, addToggle, initDockCollapse } from './dock.js';
+import { initTimeControl } from './timeui.js';
+import { initSearchUI } from './searchui.js';
+import { showLocationCard, geoPermissionState } from './loccard.js';
+import { onTimeChange } from './clock.js';
+import { getOverlay } from './overlay.js';
 
 const SGR_A_STAR = { ra: 266.41683, dec: -29.007811 };
 
 function debounce(fn, ms) {
   let t = null;
   return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
-}
-
-// ------------------------------------------------- Preferences (local) ---
-const savedLayers = readPref('layers', {});
-// Migration: the two deep-sky toggles merged into one. If a returning user
-// had either of the old switches on, the merged switch comes on.
-if ('Messier & NGC' in savedLayers || 'NGC & IC (full)' in savedLayers) {
-  if (!('Deep sky' in savedLayers)) {
-    savedLayers['Deep sky'] = savedLayers['Messier & NGC'] === true || savedLayers['NGC & IC (full)'] === true;
-  }
-  delete savedLayers['Messier & NGC'];
-  delete savedLayers['NGC & IC (full)'];
-  writePref('layers', savedLayers);
-}
-
-// A quiet section header inside the layer dock (visual only).
-function addDockSection(listEl, title) {
-  const li = document.createElement('li');
-  li.className = 'dock-section';
-  li.setAttribute('aria-hidden', 'true');
-  li.textContent = title;
-  listEl.appendChild(li);
-}
-
-let toggleSeq = 0;
-function addToggle(listEl, { label, color, checked = true, sub = false, persist = true, onToggle }) {
-  // persist:false = the switch's state lives elsewhere (e.g. the Animations
-  // switch persists through js/motion.js), so keep it out of the layers pref.
-  const saved = persist && Object.prototype.hasOwnProperty.call(savedLayers, label) ? savedLayers[label] : undefined;
-  const initial = saved ?? checked;
-  const id = `tgl-${++toggleSeq}`;
-  const li = document.createElement('li');
-  if (sub) li.className = 'toggle-sub';
-  li.innerHTML =
-    `<span class="legend-dot" style="background:${color};color:${color}"></span>` +
-    `<label class="toggle-label" for="${id}"><span class="toggle-text">${label}</span><span class="toggle-count"></span></label>` +
-    `<input type="checkbox" ${sub ? 'class="sub"' : 'role="switch"'} id="${id}" ${initial ? 'checked' : ''}/>`;
-  listEl.appendChild(li);
-  const input = li.querySelector('input');
-  input.addEventListener('change', () => {
-    if (persist) {
-      savedLayers[label] = input.checked;
-      writePref('layers', savedLayers);
-    }
-    onToggle(input.checked);
-  });
-  // Any layer that starts enabled — by default or from last visit — must
-  // initialize now; lazy layers guard themselves against double-init.
-  // (persist:false switches manage their own boot state, e.g. Animations.)
-  if (initial && persist) queueMicrotask(() => onToggle(true));
-  return {
-    setCount: (n) => { li.querySelector('.toggle-count').textContent = n; },
-    isChecked: () => input.checked,
-    setDisabled: (d) => { input.disabled = d; li.classList.toggle('disabled', d); },
-    // Programmatic revert (e.g. a layer whose permission was denied): keeps
-    // the saved preference in sync but does NOT re-fire onToggle.
-    setChecked: (v) => {
-      input.checked = v;
-      if (persist) {
-        savedLayers[label] = v;
-        writePref('layers', savedLayers);
-      }
-    }
-  };
-}
-
-// The layer dock folds the same way the spectrum rail does: one chevron,
-// one sprung animation down to a lone pill. State persists across visits.
-function initDockCollapse() {
-  const dock = document.getElementById('layer-dock');
-  const btn = document.getElementById('dock-collapse');
-  if (!dock || !btn) return; // stale HTML mid-deploy: skip, never crash boot
-  function setCollapsed(c) {
-    dock.classList.toggle('collapsed', c);
-    btn.setAttribute('aria-expanded', String(!c));
-    btn.setAttribute('aria-label', c ? 'Expand the layers menu' : 'Collapse the layers menu');
-    writePref('dockcollapsed', c);
-  }
-  btn.addEventListener('click', () => setCollapsed(!dock.classList.contains('collapsed')));
-  if (readPref('dockcollapsed', false) === true) {
-    dock.classList.add('collapsed');
-    btn.setAttribute('aria-expanded', 'false');
-    btn.setAttribute('aria-label', 'Expand the layers menu');
-  }
 }
 
 // ---------------------------------------------- Layer fade on toggle ---
@@ -220,6 +138,11 @@ async function main() {
   try { aladin.setBackgroundColor?.('#000000'); } catch (err) { /* option above covers newer builds */ }
   fadeCatalog = initMarkerFades(aladin); // layer toggles can now cross-fade markers
 
+  // Time-lapse playback: each clock tick must wake the overlay engine (its
+  // loop idles when nothing animates) so the horizon and other time-aware
+  // layers redraw as the played clock advances.
+  onTimeChange(() => { try { getOverlay(aladin).wake(); } catch (err) { /* pre-init tick */ } });
+
   if (linkedView) {
     aladin.gotoRaDec(linkedView.ra, linkedView.dec);
     if (linkedView.fov) aladin.setFoV(linkedView.fov);
@@ -237,7 +160,6 @@ async function main() {
   const onZoom = (fn) => zoomSubs.add(fn);
   const onPosition = (fn) => positionSubs.add(fn);
 
-  initWarpEffect(aladin, onZoom);
 
   // Zoom stops where the data does. Each survey has an honest floor
   // (~1 data pixel per screen pixel); zooming past it just magnifies plate
@@ -395,105 +317,7 @@ async function main() {
   onZoom(updateCoordsHud);
   updateCoordsHud();
 
-  // -------------------------------------------------------------- Search ---
-  const searchForm = document.getElementById('search-form');
-  const searchInput = document.getElementById('search-input');
-  const historyList = document.getElementById('search-history');
-  const suggList = document.getElementById('search-suggestions');
-  let currentSuggs = [];
-  let activeIdx = -1;
-
-  function renderHistory() {
-    const items = getHistory();
-    historyList.innerHTML = items.map((h, i) =>
-      `<li data-idx="${i}">${h.label}<div class="item-sub">${h.query}</div></li>`
-    ).join('');
-  }
-  searchInput.addEventListener('focus', () => {
-    if (searchInput.value.trim().length >= 2) return;
-    renderHistory();
-    historyList.hidden = getHistory().length === 0;
-  });
-  searchInput.addEventListener('blur', () => setTimeout(() => {
-    historyList.hidden = true;
-    suggList.hidden = true;
-  }, 150));
-  historyList.addEventListener('click', (e) => {
-    const li = e.target.closest('li');
-    if (!li) return;
-    const h = getHistory()[Number(li.dataset.idx)];
-    if (!h) return;
-    searchInput.value = h.query;
-    historyList.hidden = true;
-    searchForm.requestSubmit(); // re-run the search, don't just fill the box
-  });
-
-  // Instant suggestions from the app's own curated objects (no network).
-  const runSuggest = debounce(async () => {
-    currentSuggs = await querySuggestions(searchInput.value);
-    activeIdx = -1;
-    if (!currentSuggs.length) { suggList.hidden = true; return; }
-    historyList.hidden = true;
-    suggList.innerHTML = currentSuggs.map((s, i) =>
-      `<li data-i="${i}">${s.name}<div class="item-sub">${s.typeLabel}</div></li>`
-    ).join('');
-    suggList.hidden = false;
-  }, 140);
-  searchInput.addEventListener('input', () => {
-    if (searchInput.value.trim().length >= 2) runSuggest();
-    else { suggList.hidden = true; }
-  });
-
-  function pickSuggestion(s) {
-    const c = suggestionCoords(s);
-    if (!c) return;
-    flyTo(aladin, c.ra, c.dec, s.fov ?? 0.8);
-    addToHistory({ query: s.name, ra: c.ra, dec: c.dec, label: s.name });
-    renderDetailPanel({ name: s.name, typeLabel: s.typeLabel, ra: c.ra, dec: c.dec });
-    suggList.hidden = true;
-    historyList.hidden = true;
-    searchInput.value = s.name;
-    searchInput.blur();
-  }
-  // mousedown, not click: it must beat the input's blur handler.
-  suggList.addEventListener('mousedown', (e) => {
-    const li = e.target.closest('li');
-    if (!li) return;
-    e.preventDefault();
-    pickSuggestion(currentSuggs[Number(li.dataset.i)]);
-  });
-  searchInput.addEventListener('keydown', (e) => {
-    if (suggList.hidden) return;
-    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-      e.preventDefault();
-      const n = currentSuggs.length;
-      activeIdx = ((activeIdx + (e.key === 'ArrowDown' ? 1 : -1)) % n + n) % n;
-      [...suggList.children].forEach((el, i) => el.classList.toggle('active', i === activeIdx));
-    } else if (e.key === 'Enter' && activeIdx >= 0) {
-      e.preventDefault();
-      pickSuggestion(currentSuggs[activeIdx]);
-    }
-  });
-
-  searchForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    suggList.hidden = true;
-    const result = await runSearch(aladin, searchInput.value);
-    renderHistory();
-    searchInput.blur();
-    // A resolved named object opens its detail card (with media if famous).
-    if (result && result.name) {
-      const typeLabel = result.otype ? await humanObjectType(result.otype) : 'Astronomical object';
-      renderDetailPanel({
-        name: result.name,
-        aliases: result.aliases,
-        typeLabel,
-        ra: result.ra,
-        dec: result.dec,
-        source: 'CDS Sesame name resolver (SIMBAD/NED/VizieR)'
-      });
-    }
-  });
+  initSearchUI(aladin);
 
   // ----------------------------------------------------- Object detail UX ---
   aladin.on('objectClicked', async (object) => {
@@ -549,10 +373,31 @@ async function main() {
   const horizonLock = initHorizonLock(aladin, onPosition);
   const horizonToggle = addToggle(catalogList, {
     label: 'Horizon & compass', color: '#63d68b', checked: true,
-    onToggle: async (v) => {
+    onToggle: async (v, { gesture } = {}) => {
       if (v && !horizonRef.ctl && !horizonRef.busy) {
         horizonRef.busy = true;
         try {
+          // At boot (no gesture) NEVER let the browser prompt cold: ask in
+          // the app's own words first, and anchor the real permission prompt
+          // to the user's tap. Already-granted permission skips the card;
+          // already-denied quietly unchecks without nagging.
+          if (!gesture && !cachedObserver()) {
+            const perm = await geoPermissionState();
+            if (perm === 'denied') {
+              horizonToggle.setChecked(false);
+              horizonRef.busy = false;
+              return;
+            }
+            if (perm !== 'granted') {
+              const accepted = await showLocationCard();
+              if (!accepted) {
+                horizonToggle.setChecked(false);
+                horizonRef.busy = false;
+                return;
+              }
+            }
+          }
+          horizonToggle.setLoading(true);
           const obs = await requestObserver();
           horizonRef.ctl = initHorizonLayer(aladin, obs);
           horizonLock.setObserver(obs);
@@ -560,6 +405,7 @@ async function main() {
           showToast('The horizon overlay needs your location to know which sky is yours — it never leaves this device.', 'error', 8000);
           horizonToggle.setChecked(false);
         }
+        horizonToggle.setLoading(false);
         horizonRef.busy = false;
       }
       if (!horizonRef.ctl) return;
@@ -600,9 +446,11 @@ async function main() {
   function ensureConstellations() {
     if (constRef.catalogs || constRef.loading) return;
     constRef.loading = true;
+    constToggle.setLoading(true);
     loadConstellations(aladin).then(({ catalogs, count }) => {
       constRef.catalogs = catalogs;
       constRef.loading = false;
+      constToggle.setLoading(false);
       constToggle.setCount(count);
       setCatalogVisible(catalogs, constToggle.isChecked());
     });
@@ -654,6 +502,7 @@ async function main() {
       // catalog load together on the first flip, nothing at boot.
       if (v && !deepRef.curated && !deepRef.loading) {
         deepRef.loading = true;
+        deepToggle.setLoading(true);
         const { catalogs, count, ids } = await loadMessierNgc(aladin, onZoom);
         deepRef.curated = catalogs;
         deepRef.curatedCount = count;
@@ -661,6 +510,7 @@ async function main() {
         const full = await loadNgcFull(aladin, onZoom, ids || undefined);
         deepRef.full = full.catalog;
         deepRef.loading = false;
+        deepToggle.setLoading(false);
         deepToggle.setCount((count + (full.count || 0)).toLocaleString());
       }
       setCatalogVisible(deepRef.curated, deepToggle.isChecked());
@@ -668,38 +518,33 @@ async function main() {
     }
   });
 
-  const planetsRef = {};
+  // Solar System: Sun, Moon, planets — and the ISS, humanity's outpost. The
+  // station's position is observer-dependent (LEO parallax spans tens of
+  // degrees), so its marker lights up the moment coordinates arrive from a
+  // feature the user chose (horizon consent, Sky Now); it never prompts.
+  const planetsRef = { iss: null, issStarted: false };
   const planetsToggle = addToggle(catalogList, {
     label: 'Solar System', color: '#7fd6ff', checked: true,
-    onToggle: v => setCatalogVisible(planetsRef.catalogs, v)
+    onToggle: (v) => {
+      setCatalogVisible(planetsRef.catalogs, v);
+      if (planetsRef.iss) { if (v) planetsRef.iss.show(); else planetsRef.iss.hide(); }
+    }
   });
   initPlanetsLayer(aladin).then(({ catalogs, count }) => {
     planetsRef.catalogs = catalogs;
+    planetsRef.count = count;
     planetsToggle.setCount(count);
     setCatalogVisible(catalogs, planetsToggle.isChecked());
   });
-
-  // ISS & bright satellites: live SGP4, observer-dependent (parallax in low
-  // Earth orbit is huge), so it needs location like the horizon overlay.
-  const satRef = { ctl: null, busy: false };
-  const satToggle = addToggle(catalogList, {
-    label: 'Satellites & ISS', color: '#9fe8ff', checked: false,
-    onToggle: async (v) => {
-      if (v && !satRef.ctl && !satRef.busy) {
-        satRef.busy = true;
-        try {
-          const obs = await requestObserver();
-          const { controller, count } = await initSatellitesLayer(aladin, obs);
-          satRef.ctl = controller;
-          if (controller && count) satToggle.setCount(count);
-        } catch (err) {
-          showToast('Satellites need your location to compute where they are in YOUR sky — it never leaves this device.', 'error', 8000);
-        }
-        if (!satRef.ctl) satToggle.setChecked(false);
-        satRef.busy = false;
-      }
-      if (!satRef.ctl) return;
-      if (satToggle.isChecked()) satRef.ctl.show(); else satRef.ctl.hide();
+  onObserver(async (obs) => {
+    if (planetsRef.issStarted) return;
+    planetsRef.issStarted = true;
+    try {
+      planetsRef.iss = await initIssLayer(aladin, obs);
+    } catch (err) { /* no TLE yet: the marker just doesn't appear */ }
+    if (planetsRef.iss && planetsToggle.isChecked()) {
+      planetsRef.iss.show();
+      planetsToggle.setCount((planetsRef.count || 11) + 1);
     }
   });
 
@@ -732,9 +577,11 @@ async function main() {
     onToggle: async (v) => {
       if (v && !exoRef.catalog && !exoRef.loading) {
         exoRef.loading = true;
+        exoToggle.setLoading(true);
         const { catalog, count } = await loadExoplanets(aladin);
         exoRef.catalog = catalog;
         exoRef.loading = false;
+        exoToggle.setLoading(false);
         if (count > 0) exoToggle.setCount(count.toLocaleString());
         setCatalogVisible(catalog, exoToggle.isChecked());
       } else {
@@ -756,9 +603,11 @@ async function main() {
     onToggle: (v) => {
       if (v && !stellarRef.catalog && !stellarRef.loading) {
         stellarRef.loading = true;
+        stellarToggle.setLoading(true);
         loadStellarBlackHoles(aladin).then(({ catalog, count }) => {
           stellarRef.catalog = catalog;
           stellarRef.loading = false;
+          stellarToggle.setLoading(false);
           if (count) stellarToggle.setCount(count);
           setCatalogVisible(catalog, stellarToggle.isChecked());
         });
@@ -780,9 +629,11 @@ async function main() {
     onToggle: (v) => {
       if (v && !flagshipRef.catalog && !flagshipRef.loading) {
         flagshipRef.loading = true;
+        flagshipToggle.setLoading(true);
         loadFlagshipSupermassive(aladin).then(({ catalog, count }) => {
           flagshipRef.catalog = catalog;
           flagshipRef.loading = false;
+          flagshipToggle.setLoading(false);
           if (count) flagshipToggle.setCount(count);
           setCatalogVisible(catalog, flagshipToggle.isChecked());
         });
@@ -809,7 +660,7 @@ async function main() {
   addDockSection(catalogList, 'Display');
   // Animations: ON by default for everybody (see js/motion.js for why the
   // OS reduce-motion flag is deliberately not the default). This one switch
-  // governs EVERYTHING — flights, layer fades, constellation reveals, warp,
+  // governs EVERYTHING — flights, layer fades, constellation reveals,
   // and all CSS animation (via body.reduce-motion).
   addToggle(catalogList, {
     label: 'Animations', color: '#bf5af2', checked: motionOK(), persist: false,
@@ -826,8 +677,10 @@ async function main() {
     onToggle: async (v) => {
       if (v && !bloomRef.ctl && !bloomRef.busy) {
         bloomRef.busy = true;
+        bloomToggle.setLoading(true);
         try { bloomRef.ctl = await initStarBloom(aladin); } catch (err) { /* data missing */ }
         bloomRef.busy = false;
+        bloomToggle.setLoading(false);
         if (!bloomRef.ctl) { bloomToggle.setChecked(false); return; }
       }
       if (!bloomRef.ctl) return;
@@ -861,158 +714,6 @@ async function main() {
     });
     navigator.serviceWorker.register('sw.js').catch(() => { /* shell caching is optional */ });
   }
-}
-
-// --------------------------------------------------------- Time scrubber ---
-// One clock button, one popover: scrub the whole sky to any date and time.
-// Everything time-dependent (Solar System, horizon, satellites, Sky Now,
-// rise/set rows) reads js/clock.js, so a single setAppTime moves it all.
-function initTimeControl() {
-  const btn = document.getElementById('time-btn');
-  const panel = document.getElementById('time-panel');
-  const input = document.getElementById('time-input');
-  const nowBtn = document.getElementById('time-now');
-  const chip = document.getElementById('time-chip');
-  if (!btn || !panel || !input || !nowBtn || !chip) return;
-
-  const pad = (n) => String(n).padStart(2, '0');
-  // datetime-local speaks LOCAL wall-clock time with no zone suffix.
-  const toLocalInputValue = (d) =>
-    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-
-  function refresh() {
-    const shifted = isTimeShifted();
-    btn.setAttribute('aria-pressed', String(shifted));
-    btn.classList.toggle('time-active', shifted);
-    chip.hidden = !shifted;
-    if (shifted) {
-      chip.textContent = appNow().toLocaleString(undefined, {
-        weekday: 'short', month: 'short', day: 'numeric',
-        hour: '2-digit', minute: '2-digit'
-      });
-    }
-  }
-  onTimeChange(refresh);
-
-  function openPanel() {
-    input.value = toLocalInputValue(appNow());
-    panel.hidden = false;
-    input.focus({ preventScroll: true });
-  }
-  btn.addEventListener('click', () => {
-    if (panel.hidden) openPanel(); else panel.hidden = true;
-  });
-  chip.addEventListener('click', openPanel); // the amber chip reopens the scrubber
-  document.addEventListener('pointerdown', (e) => {
-    if (!panel.hidden && !panel.contains(e.target) && !btn.contains(e.target) && !chip.contains(e.target)) {
-      panel.hidden = true;
-    }
-  });
-  input.addEventListener('change', () => {
-    const d = new Date(input.value);
-    if (!Number.isNaN(d.getTime())) setAppTime(d);
-  });
-  nowBtn.addEventListener('click', () => {
-    setAppTime(null);
-    panel.hidden = true;
-  });
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && !panel.hidden) panel.hidden = true;
-  });
-  refresh();
-}
-
-async function initPlanetsLayer(aladin) {
-  const catPlanets = A.catalog({
-    name: 'Solar System planets',
-    shape: makePlanetIcon('#7fd6ff', 18),
-    sourceSize: 18,
-    displayLabel: true,
-    labelColumn: 'name',
-    labelColor: 'rgba(220, 235, 255, 0.85)',
-    labelFont: '11px -apple-system, sans-serif',
-    onClick: null
-  });
-  const catSun = A.catalog({
-    name: 'Sun',
-    shape: makeGlowDot('#ffd60a', 28),
-    sourceSize: 28,
-    displayLabel: true,
-    labelColumn: 'name',
-    labelColor: 'rgba(255, 224, 130, 0.9)',
-    labelFont: '11px -apple-system, sans-serif',
-    onClick: null
-  });
-  const catMoon = A.catalog({
-    name: 'Moon',
-    shape: makePlanetIcon('#d9d9de', 18),
-    sourceSize: 18,
-    displayLabel: true,
-    labelColumn: 'name',
-    labelColor: 'rgba(225, 225, 235, 0.85)',
-    labelFont: '11px -apple-system, sans-serif',
-    onClick: null
-  });
-
-  const EPHEMERIS_NOTE = 'Computed client-side for the time shown above (the clock button scrubs it). Validated against a VSOP87-class ephemeris: typically within 1′ (Saturn up to ~9′), 1800–2050.';
-  const EPHEMERIS_SOURCE = 'Self-contained ephemeris (see js/planets.js); JPL approximate elements / Astronomical Almanac low-precision formulae.';
-
-  function build() {
-    for (const c of [catPlanets, catSun, catMoon]) {
-      if (typeof c.removeAll === 'function') c.removeAll();
-    }
-    const now = appNow();
-    catPlanets.addSources(computePlanetPositions(now).map(p => A.source(p.ra, p.dec, {
-      name: PLANET_LABELS[p.body],
-      _detail: {
-        name: PLANET_LABELS[p.body],
-        typeLabel: 'Solar System planet',
-        ra: p.ra,
-        dec: p.dec,
-        distanceText: `${p.distanceAu.toFixed(3)} AU from Earth (at the time shown)`,
-        extraRows: [['Position computed', now.toUTCString()]],
-        approxNote: EPHEMERIS_NOTE,
-        source: EPHEMERIS_SOURCE
-      }
-    })));
-    const sun = computeSunPosition(now);
-    catSun.addSources([A.source(sun.ra, sun.dec, {
-      name: 'Sun',
-      _detail: {
-        name: 'The Sun',
-        typeLabel: 'G-type main-sequence star',
-        ra: sun.ra,
-        dec: sun.dec,
-        distanceText: `${sun.distanceAu.toFixed(4)} AU from Earth (at the time shown)`,
-        extraRows: [['Position computed', now.toUTCString()]],
-        approxNote: EPHEMERIS_NOTE,
-        source: EPHEMERIS_SOURCE
-      }
-    })]);
-    const moon = computeMoonPosition(now);
-    catMoon.addSources([A.source(moon.ra, moon.dec, {
-      name: 'Moon',
-      _detail: {
-        name: 'The Moon',
-        typeLabel: "Earth's natural satellite",
-        ra: moon.ra,
-        dec: moon.dec,
-        distanceText: `${Math.round(moon.distanceKm).toLocaleString()} km from Earth's center (at the time shown)`,
-        extraRows: [['Position computed', now.toUTCString()]],
-        approxNote: 'Geocentric position from the Astronomical Almanac lunar formulae, computed when the app opened (validated: typically ~5′). From your location on Earth’s surface the Moon can appear up to ~1° away from this point (parallax).',
-        source: EPHEMERIS_SOURCE
-      }
-    })]);
-  }
-
-  // Positions are computed once, for the moment the app launches — each
-  // marker's detail panel records that timestamp. (The Moon moves ~0.5°/hour,
-  // so a long-lived tab will drift; reloading recomputes.) The one exception:
-  // scrubbing the time control rebuilds everything for the chosen moment.
-  build();
-  onTimeChange(() => build());
-  for (const c of [catPlanets, catSun, catMoon]) aladin.addCatalog(c);
-  return { catalogs: [catPlanets, catSun, catMoon], count: 11 };
 }
 
 // On-page debug console for devices without dev tools (phones): append

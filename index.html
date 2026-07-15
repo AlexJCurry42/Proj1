@@ -146,7 +146,32 @@
 <div id="time-panel" class="glass-panel" role="dialog" aria-label="Show the sky at another time" hidden>
   <label for="time-input" class="time-title">Show the sky at&hellip;</label>
   <input id="time-input" type="datetime-local" aria-label="Date and time to show the sky for" />
+  <div id="time-play-row">
+    <button id="time-play" class="glass-btn small" aria-pressed="false" aria-label="Play time forward" title="Time-lapse">
+      <svg class="icon icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5l11 6.5-11 6.5z"/></svg>
+      <svg class="icon icon-pause" viewBox="0 0 24 24" aria-hidden="true"><line x1="9" y1="6" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="18"/></svg>
+    </button>
+    <div id="time-speeds" role="group" aria-label="Playback speed">
+      <button class="speed-btn" data-mult="60" aria-label="One minute per second">min/s</button>
+      <button class="speed-btn active" data-mult="3600" aria-label="One hour per second">hr/s</button>
+      <button class="speed-btn" data-mult="86400" aria-label="One day per second">day/s</button>
+    </div>
+  </div>
   <button id="time-now" class="glass-btn small wide">Back to now</button>
+</div>
+
+<!-- Location consent: the app asks in its own words BEFORE any browser
+     geolocation prompt; the real prompt is anchored to the accept tap. -->
+<div id="loc-card" class="glass-panel" role="dialog" aria-label="Use your location?" hidden>
+  <svg class="icon loc-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-6.5-5.6-6.5-10.2a6.5 6.5 0 0 1 13 0C18.5 15.4 12 21 12 21z"/><circle cx="12" cy="10.5" r="2.4"/></svg>
+  <div class="loc-text">
+    <strong>See your own sky?</strong>
+    <span>Your location draws your horizon, compass and zenith on the sky — used on this device only, never sent anywhere.</span>
+  </div>
+  <div class="loc-actions">
+    <button id="loc-accept" class="glass-btn small wide loc-primary">Use my location</button>
+    <button id="loc-decline" class="glass-btn small wide">Not now</button>
+  </div>
 </div>
 <button id="time-chip" hidden aria-label="The sky is time-shifted — tap to adjust or reset"></button>
 

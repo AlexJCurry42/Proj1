@@ -1,5 +1,5 @@
 // Pocket Planetarium — the animations switch. One shared answer to "should
-// this animate?" for every module (flights, fades, reveals, warp, CSS).
+// this animate?" for every module (flights, fades, reveals, CSS).
 //
 // Animations are ON by default for everybody. (An earlier build followed
 // the OS prefers-reduced-motion flag by default, but many desktops report
