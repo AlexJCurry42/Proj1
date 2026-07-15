@@ -97,14 +97,8 @@ const FULL_PX = 26;
 
 export async function initStarBloom(aladin) {
   let bright;
-  let legacyFaint = null; // pre-split combined file: carve the faint tier out locally
   try {
-    const d = await fetchJSON('data/brightstars.json');
-    bright = d.stars;
-    if (bright.length > 15000) {
-      legacyFaint = bright.filter(s => s[2] > 6.5);
-      bright = bright.filter(s => s[2] <= 6.5);
-    }
+    bright = (await fetchJSON('data/brightstars.json')).stars;
   } catch (err) {
     try {
       bright = (await fetchJSON('data/brightstars_seed.json')).stars;
@@ -133,7 +127,6 @@ export async function initStarBloom(aladin) {
   function loadFaint() {
     if (faintState !== 'idle') return;
     faintState = 'loading';
-    if (legacyFaint) { indexFaint(legacyFaint); legacyFaint = null; return; }
     fetchJSON('data/brightstars_faint.json')
       .then((d) => indexFaint(d.stars || []))
       .catch(() => { faintState = 'failed'; }); // bright tier still covers the worst

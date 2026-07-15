@@ -159,8 +159,7 @@ check('VizieR TAP — Yale Bright Star Catalogue V/50 (star bloom pipeline)', as
 });
 
 // -------------------------------------------------- NASA Exoplanet TAP ---
-// The weekly snapshot Action's exact column list (data-refresh.yml);
-// also the browser's silent live-upgrade probe (js/catalogs.js).
+// The weekly snapshot Action's exact column list (data-refresh.yml).
 check('NASA Exoplanet Archive TAP — pscomppars columns (snapshot Action)', async () => {
   const q = 'select top 1 pl_name,hostname,ra,dec,discoverymethod,disc_year,sy_dist from pscomppars';
   const text = await getText(`${EXO_TAP}?query=${encodeURIComponent(q)}&format=csv`);

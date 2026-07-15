@@ -6,16 +6,6 @@
 import { readPref, writePref } from './prefs.js';
 
 const savedLayers = readPref('layers', {});
-// Migration: the two deep-sky toggles merged into one. If a returning user
-// had either of the old switches on, the merged switch comes on.
-if ('Messier & NGC' in savedLayers || 'NGC & IC (full)' in savedLayers) {
-  if (!('Deep sky' in savedLayers)) {
-    savedLayers['Deep sky'] = savedLayers['Messier & NGC'] === true || savedLayers['NGC & IC (full)'] === true;
-  }
-  delete savedLayers['Messier & NGC'];
-  delete savedLayers['NGC & IC (full)'];
-  writePref('layers', savedLayers);
-}
 
 /** A quiet section header inside the layer dock (visual only). */
 export function addDockSection(listEl, title) {

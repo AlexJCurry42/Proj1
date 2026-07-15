@@ -7,7 +7,6 @@ import { showToast } from './ui.js';
 import { makeGlowDot, makePlanetIcon } from './markers.js';
 import { makeConeLayer } from './conesearch.js';
 
-const EXOPLANET_TAP_URL = 'https://exoplanetarchive.ipac.caltech.edu/TAP/sync';
 const GAIA_HIPS_CAT_URL = 'https://axel.u-strasbg.fr/HiPSCatService/I/355/gaiadr3';
 const SIMBAD_TAP_URL = 'https://simbad.cds.unistra.fr/simbad/sim-tap/sync';
 
@@ -334,48 +333,21 @@ export function parseExoCsv(text) {
 }
 
 const EXO_SNAPSHOT_URL = 'data/exoplanets_snapshot.csv';
-let exoplanetFromSnapshot = false;
-
-/** Direct TAP query — works only where the archive permits it (no CORS from browsers today). */
-async function fetchLiveExoplanets() {
-  const probeQuery = 'select top 1 pl_name from pscomppars';
-  await fetchText(`${EXOPLANET_TAP_URL}?query=${encodeURIComponent(probeQuery)}&format=csv`, { timeoutMs: 12000 });
-  const query =
-    'select pl_name,hostname,ra,dec,discoverymethod,disc_year,sy_dist from pscomppars ' +
-    'where ra is not null and dec is not null';
-  const csv = await fetchText(`${EXOPLANET_TAP_URL}?query=${encodeURIComponent(query)}&format=csv`, { timeoutMs: 90000, retries: 0 });
-  return parseExoCsv(csv);
-}
 
 /**
  * NASA Exoplanet Archive: confirmed planets, cached in-memory for the session.
  * The archive's TAP sends no CORS headers, so browsers cannot query it
- * directly — the primary source is a repo-bundled snapshot that a GitHub
- * Action refreshes weekly (the data-refresh Action).
- * A silent live-TAP attempt still runs in the background so the app
- * self-heals to live data if the archive ever enables browser access.
+ * directly — the only source is the repo-bundled snapshot that the
+ * data-refresh Action regenerates weekly.
  */
 export async function loadExoplanets(aladin) {
   if (!exoplanetCache) {
     try {
       exoplanetCache = parseExoCsv(await fetchText(EXO_SNAPSHOT_URL, { timeoutMs: 15000 }));
-      exoplanetFromSnapshot = true;
-      // Background upgrade path — expected to fail today, so completely silent.
-      fetchLiveExoplanets().then(rows => {
-        if (rows.length >= exoplanetCache.length) {
-          exoplanetCache = rows;
-          exoplanetFromSnapshot = false;
-        }
-      }).catch(() => { /* no CORS from the archive: the snapshot stands */ });
     } catch (err) {
-      // Snapshot missing (first deploy before the Action has run): try live.
-      showToast('Downloading confirmed exoplanets from the NASA archive — this can take up to a minute…', 'info', 9000);
-      try {
-        exoplanetCache = await fetchLiveExoplanets();
-      } catch (liveErr) {
-        showToast('The exoplanet catalog is not available right now (the archive blocks direct browser access and the bundled snapshot has not been generated yet). Try again after the next site update.', 'error', 10000);
-        return { catalog: null, count: 0 };
-      }
+      // Snapshot missing: a fresh fork before the data-refresh Action's first run.
+      showToast('The exoplanet catalog is not available yet (the bundled snapshot has not been generated — the archive blocks direct browser access). Try again after the next site update.', 'error', 10000);
+      return { catalog: null, count: 0 };
     }
   }
 
@@ -426,9 +398,7 @@ export async function loadExoplanets(aladin) {
           ['Discovery method', row.discoverymethod],
           ['Discovery year', row.disc_year]
         ],
-        source: exoplanetFromSnapshot
-          ? 'NASA Exoplanet Archive (pscomppars), NASA/IPAC — bundled snapshot, refreshed weekly'
-          : 'NASA Exoplanet Archive (pscomppars table), NASA/IPAC'
+        source: 'NASA Exoplanet Archive (pscomppars), NASA/IPAC — bundled snapshot, refreshed weekly'
       }
     });
     (isFamous ? famous : sources).push(src);

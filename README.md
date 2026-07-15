@@ -249,8 +249,7 @@ drifts, the UI degrades to the procedural render without a broken image.
 - **The NASA Exoplanet Archive's TAP service sends no CORS headers**, so
   browsers cannot query it directly. The exoplanet layer therefore loads a
   repo-bundled snapshot (`data/exoplanets_snapshot.csv`) that a GitHub
-  Action refreshes weekly, with a silent live-TAP upgrade attempt in case
-  the archive ever enables browser access.
+  Action refreshes weekly.
 - **AGN/quasar layer depends on a live VizieR cone search**, since Milliquas
   has no ready-made progressive HiPS catalog service (unlike SIMBAD/Gaia). If
   VizieR's TAP schema for VII/294 differs from what's queried here, the layer
