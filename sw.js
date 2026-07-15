@@ -20,7 +20,7 @@
 // NOTE: never list Action-generated data files (exoplanets_snapshot,
 // constellations_lines/names/borders) here — they may not exist on a fresh
 // deploy and one 404 fails the entire install. Runtime caching covers them.
-const VERSION = 'dsa-shell-v51';
+const VERSION = 'dsa-shell-v52';
 
 const SHELL = [
   './',
@@ -48,6 +48,7 @@ const SHELL = [
   'js/render3d.js',
   'js/iss.js',
   'js/loccard.js',
+  'js/centerid.js',
   'js/search.js',
   'js/searchui.js',
   'js/skynow.js',

@@ -187,7 +187,7 @@ await scenario('boot: lean fetch budget, no dead chrome, zero errors (granted ge
   // boot may fetch: tours, the star tiers (faint arrives on idle — off the
   // critical path by design), the ISS TLE (observer already granted) —
   // never the catalogs of default-off layers.
-  const allowed = ['tours.json', 'brightstars.json', 'brightstars_faint.json', 'brightstars_seed.json', 'satellites_tle.txt'];
+  const allowed = ['tours.json', 'brightstars.json', 'brightstars_faint.json', 'brightstars_seed.json', 'satellites_tle.txt', 'messier_ngc.json'];
   for (const f of dataFiles) {
     assert(allowed.includes(f), `unexpected boot fetch: ${f}`);
   }
@@ -399,6 +399,34 @@ await scenario('time: playback moves the Moon; Back to now stops and resets', as
   const stopped = await page.evaluate(async () => (await import('/js/clock.js')).playSpeed() === 0);
   const chipHidden = await page.evaluate(() => document.getElementById('time-chip').hidden);
   assert(stopped && chipHidden, 'Back to now must stop playback and retire the chip');
+  assert(page.__errors.length === 0, `page errors: ${page.__errors.join('; ')}`);
+  await ctx.close();
+});
+
+await scenario('center ID: a known object under the crosshair pops its card', async () => {
+  const { ctx, page } = await newPage(browser, baseURL);
+  // Park the crosshair on the Crab Nebula (M1) — curated AND toured, so the
+  // card must carry both a type line and a real description. (The boot view
+  // itself may legitimately pop Sgr A* first — wait for the Crab by name.)
+  await page.evaluate(() => { window.__aladin.gotoRaDec(83.63308, 22.0145); window.__aladin.setFoV(2); });
+  await page.waitForFunction(
+    () => !document.getElementById('center-card').hidden &&
+      /crab/i.test(document.getElementById('center-name').textContent),
+    null, { timeout: 20000 } // identification data loads on browser idle
+  );
+  const card = await page.evaluate(() => ({
+    name: document.getElementById('center-name').textContent,
+    desc: document.getElementById('center-desc').textContent
+  }));
+  assert(/crab/i.test(card.name), `card should name the Crab Nebula, got "${card.name}"`);
+  assert(card.desc.length > 50, 'the known description must be shown');
+  // Off to an empty patch: the card must retire.
+  await page.evaluate(() => { window.__aladin.gotoRaDec(140, -35); });
+  await page.waitForFunction(() => document.getElementById('center-card').hidden, null, { timeout: 5000 });
+  // The crosshair itself is part of the feature — it must exist and sit centered.
+  const cross = await page.locator('#crosshair').boundingBox();
+  const vp = page.viewportSize();
+  assert(cross && Math.abs(cross.x + cross.width / 2 - vp.width / 2) < 2, 'crosshair must mark the view center');
   assert(page.__errors.length === 0, `page errors: ${page.__errors.join('; ')}`);
   await ctx.close();
 });

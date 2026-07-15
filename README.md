@@ -44,6 +44,12 @@ up right now, and when does it rise and set from where you stand. Two
 projections: orbit the celestial sphere from outside, or stand inside
 it, planetarium style.
 
+A faint **center crosshair** marks the view center, and whenever a known
+deep-sky object — a Messier or curated NGC/IC showpiece, or any tour
+destination — sits under it, a small card names it (type, catalog id, and
+the full description when one is known). Identification is a property of
+the view itself: it works even when that object's layer is switched off.
+
 Also: instant search suggestions from the curated catalogs, shareable
 permalinks for any view (plus a native share button), installable as a
 PWA with an offline-cached shell, red-light night-vision mode, an
@@ -80,6 +86,7 @@ js/timeui.js         Time scrubber UI: picker, time-lapse play, amber chip
 js/planetslayer.js   Solar System markers (Sun/Moon/planets) on the engine
 js/searchui.js       Search box UX: recents, suggestions, submit flow
 js/loccard.js        In-app location consent card (no cold browser prompts)
+js/centerid.js       Crosshair identification: names the known object at center
 js/overlay.js        UNIFIED overlay engine: one canvas + one loop for every
                      sky-drawn layer (goes fully idle when nothing animates)
 js/astro.js          Shared spherical math: vectors, alt-az↔RA/Dec, GMST, rise/set

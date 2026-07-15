@@ -29,6 +29,7 @@ import { motionOK, setAnimationsEnabled, initMotion } from './motion.js';
 import { addDockSection, addToggle, initDockCollapse } from './dock.js';
 import { initTimeControl } from './timeui.js';
 import { initSearchUI } from './searchui.js';
+import { initCenterId } from './centerid.js';
 import { showLocationCard, geoPermissionState } from './loccard.js';
 import { onTimeChange } from './clock.js';
 import { getOverlay } from './overlay.js';
@@ -316,6 +317,10 @@ async function main() {
   onPosition(updateCoordsHud);
   onZoom(updateCoordsHud);
   updateCoordsHud();
+
+  // Whatever known object sits under the crosshair gets named (layer
+  // toggles notwithstanding) — with its full description when we have one.
+  initCenterId(aladin, { onPosition, onZoom });
 
   initSearchUI(aladin);
 

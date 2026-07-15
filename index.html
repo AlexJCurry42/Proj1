@@ -34,6 +34,24 @@
 <!-- Full-bleed sky -->
 <main id="sky-wrap"><div id="aladin-lite-div"></div></main>
 
+<!-- Center crosshair: four faint ticks marking the identification point -->
+<div id="crosshair" aria-hidden="true"></div>
+
+<!-- Center-object card: names whatever known object sits under the
+     crosshair (with its description when one is known), regardless of
+     which layers are switched on. -->
+<div id="center-card" class="glass-panel" role="status" hidden>
+  <button id="center-close" class="glass-btn small" aria-label="Dismiss">
+    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="7" y1="7" x2="17" y2="17"/><line x1="17" y1="7" x2="7" y2="17"/></svg>
+  </button>
+  <div class="center-head">
+    <span class="center-dot" aria-hidden="true"></span>
+    <strong id="center-name"></strong>
+    <span id="center-sub"></span>
+  </div>
+  <p id="center-desc"></p>
+</div>
+
 <!-- Floating top controls -->
 <header id="top-bar">
   <div id="top-bar-left">
