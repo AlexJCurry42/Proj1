@@ -266,15 +266,29 @@ await scenario('flight: continuous arc, exact landing, survey settles', async ()
   });
   await page.click('#cool-btn');
   const toast = await page.textContent('.toast').catch(() => null);
-  await page.waitForTimeout(5300);
-  const r = await page.evaluate(async () => {
-    window.__tracing = false;
-    const tours = (await (await fetch('data/tours.json')).json()).destinations;
-    const p = new URLSearchParams(location.hash.slice(1));
-    return { trace: window.__trace, hash: { survey: p.get('survey'), ra: +p.get('ra'), dec: +p.get('dec') }, tours };
-  });
-  const dest = r.tours.find((t) => t.name === (toast || '').split(' — ')[0]);
+  const tours = await page.evaluate(async () => (await (await fetch('data/tours.json')).json()).destinations);
+  const dest = tours.find((t) => t.name === (toast || '').split(' — ')[0]);
   assert(dest, 'destination not identified from toast');
+  // Settle is condition-, not clock-based: the longest flights (4.2 s) plus
+  // the survey fade tail and the hash debounce legitimately take ~5 s even
+  // on fast hardware — a fixed sleep here was a flake on slow CI runners.
+  // "Settled" = the permalink hash carries BOTH the destination survey and
+  // its exact coordinates (a DSS2-bound flight matches the survey from
+  // frame one, so the survey alone proves nothing).
+  await page.waitForFunction(
+    ({ sv, ra, dec }) => {
+      const p = new URLSearchParams(location.hash.slice(1));
+      if (p.get('survey') !== sv) return false;
+      const dra = ((+p.get('ra') - ra + 540) % 360) - 180;
+      return Math.hypot(dra, +p.get('dec') - dec) < 0.01;
+    },
+    { sv: dest.survey, ra: dest.ra, dec: dest.dec }, { timeout: 15000 }
+  ).catch(() => { /* asserted below with a readable message */ });
+  const r = await page.evaluate(() => {
+    window.__tracing = false;
+    const p = new URLSearchParams(location.hash.slice(1));
+    return { trace: window.__trace, hash: { survey: p.get('survey'), ra: +p.get('ra'), dec: +p.get('dec') } };
+  });
   assert(dest.survey === r.hash.survey, `survey should settle to ${dest.survey}, got ${r.hash.survey}`);
   const landErr = Math.hypot(((r.hash.ra - dest.ra + 540) % 360) - 180, r.hash.dec - dest.dec);
   assert(landErr < 0.01, `landing error ${landErr.toFixed(4)}°`);
