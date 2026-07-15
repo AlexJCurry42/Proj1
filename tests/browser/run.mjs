@@ -121,12 +121,25 @@ async function newPage(browser, baseURL, { geolocation = true } = {}) {
   }
   const page = await ctx.newPage();
   page.__errors = [];
+  page.__console = [];
   page.on('pageerror', (e) => { if (!IGNORE_ERR.test(e.message)) page.__errors.push(e.message); });
+  page.on('console', (m) => { page.__console.push(`[${m.type()}] ${m.text()}`.slice(0, 300)); });
   await page.addInitScript(INIT);
   page.__dataReqs = [];
   page.on('request', (r) => { const u = r.url(); if (u.includes('/data/')) page.__dataReqs.push(u.split('/data/')[1]); });
   await page.goto(`${baseURL}/engine-test.html`);
-  await page.waitForFunction(() => window.__aladin, null, { timeout: 45000 });
+  try {
+    await page.waitForFunction(() => window.__aladin, null, { timeout: 60000 });
+  } catch (err) {
+    // The engine never came up — report everything we know instead of a
+    // bare timeout, so CI logs are actionable.
+    const diag = await page.evaluate(() => ({
+      hasA: typeof window.A !== 'undefined',
+      fatal: document.getElementById('fatal-banner')?.textContent?.slice(0, 300) || null,
+      webgl2: (() => { try { return !!document.createElement('canvas').getContext('webgl2'); } catch (e) { return String(e); } })()
+    })).catch(() => ({ evalFailed: true }));
+    throw new Error(`engine never booted: ${JSON.stringify(diag)}; errors: ${page.__errors.join(' | ')}; console tail: ${page.__console.slice(-8).join(' | ')}`);
+  }
   await page.waitForTimeout(3000);
   return { ctx, page };
 }
@@ -140,10 +153,20 @@ const pw = await loadPlaywright();
 await prepareFixture();
 const server = await startServer();
 const baseURL = `http://127.0.0.1:${server.address().port}`;
-const browser = await pw.chromium.launch({
-  executablePath: chromePath(),
-  args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader']
-});
+const LAUNCH_ARGS = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'];
+let browser;
+if (chromePath()) {
+  browser = await pw.chromium.launch({ executablePath: chromePath(), args: LAUNCH_ARGS });
+} else {
+  // Playwright's default headless target is the minimal "headless shell",
+  // which can't give Aladin a WebGL context; the full chromium build (new
+  // headless mode) can. Fall back for playwright versions without channels.
+  try {
+    browser = await pw.chromium.launch({ channel: 'chromium', args: LAUNCH_ARGS });
+  } catch (err) {
+    browser = await pw.chromium.launch({ args: LAUNCH_ARGS });
+  }
+}
 
 await scenario('boot: lean fetch budget, no dead chrome, zero errors (granted geo)', async () => {
   const { ctx, page } = await newPage(browser, baseURL);
