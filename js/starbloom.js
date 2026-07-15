@@ -60,10 +60,13 @@ function makeSprites() {
     cv.width = cv.height = SPRITE_R * 2;
     const c = cv.getContext('2d');
     const g = c.createRadialGradient(SPRITE_R, SPRITE_R, 0, SPRITE_R, SPRITE_R, SPRITE_R);
+    // Minimal-footprint profile: the opaque heart reaches just past the
+    // clipped plate core (~55% of the radius), then a NARROW tinted skirt
+    // hands off to the star's own photographic halo — which is real and
+    // stays visible. A wide soft glow here read as obviously synthetic.
     g.addColorStop(0, 'rgba(255, 255, 255, 1)');
-    g.addColorStop(0.22, 'rgba(255, 255, 255, 0.97)'); // solid heart: the artifact must not ghost through
-    g.addColorStop(0.45, `rgba(${cr}, ${cg}, ${cb}, 0.75)`);
-    g.addColorStop(0.7, `rgba(${cr}, ${cg}, ${cb}, 0.28)`);
+    g.addColorStop(0.55, 'rgba(255, 255, 255, 0.97)'); // the artifact must not ghost through
+    g.addColorStop(0.78, `rgba(${cr}, ${cg}, ${cb}, 0.5)`);
     g.addColorStop(1, `rgba(${cr}, ${cg}, ${cb}, 0)`);
     c.fillStyle = g;
     c.fillRect(0, 0, SPRITE_R * 2, SPRITE_R * 2);
@@ -79,9 +82,18 @@ const spriteFor = (sprites, bv) => {
 
 // Glow angular radius ≈ the saturated plate core it must cover. DSS2 cores
 // are LARGE: ~10′ radius at mag 0, still over 1′ at mag 6 — halving roughly
-// every 2 magnitudes (calibrated against user screenshots). ×1.3 swallows
-// the offset red/blue fringes.
-const coreRadiusDeg = (v) => 1.3 * (10 / 60) * Math.pow(10, -v / 6.6);
+// every 2 magnitudes (calibrated against user screenshots). The bloom hugs
+// that core (fringes ride inside the opaque heart, which spans 55% of the
+// sprite): minimum footprint, the real halo does the rest.
+const coreRadiusDeg = (v) => (10 / 60) * Math.pow(10, -v / 6.6);
+
+// The bloom exists ONLY where the artifact exists. A plate core smaller
+// than ~14 screen px hasn't resolved into visible blotch structure yet, so
+// nothing is drawn; from 14 px the glow FADES in, reaching full cover by
+// ~26 px. Each star activates at its own zoom — Sirius around a 13° field,
+// a 5th-magnitude star under ~1° — exactly tracking when its blotch shows.
+const ACTIVATE_PX = 14;
+const FULL_PX = 26;
 
 export async function initStarBloom(aladin) {
   let bright;
@@ -144,12 +156,16 @@ export async function initStarBloom(aladin) {
     }
   }
 
-  function drawStar(ctx, view, pxPerDeg, rMax, s) {
+  function drawStar(ctx, view, layerAlpha, pxPerDeg, rMax, s) {
     const rPx = coreRadiusDeg(s[2]) * pxPerDeg;
-    if (rPx < 2.2) return; // core unresolved at this zoom: leave it be
+    // Per-star activation ramp: invisible until the core resolves into
+    // blotch territory, easing to full cover as it grows.
+    const ramp = (rPx - ACTIVATE_PX) / (FULL_PX - ACTIVATE_PX);
+    if (ramp <= 0) return;
     const p = view.proj(s[0], s[1]);
     if (!p) return;
     const r = Math.min(rPx, rMax);
+    ctx.globalAlpha = layerAlpha * Math.min(1, ramp);
     ctx.drawImage(spriteFor(sprites, s[3]), p[0] - r, p[1] - r, r * 2, r * 2);
   }
 
@@ -159,11 +175,10 @@ export async function initStarBloom(aladin) {
     if (fov > 110) return;
     const pxPerDeg = Math.max(W, H) / fov;
     const rMax = 0.45 * Math.max(W, H);
-    ctx.globalAlpha = state.alpha; // sprites carry their own falloff
     const magCap = fov > 40 ? 3.0 : 99;
     for (const s of bright) {
       if (s[2] > magCap) break;
-      drawStar(ctx, view, pxPerDeg, rMax, s);
+      drawStar(ctx, view, state.alpha, pxPerDeg, rMax, s);
     }
     // Faint tier only at depth — where their cores resolve into blotches.
     if (fov <= 12) {
@@ -171,7 +186,7 @@ export async function initStarBloom(aladin) {
       let ra0 = 0, dec0 = 0;
       try { [ra0, dec0] = aladin.getRaDec(); } catch (err) { ctx.globalAlpha = 1; return; }
       for (const s of faintNear(ra0, dec0, fov * 0.75 + 1)) {
-        drawStar(ctx, view, pxPerDeg, rMax, s);
+        drawStar(ctx, view, state.alpha, pxPerDeg, rMax, s);
       }
     }
     ctx.globalAlpha = 1;
