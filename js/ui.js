@@ -380,8 +380,8 @@ export async function initTours(aladin, spectrum) {
   const btn = document.getElementById('cool-btn');
   if (!btn) return;
 
-  // A shuffle bag: every press is a surprise, and nothing repeats until all
-  // fifty destinations have been seen once.
+  // A shuffle bag: every press is a surprise, and nothing repeats until
+  // every destination has been seen once.
   let bag = [];
   function draw() {
     if (!bag.length) bag = [...tours].sort(() => Math.random() - 0.5);

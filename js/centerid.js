@@ -5,7 +5,7 @@
 // property of the VIEW, not of any overlay, so it works even when the
 // object's dock layer is switched off.
 //
-// Shape: the curated identification set (~170 objects, two small JSON files
+// Shape: the curated identification set (~200 objects, two small JSON files
 // already bundled for other features) loads lazily on browser idle, never
 // on the boot path. Matching runs only after the view settles — a quarter
 // second after the last position/zoom event — and scans a precomputed unit
