@@ -1,7 +1,7 @@
 // Pocket Planetarium — constellations, built for stargazers. Primary data is
 // the full-88 IAU set (figures, official names + label positions, boundaries)
 // from the d3-celestial project (BSD-3-Clause, Stellarium-derived), committed
-// into data/ by .github/workflows/constellation-data.yml. If those files are
+// into data/ by the data-refresh Action. If those files are
 // missing (first deploy), a curated 21-figure set keeps the layer alive.
 //
 // Rendering rides the unified overlay engine (js/overlay.js): glow-layered

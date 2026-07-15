@@ -163,7 +163,7 @@ const NGC_TYPE_LABEL = {
 
 /**
  * The complete OpenNGC catalog (~13,000 NGC/IC objects), snapshotted by
- * .github/workflows/ngc-catalog.yml. Magnitude-tiered by field of view so
+ * the data-refresh Action. Magnitude-tiered by field of view so
  * the full list only appears once you're zoomed in enough for it to be
  * useful rather than a wall of dots:
  *   FoV ≥ 50°:  mag ≤ 8    ·  20–50°: mag ≤ 10
@@ -351,7 +351,7 @@ async function fetchLiveExoplanets() {
  * NASA Exoplanet Archive: confirmed planets, cached in-memory for the session.
  * The archive's TAP sends no CORS headers, so browsers cannot query it
  * directly — the primary source is a repo-bundled snapshot that a GitHub
- * Action refreshes weekly (see .github/workflows/exoplanet-snapshot.yml).
+ * Action refreshes weekly (the data-refresh Action).
  * A silent live-TAP attempt still runs in the background so the app
  * self-heals to live data if the archive ever enables browser access.
  */

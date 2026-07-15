@@ -1,0 +1,290 @@
+# Pocket Planetarium — THE data pipeline. Every repo-bundled dataset the
+# static app depends on is fetched, validated and committed here, in one
+# sequential job (the five separate workflows this replaced raced each
+# other's pushes on busy days). Which datasets run depends on the trigger:
+#   · daily cron          → ISS orbital elements (SGP4 accuracy decays in days)
+#   · weekly cron         → exoplanet snapshot (the archive has no CORS)
+#   · monthly cron        → OpenNGC, bright stars, constellations (near-static)
+#   · dispatch / push     → everything (or a chosen subset via the input)
+# Each dataset's validation gate is unchanged from its original workflow: a
+# failed fetch or a suspicious file fails the run and nothing is committed.
+
+name: Refresh data snapshots
+
+on:
+  push:
+    paths:
+      - '.github/workflows/data-refresh.yml'
+  schedule:
+    - cron: '41 4 * * *'  # daily → tles
+    - cron: '17 6 * * 1'  # Mondays → exoplanets
+    - cron: '7 3 3 * *'   # 3rd of the month → ngc brightstars constellations
+  workflow_dispatch:
+    inputs:
+      datasets:
+        description: 'Space-separated: tles exoplanets ngc brightstars constellations, or all'
+        default: 'all'
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Decide which datasets this trigger covers
+        run: |
+          case "${{ github.event_name }}:${{ github.event.schedule }}" in
+            schedule:'41 4 * * *') SETS='tles' ;;
+            schedule:'17 6 * * 1') SETS='exoplanets' ;;
+            schedule:'7 3 3 * *')  SETS='ngc brightstars constellations' ;;
+            workflow_dispatch:*)   SETS='${{ inputs.datasets }}' ;;
+            *)                     SETS='all' ;;
+          esac
+          [ "$SETS" = 'all' ] && SETS='tles exoplanets ngc brightstars constellations'
+          echo "SETS=$SETS" >> "$GITHUB_ENV"
+          echo "refreshing: $SETS"
+
+      # ---------------------------------------------------- ISS TLE (daily) ---
+      # Only the ISS: the app's satellite layer was retired in favor of the
+      # station living inside the Solar System layer.
+      - name: ISS orbital elements from CelesTrak
+        if: contains(env.SETS, 'tles')
+        run: |
+          curl -fsS --retry 3 --retry-delay 20 \
+            'https://celestrak.org/NORAD/elements/gp.php?GROUP=stations&FORMAT=tle' -o /tmp/stations.tle
+          python3 - <<'EOF'
+          import re
+          lines = [l.rstrip() for l in open('/tmp/stations.tle') if l.strip()]
+          iss = None
+          for i in range(0, len(lines) - 2, 3):
+              name, l1, l2 = lines[i].strip(), lines[i+1], lines[i+2]
+              if 'ISS' in name and 'ZARYA' in name:
+                  iss = (name, l1, l2)
+                  break
+          assert iss, 'ISS (ZARYA) missing from the stations group'
+          assert re.match(r'^1 \d{5}', iss[1]) and re.match(r'^2 \d{5}', iss[2]), 'malformed ISS TLE'
+          with open('data/satellites_tle.txt', 'w') as f:
+              f.write(f'{iss[0]}\n{iss[1]}\n{iss[2]}\n')
+          print('wrote ISS TLE, epoch line:', iss[1][18:32])
+          EOF
+
+      # ------------------------------------------------ Exoplanets (weekly) ---
+      - name: Exoplanet snapshot from the NASA archive TAP
+        if: contains(env.SETS, 'exoplanets')
+        run: |
+          curl -fsS --retry 3 --retry-delay 10 --max-time 300 -G \
+            'https://exoplanetarchive.ipac.caltech.edu/TAP/sync' \
+            --data-urlencode 'query=select pl_name,hostname,ra,dec,discoverymethod,disc_year,sy_dist from pscomppars where ra is not null and dec is not null order by pl_name' \
+            --data-urlencode 'format=csv' \
+            -o data/exoplanets_snapshot.csv
+          head -1 data/exoplanets_snapshot.csv | grep -qi '^pl_name,'
+          lines=$(wc -l < data/exoplanets_snapshot.csv)
+          echo "rows: $lines"
+          test "$lines" -gt 4000
+
+      # -------------------------------------------------- OpenNGC (monthly) ---
+      - name: OpenNGC catalog, compacted
+        if: contains(env.SETS, 'ngc')
+        run: |
+          curl -fsS --retry 3 --retry-delay 15 \
+            'https://raw.githubusercontent.com/mattiaverga/OpenNGC/master/database_files/NGC.csv' \
+            -o /tmp/NGC.csv
+          python3 - <<'EOF'
+          import csv, json, re
+
+          # Object types worth plotting; duplicates/non-existent entries are
+          # dropped, bare stars kept out to avoid noise.
+          KEEP = {'G','GPair','GTrpl','GGroup','OCl','GCl','PN','SNR','Neb',
+                  'EmN','RfN','HII','Cl+N','DrkN','Ast','Nova'}
+
+          def hms_to_deg(s):
+              h, m, sec = s.split(':')
+              return (int(h) + int(m) / 60 + float(sec) / 3600) * 15
+
+          def dms_to_deg(s):
+              sign = -1 if s.strip().startswith('-') else 1
+              d, m, sec = s.strip().lstrip('+-').split(':')
+              return sign * (int(d) + int(m) / 60 + float(sec) / 3600)
+
+          objects = []
+          with open('/tmp/NGC.csv', newline='', encoding='utf-8') as f:
+              for row in csv.DictReader(f, delimiter=';'):
+                  t = row['Type'].strip()
+                  if t not in KEEP or not row['RA'] or not row['Dec']:
+                      continue
+                  m = re.match(r'^(NGC|IC)(\d+)(.*)$', row['Name'])
+                  name = f"{m.group(1)} {int(m.group(2))}{m.group(3)}" if m else row['Name']
+                  mag = None
+                  for col in ('V-Mag', 'B-Mag'):
+                      if row.get(col):
+                          try: mag = round(float(row[col]), 1); break
+                          except ValueError: pass
+                  common = (row.get('Common names') or '').split(',')[0].strip() or None
+                  objects.append([
+                      name, t,
+                      round(hms_to_deg(row['RA']), 5),
+                      round(dms_to_deg(row['Dec']), 5),
+                      mag, common
+                  ])
+
+          assert len(objects) > 11000, f'only {len(objects)} objects parsed'
+          assert any(o[0] == 'NGC 224' for o in objects), 'M31/NGC 224 missing'
+          for o in objects[:2000]:
+              assert 0 <= o[2] < 360 and -90 <= o[3] <= 90, f'bad coords: {o}'
+
+          json.dump(
+              {'_comment': 'Compact OpenNGC snapshot: [name, type, ra_deg, dec_deg, mag(V|B|null), common_name]. CC-BY-SA-4.0, github.com/mattiaverga/OpenNGC',
+               'objects': objects},
+              open('data/ngc_full.json', 'w'), ensure_ascii=False,
+              separators=(',', ':'))
+          print(f'wrote {len(objects)} objects')
+          EOF
+
+      # --------------------------------------------- Bright stars (monthly) ---
+      # Yale BSC (V ≤ 6.5) for the bright tier + Tycho-2 (VT ≤ 8.4) for the
+      # faint tier of the star-bloom overlay; two files so only the small one
+      # sits on the app's boot path.
+      - name: Bright stars from VizieR (BSC + Tycho-2)
+        if: contains(env.SETS, 'brightstars')
+        run: |
+          curl -fsS --retry 3 --retry-delay 15 -G \
+            'https://tapvizier.cds.unistra.fr/TAPVizieR/tap/sync' \
+            --data-urlencode 'request=doQuery' \
+            --data-urlencode 'lang=adql' \
+            --data-urlencode 'format=csv' \
+            --data-urlencode 'query=SELECT _RAJ2000, _DEJ2000, Vmag, "B-V" FROM "V/50/catalog" WHERE Vmag <= 6.5' \
+            -o /tmp/bsc.csv || \
+          curl -fsS --retry 3 --retry-delay 15 -G \
+            'https://tapvizier.cds.unistra.fr/TAPVizieR/tap/sync' \
+            --data-urlencode 'request=doQuery' \
+            --data-urlencode 'lang=adql' \
+            --data-urlencode 'format=csv' \
+            --data-urlencode 'query=SELECT RAJ2000, DEJ2000, Vmag, "B-V" FROM "V/50/catalog" WHERE Vmag <= 6.5' \
+            -o /tmp/bsc.csv
+          curl -fsS --retry 3 --retry-delay 15 --max-time 300 -G \
+            'https://tapvizier.cds.unistra.fr/TAPVizieR/tap/sync' \
+            --data-urlencode 'request=doQuery' \
+            --data-urlencode 'lang=adql' \
+            --data-urlencode 'format=csv' \
+            --data-urlencode 'query=SELECT RAmdeg, DEmdeg, VTmag, BTmag FROM "I/259/tyc2" WHERE VTmag <= 8.4' \
+            -o /tmp/tyc2.csv || true
+          python3 - <<'EOF'
+          import csv, json, re
+
+          def parse_pos(ra_s, de_s):
+              try:
+                  return float(ra_s), float(de_s)
+              except ValueError:
+                  pass
+              rp = re.split(r'[\s:]+', ra_s.strip())
+              dp = re.split(r'[\s:]+', de_s.strip())
+              ra = (float(rp[0]) + float(rp[1]) / 60 + float(rp[2]) / 3600) * 15
+              sign = -1 if dp[0].strip().startswith('-') else 1
+              de = sign * (abs(float(dp[0])) + float(dp[1]) / 60 + float(dp[2]) / 3600)
+              return ra, de
+
+          stars = []
+          with open('/tmp/bsc.csv') as f:
+              for row in csv.DictReader(f):
+                  keys = {k.lower().strip(): k for k in row}
+                  ra_k = keys.get('_raj2000') or keys.get('raj2000')
+                  de_k = keys.get('_dej2000') or keys.get('dej2000')
+                  try:
+                      ra, de = parse_pos(row[ra_k], row[de_k])
+                      v = float(row[keys['vmag']])
+                  except (TypeError, ValueError, KeyError, IndexError):
+                      continue
+                  try:
+                      bv = round(float(row[keys['b-v']]), 2)
+                  except (TypeError, ValueError, KeyError):
+                      bv = None
+                  stars.append([round(ra, 4), round(de, 4), round(v, 2), bv])
+
+          assert len(stars) > 5000, f'only {len(stars)} stars parsed — V/50 schema drift?'
+          assert any(abs(s[0] - 101.287) < 0.05 and abs(s[1] + 16.716) < 0.05 for s in stars), 'Sirius missing'
+
+          tyc = 0
+          try:
+              with open('/tmp/tyc2.csv') as f:
+                  for row in csv.DictReader(f):
+                      keys = {k.lower().strip(): k for k in row}
+                      try:
+                          ra = float(row[keys['ramdeg']])
+                          de = float(row[keys['demdeg']])
+                          vt = float(row[keys['vtmag']])
+                      except (TypeError, ValueError, KeyError):
+                          continue
+                      try:
+                          btvt = float(row[keys['btmag']]) - vt
+                          v = round(vt - 0.090 * btvt, 2)
+                          bv = round(0.850 * btvt, 2)
+                      except (TypeError, ValueError, KeyError):
+                          v, bv = round(vt, 2), None
+                      if v <= 6.5:
+                          continue  # the BSC tier already covers it
+                      stars.append([round(ra, 4), round(de, 4), v, bv])
+                      tyc += 1
+          except OSError:
+              pass
+          if tyc:
+              assert tyc > 15000, f'only {tyc} Tycho-2 stars — I/259 schema drift?'
+
+          stars.sort(key=lambda s: s[2])
+          bright = [s for s in stars if s[2] <= 6.5]
+          faint = [s for s in stars if s[2] > 6.5]
+          with open('data/brightstars.json', 'w') as f:
+              json.dump({'source': 'Yale Bright Star Catalogue (V/50) via VizieR TAP, V <= 6.5',
+                         'stars': bright}, f, separators=(',', ':'))
+          with open('data/brightstars_faint.json', 'w') as f:
+              json.dump({'source': 'Tycho-2 (I/259) via VizieR TAP, 6.5 < V <= ~8.4 (VT/BT converted to V, B-V)',
+                         'stars': faint}, f, separators=(',', ':'))
+          print(f'wrote {len(bright)} bright + {len(faint)} faint stars ({tyc} from Tycho-2)')
+          EOF
+
+      # ------------------------------------------- Constellations (monthly) ---
+      - name: Constellation figures/names/boundaries from d3-celestial
+        if: contains(env.SETS, 'constellations')
+        run: |
+          BASE='https://raw.githubusercontent.com/ofrohn/d3-celestial/master/data'
+          curl -fsS --retry 3 --retry-delay 15 "$BASE/constellations.lines.json"   -o data/constellations_lines.json
+          curl -fsS --retry 3 --retry-delay 15 "$BASE/constellations.json"         -o data/constellations_names.json
+          curl -fsS --retry 3 --retry-delay 15 "$BASE/constellations.borders.json" -o data/constellations_borders.json
+          python3 - <<'EOF'
+          import json
+
+          lines = json.load(open('data/constellations_lines.json'))
+          assert lines.get('type') == 'FeatureCollection'
+          assert len(lines['features']) >= 85, f"only {len(lines['features'])} line features"
+          f0 = lines['features'][0]
+          assert f0['geometry']['type'] == 'MultiLineString'
+          seg = f0['geometry']['coordinates'][0][0]
+          assert len(seg) == 2 and -360 <= seg[0] <= 360 and -90 <= seg[1] <= 90
+
+          names = json.load(open('data/constellations_names.json'))
+          assert len(names['features']) >= 85
+          n0 = names['features'][0]
+          assert 'name' in n0['properties']
+          assert n0['geometry']['type'] == 'Point'
+
+          borders = json.load(open('data/constellations_borders.json'))
+          assert len(borders['features']) >= 48
+          print('all constellation files valid:',
+                len(lines['features']), 'figures,',
+                len(names['features']), 'names,',
+                len(borders['features']), 'border features')
+          EOF
+
+      # ------------------------------------------------------------ Commit ---
+      - name: Commit everything that changed, once
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add data/
+          git diff --cached --quiet || git commit -m "Refresh data snapshots ($SETS) [skip ci]"
+          # A human push can still land while this ran: rebase, then push.
+          git pull --rebase origin "$GITHUB_REF_NAME"
+          git push

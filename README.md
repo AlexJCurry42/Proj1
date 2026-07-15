@@ -108,8 +108,9 @@ sw.js                Service worker: cache-first shell, SWR data (offline PWA)
 data/*.json|csv|txt  Curated + Action-refreshed data
 tests/unit.mjs       Unit tests: astro math, ephemeris, clock, SGP4 (plain Node)
 tests/health-check.mjs  Live-endpoint health check (replays every service call)
+tests/browser/run.mjs   Browser regression suite (real engine, headless Chromium)
 package.json         No dependencies — exists so Node runs the tests as ES modules
-.github/workflows/   Data pipelines + the daily test & health-check workflow
+.github/workflows/   ONE data pipeline (data-refresh.yml) + tests/health checks
 ```
 
 ## Tests
@@ -128,9 +129,21 @@ node tests/health-check.mjs  # live: replays every CDS/VizieR/NASA/CelesTrak/
 `.github/workflows/health-check.yml` runs both daily (and on any push that
 touches `tests/`), so endpoint drift — TAP column renames, retired HiPS IDs,
 moved Commons files — surfaces in the Actions tab instead of in a user's
-browser. Browser-level behavior (overlay engine, layer toggles, motion
-tracking) is exercised separately with Playwright against a locally-served
-copy of the real Aladin engine during development.
+browser.
+
+Browser-level behavior is covered by the committed regression suite:
+
+```sh
+node tests/browser/run.mjs    # the real app + the real Aladin engine in
+                              # headless Chromium: boot budget, lazy layers,
+                              # flights, star bloom, horizon lock, spectrum
+                              # fades, time-lapse, location consent
+```
+
+It needs Playwright (`npm i --no-save playwright`) and downloads the engine
+bundle once into `tests/browser/.cache/`.
+`.github/workflows/browser-tests.yml` runs it on every push that touches the
+app's code.
 
 ## Data sources & attribution
 

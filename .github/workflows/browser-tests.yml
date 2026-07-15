@@ -1,0 +1,32 @@
+# Pocket Planetarium — browser regression suite: the real app against the
+# real Aladin Lite engine in headless Chromium (tests/browser/run.mjs).
+# Covers what the unit tests can't: boot budget, lazy layers, flights, the
+# star bloom, the horizon lock, spectrum fades, time-lapse, location consent.
+
+name: Browser tests
+
+on:
+  push:
+    paths:
+      - 'js/**'
+      - 'css/**'
+      - 'index.html'
+      - 'tests/browser/**'
+      - '.github/workflows/browser-tests.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Playwright + Chromium
+        run: |
+          npm i --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Run browser regression suite
+        run: node tests/browser/run.mjs

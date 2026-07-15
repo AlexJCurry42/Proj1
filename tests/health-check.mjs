@@ -143,7 +143,7 @@ check('VizieR TAP — Milliquas VII/294 (AGN & quasars layer)', async () => {
     ['RAJ2000', 'DEJ2000', 'Name', 'z', 'Rmag', 'Type'], 'Milliquas');
 });
 
-// The star-bloom pipeline (.github/workflows/bright-stars.yml): Yale BSC
+// The star-bloom pipeline (data-refresh.yml): Yale BSC
 // via VizieR TAP, decimal-degree columns preferred, sexagesimal fallback.
 check('VizieR TAP — Yale Bright Star Catalogue V/50 (star bloom pipeline)', async () => {
   const primary = `SELECT TOP 5 _RAJ2000, _DEJ2000, Vmag, "B-V" FROM "V/50/catalog" WHERE Vmag <= 2`;
@@ -159,7 +159,7 @@ check('VizieR TAP — Yale Bright Star Catalogue V/50 (star bloom pipeline)', as
 });
 
 // -------------------------------------------------- NASA Exoplanet TAP ---
-// The weekly snapshot Action's exact column list (exoplanet-snapshot.yml);
+// The weekly snapshot Action's exact column list (data-refresh.yml);
 // also the browser's silent live-upgrade probe (js/catalogs.js).
 check('NASA Exoplanet Archive TAP — pscomppars columns (snapshot Action)', async () => {
   const q = 'select top 1 pl_name,hostname,ra,dec,discoverymethod,disc_year,sy_dist from pscomppars';
@@ -243,15 +243,13 @@ check('CDS Sesame — resolves M31 (search)', async () => {
 });
 
 // ---------------------------------------------------------- CelesTrak ---
-// The daily TLE snapshot Action's two source groups (satellite-tles.yml).
-check('CelesTrak — stations TLEs include the ISS; visual TLEs parse', async () => {
+// The daily ISS TLE snapshot (data-refresh.yml).
+check('CelesTrak — stations TLEs include the ISS (data pipeline)', async () => {
   const stations = await getText(`${CELESTRAK}?GROUP=stations&FORMAT=tle`);
   if (!stations.includes('ISS (ZARYA)')) throw new Error('ISS (ZARYA) missing from stations group');
-  const visual = await getText(`${CELESTRAK}?GROUP=visual&FORMAT=tle`);
-  const lines = visual.split('\n').map((l) => l.trimEnd()).filter((l) => l.trim());
-  if (lines.length < 30) throw new Error(`visual group suspiciously small (${lines.length} lines)`);
+  const lines = stations.split('\n').map((l) => l.trimEnd()).filter((l) => l.trim());
   if (!(lines[1]?.startsWith('1 ') && lines[2]?.startsWith('2 '))) {
-    throw new Error('visual group is not name/line1/line2 TLE triplets');
+    throw new Error('stations group is not name/line1/line2 TLE triplets');
   }
 });
 
