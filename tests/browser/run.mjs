@@ -434,33 +434,31 @@ await scenario('coordinate grid: draws, rescales with zoom, keeps edge labels', 
   const wide = await overlayInk();
   assert(wide > before + 2000, `grid should add visible lines (ink ${before} -> ${wide})`);
   // Zoom deep: the graticule must follow in real time, never vanish.
+  // The star bloom and the center-ID bubble also ink this view — settle
+  // the bubble first, then compare grid-on vs grid-off LIKE FOR LIKE.
   await page.evaluate(() => { window.__aladin.gotoRaDec(83.6, 22.0); window.__aladin.setFoV(1.5); });
-  await page.waitForTimeout(800);
-  const deep = await overlayInk();
-  assert(deep > 2000, `grid must survive a deep zoom (ink ${deep})`);
+  await page.waitForFunction(() => /crab/i.test(window.__dsaBubble || ''), null, { timeout: 20000 });
+  await page.waitForTimeout(500);
+  const deepOn = await overlayInk();
   await page.evaluate((sel) => eval(sel).querySelector('input').click(), row('Coordinate grid'));
   await page.waitForTimeout(600);
-  const off = await overlayInk();
-  assert(off < deep / 2, `grid must clear when toggled off (ink ${deep} -> ${off})`);
+  const deepOff = await overlayInk();
+  assert(deepOn > deepOff + 2000, `grid must draw at deep zoom and clear when off (on ${deepOn}, off ${deepOff})`);
   assert(page.__errors.length === 0, `page errors: ${page.__errors.join('; ')}`);
   await ctx.close();
 });
 
-await scenario('sharpen imagery: toggle applies the filter, composes with red-light', async () => {
+await scenario('sharpen imagery: always on from boot, composes with red-light', async () => {
   const { ctx, page } = await newPage(browser, baseURL);
-  const row = (label) => `[...document.querySelectorAll('#layer-dock-list li')].find(li => li.textContent.includes('${label}'))`;
   const skyFilter = () => page.evaluate(() => getComputedStyle(document.getElementById('aladin-lite-div')).filter);
-  assert((await skyFilter()) === 'none', 'no filter before the toggle');
-  await page.evaluate((sel) => eval(sel).querySelector('input').click(), row('Sharpen imagery'));
   const on = await skyFilter();
-  assert(on.includes('dsa-sharpen'), `sharpen filter must apply (got ${on})`);
+  assert(on.includes('dsa-sharpen'), `sharpen filter must be applied at boot (got ${on})`);
   // Red-light mode must CHAIN with it, not silently replace it.
   await page.click('#redlight-toggle');
   const both = await skyFilter();
   assert(both.includes('dsa-sharpen') && both.includes('sepia'), `red-light must chain (got ${both})`);
   await page.click('#redlight-toggle');
-  await page.evaluate((sel) => eval(sel).querySelector('input').click(), row('Sharpen imagery'));
-  assert((await skyFilter()) === 'none', 'filter must clear when toggled off');
+  assert((await skyFilter()).includes('dsa-sharpen'), 'filter must survive leaving red-light mode');
   assert(page.__errors.length === 0, `page errors: ${page.__errors.join('; ')}`);
   await ctx.close();
 });

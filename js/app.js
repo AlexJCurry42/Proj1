@@ -87,6 +87,11 @@ async function main() {
     try { initChrome(); } catch (err) { console.error('chrome init failed:', err); }
   }
 
+  // Imagery sharpening is always on: a two-scale optical unsharp mask over
+  // the sky (see the SVG filter in index.html and the About panel). Pure
+  // local contrast on real pixels — never invented detail.
+  document.body.classList.add('sharpen');
+
   // Spectrum position priority: shared link > saved position > legacy survey
   // preference > default (DSS2 optical).
   const linkedView = parseViewHash();
@@ -693,14 +698,6 @@ async function main() {
       if (!bloomRef.ctl) return;
       if (bloomToggle.isChecked()) bloomRef.ctl.show(); else bloomRef.ctl.hide();
     }
-  });
-  // Sharpen imagery: a mild optical unsharp mask over the sky (an SVG
-  // filter — honest local contrast, no invented detail). Off by default:
-  // it can amplify JPEG grain, and full-screen SVG filters cost GPU time
-  // some older phones don't have to spare.
-  addToggle(catalogList, {
-    label: 'Sharpen imagery', color: '#5ac8fa', checked: false, sub: true,
-    onToggle: (v) => document.body.classList.toggle('sharpen', v)
   });
 
   window.addEventListener('error', (e) => {

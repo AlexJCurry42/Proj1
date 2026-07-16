@@ -61,10 +61,10 @@ permalinks for any view (plus a native share button), installable as a
 PWA with an offline-cached shell, red-light night-vision mode, an
 **Animations switch** in the layer dock (on by default for everyone;
 flipping it off makes every flight, fade, reveal and CSS transition
-instant, persistently), an optional **Sharpen imagery** checkbox (a mild
-optical unsharp mask over the sky — pure local contrast, never invented
-detail; off by default since it costs GPU time and can amplify plate
-grain), and preferences that persist locally. **No tracking, no analytics, no
+instant, persistently), always-on **imagery sharpening** (a strong
+two-scale optical unsharp mask over the sky — pure local contrast,
+never invented detail, disclosed in the About panel), and preferences
+that persist locally. **No tracking, no analytics, no
 accounts — ever.** MIT licensed (code); all data and imagery remain
 under their providers' licenses, credited in-app.
 
