@@ -788,8 +788,14 @@ input[type="range"]::-moz-range-thumb{
 }
 #debug-pane div{ padding: 2px 0; border-bottom: 1px dotted #222; }
 
+/* ================= Sharpen imagery (unsharp mask) ================= */
+/* One element, one filter property — the red-light combo needs the pair
+   chained explicitly or whichever rule wins silently drops the other. */
+body.sharpen #aladin-lite-div{ filter: url(#dsa-sharpen); }
+
 /* ================= Red-light night-vision mode ================= */
 body.redlight #aladin-lite-div{ filter: sepia(1) saturate(6) hue-rotate(-50deg) brightness(0.85); }
+body.redlight.sharpen #aladin-lite-div{ filter: url(#dsa-sharpen) sepia(1) saturate(6) hue-rotate(-50deg) brightness(0.85); }
 body.redlight :is(.glass-panel, .glass-btn, #search-form, .dropdown-list, .toast){
   background: rgba(28, 4, 4, 0.75) !important;
   border-color: rgba(255, 69, 58, 0.25) !important;

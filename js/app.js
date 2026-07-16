@@ -694,6 +694,14 @@ async function main() {
       if (bloomToggle.isChecked()) bloomRef.ctl.show(); else bloomRef.ctl.hide();
     }
   });
+  // Sharpen imagery: a mild optical unsharp mask over the sky (an SVG
+  // filter — honest local contrast, no invented detail). Off by default:
+  // it can amplify JPEG grain, and full-screen SVG filters cost GPU time
+  // some older phones don't have to spare.
+  addToggle(catalogList, {
+    label: 'Sharpen imagery', color: '#5ac8fa', checked: false, sub: true,
+    onToggle: (v) => document.body.classList.toggle('sharpen', v)
+  });
 
   window.addEventListener('error', (e) => {
     console.error('Unhandled error:', e.error || e.message);

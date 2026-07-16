@@ -446,6 +446,25 @@ await scenario('coordinate grid: draws, rescales with zoom, keeps edge labels', 
   await ctx.close();
 });
 
+await scenario('sharpen imagery: toggle applies the filter, composes with red-light', async () => {
+  const { ctx, page } = await newPage(browser, baseURL);
+  const row = (label) => `[...document.querySelectorAll('#layer-dock-list li')].find(li => li.textContent.includes('${label}'))`;
+  const skyFilter = () => page.evaluate(() => getComputedStyle(document.getElementById('aladin-lite-div')).filter);
+  assert((await skyFilter()) === 'none', 'no filter before the toggle');
+  await page.evaluate((sel) => eval(sel).querySelector('input').click(), row('Sharpen imagery'));
+  const on = await skyFilter();
+  assert(on.includes('dsa-sharpen'), `sharpen filter must apply (got ${on})`);
+  // Red-light mode must CHAIN with it, not silently replace it.
+  await page.click('#redlight-toggle');
+  const both = await skyFilter();
+  assert(both.includes('dsa-sharpen') && both.includes('sepia'), `red-light must chain (got ${both})`);
+  await page.click('#redlight-toggle');
+  await page.evaluate((sel) => eval(sel).querySelector('input').click(), row('Sharpen imagery'));
+  assert((await skyFilter()) === 'none', 'filter must clear when toggled off');
+  assert(page.__errors.length === 0, `page errors: ${page.__errors.join('; ')}`);
+  await ctx.close();
+});
+
 await scenario('center ID: a known object under the crosshair pops its card', async () => {
   const { ctx, page } = await newPage(browser, baseURL);
   // Park the crosshair on the Crab Nebula (M1) — curated AND toured, so the
