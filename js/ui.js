@@ -493,6 +493,9 @@ export async function initTours(aladin, spectrum) {
     const t = draw();
     const token = ++flightToken;
     showToast(`${t.name} — ${t.caption}`, 'info', 12000);
+    // This toast IS the announcement — tell the crosshair card to stand
+    // down for this one arrival, or the landing pops the same text twice.
+    window.dispatchEvent(new CustomEvent('dsa:destination-announced', { detail: { ra: t.ra, dec: t.dec } }));
 
     if (!motionOK()) {
       aladin.gotoRaDec(t.ra, t.dec);

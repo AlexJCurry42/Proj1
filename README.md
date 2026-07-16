@@ -50,8 +50,11 @@ it, planetarium style.
 A faint **center crosshair** marks the view center, and whenever a known
 deep-sky object — a Messier or curated NGC/IC showpiece, or any tour
 destination — sits under it, a small card names it (type, catalog id, and
-the full description when one is known). Identification is a property of
-the view itself: it works even when that object's layer is switched off.
+the full description when one is known); zoomed in close, a subtle
+**bubble label** also pins the name and type beside the object itself,
+moving with the sky. Identification is a property of the view itself: it
+works even when that object's layer is switched off (and it stands down
+politely when a tour's toast has already announced the destination).
 
 Also: instant search suggestions from the curated catalogs, shareable
 permalinks for any view (plus a native share button), installable as a

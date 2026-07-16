@@ -463,9 +463,23 @@ await scenario('center ID: a known object under the crosshair pops its card', as
   }));
   assert(/crab/i.test(card.name), `card should name the Crab Nebula, got "${card.name}"`);
   assert(card.desc.length > 50, 'the known description must be shown');
-  // Off to an empty patch: the card must retire.
+  // Zoomed in this close, the object also gets its in-sky label bubble.
+  await page.waitForFunction(() => /crab/i.test(window.__dsaBubble || ''), null, { timeout: 5000 });
+  // Off to an empty patch: card and bubble must retire.
   await page.evaluate(() => { window.__aladin.gotoRaDec(140, -35); });
-  await page.waitForFunction(() => document.getElementById('center-card').hidden, null, { timeout: 5000 });
+  await page.waitForFunction(
+    () => document.getElementById('center-card').hidden && !window.__dsaBubble,
+    null, { timeout: 5000 }
+  );
+  // A tour toast announcing the destination suppresses the duplicate card
+  // for that one arrival — but the quiet sky bubble still labels it.
+  await page.evaluate(() => {
+    window.dispatchEvent(new CustomEvent('dsa:destination-announced', { detail: { ra: 83.63308, dec: 22.0145 } }));
+    window.__aladin.gotoRaDec(83.63308, 22.0145);
+  });
+  await page.waitForFunction(() => /crab/i.test(window.__dsaBubble || ''), null, { timeout: 5000 });
+  const dupCard = await page.evaluate(() => !document.getElementById('center-card').hidden);
+  assert(!dupCard, 'card must stand down when the tour toast already announced the object');
   // The crosshair itself is part of the feature — it must exist and sit centered.
   const cross = await page.locator('#crosshair').boundingBox();
   const vp = page.viewportSize();

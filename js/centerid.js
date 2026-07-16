@@ -1,9 +1,12 @@
 // Pocket Planetarium — "what's under the crosshair?": when a known deep-sky
 // object (a Messier or curated NGC/IC showpiece, or any tour destination)
-// sits under the view-center crosshair, a small card names it — with its
-// full description whenever one is known (the tour captions). This is a
-// property of the VIEW, not of any overlay, so it works even when the
-// object's dock layer is switched off.
+// sits under the view-center crosshair, two things identify it:
+//  · a small CARD (top of the screen; bottom slot on phones) with its name,
+//    type, and full description whenever one is known (the tour captions);
+//  · zoomed in close, a subtle BUBBLE drawn next to the object itself in
+//    the sky — name and type, anchored to the object, moving with it.
+// Both are properties of the VIEW, not of any overlay, so they work even
+// when the object's dock layer is switched off.
 //
 // Shape: the curated identification set (~200 objects, two small JSON files
 // already bundled for other features) loads lazily on browser idle, never
@@ -14,13 +17,16 @@
 import { fetchJSON } from './net.js';
 import { raDecToVec, angularSepDeg } from './astro.js';
 import { TYPE_STYLE } from './catalogs.js';
+import { getOverlay, haloText } from './overlay.js';
 
 // The crosshair's identification reach, in screen pixels — matches the
 // drawn crosshair's footprint so "overlaps the crosshair" is literal.
 const CROSS_PX = 26;
-// Sticky factor: once a card is up, the object must clearly leave the
-// crosshair (1.6× the show radius) before it hides — no edge flicker.
+// Sticky factor: once identified, the object must clearly leave the
+// crosshair (1.6× the show radius) before letting go — no edge flicker.
 const HYSTERESIS = 1.6;
+// The in-sky bubble appears only when genuinely zoomed in on the object.
+const BUBBLE_MAX_FOV = 25;
 
 export function initCenterId(aladin, { onPosition, onZoom }) {
   const card = document.getElementById('center-card');
@@ -32,9 +38,22 @@ export function initCenterId(aladin, { onPosition, onZoom }) {
   const wrap = document.getElementById('sky-wrap');
   if (!card || !nameEl || !wrap) return;
 
-  let entries = null;   // null until the idle load finishes
-  let current = null;   // entry whose card is showing
-  let suppressed = null; // entry dismissed via ✕: stays quiet until it leaves the crosshair
+  let entries = null;    // null until the idle load finishes
+  let matched = null;    // entry under the crosshair (drives card AND bubble)
+  let suppressed = null; // card stays quiet for this entry (✕, or a tour toast already announced it)
+  let announce = null;   // {ra, dec, t} from the cool-button toast, resolved lazily
+
+  // The "Show me something cool" toast already names and describes the
+  // destination — the card popping the same text at landing read as a
+  // duplicate notification. The tour code announces its destination here;
+  // the card stands down for that one arrival (the sky bubble still labels
+  // the object, quietly).
+  window.addEventListener('dsa:destination-announced', (e) => {
+    const d = e.detail || {};
+    if (Number.isFinite(d.ra) && Number.isFinite(d.dec)) {
+      announce = { vec: raDecToVec(d.ra, d.dec), t: performance.now() };
+    }
+  });
 
   async function loadEntries() {
     const [curated, tours] = await Promise.all([
@@ -50,6 +69,7 @@ export function initCenterId(aladin, { onPosition, onZoom }) {
           sub: [style?.label, o.name ? o.id : null].filter(Boolean).join(' · '),
           color: style?.color || '#7dd3ff',
           desc: null,
+          ra: o.ra, dec: o.dec,
           vec: raDecToVec(o.ra, o.dec),
           rDeg: 0.08 // extended-object grace: "overlaps" even without size data
         });
@@ -66,14 +86,68 @@ export function initCenterId(aladin, { onPosition, onZoom }) {
           twin.desc = t.caption;
           twin.rDeg = Math.max(twin.rDeg, rDeg);
         } else {
-          out.push({ name: t.name, sub: '', color: '#7dd3ff', desc: t.caption || null, vec, rDeg });
+          out.push({ name: t.name, sub: '', color: '#7dd3ff', desc: t.caption || null, ra: t.ra, dec: t.dec, vec, rDeg });
         }
       }
     }
     return out;
   }
 
-  function show(e) {
+  // ---- the in-sky bubble: a quiet label pinned beside the object ----
+  let bubbleCtl = null;
+  function drawBubble(ctx, view, state) {
+    window.__dsaBubble = null;
+    if (!matched || view.fov > BUBBLE_MAX_FOV) return;
+    const p = view.proj(matched.ra, matched.dec);
+    if (!p) return;
+    const a = state.alpha;
+    const nameFont = '600 11px -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif';
+    const subFont = '500 9.5px -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif';
+    ctx.font = nameFont;
+    const nameW = ctx.measureText(matched.name).width;
+    let subW = 0;
+    if (matched.sub) { ctx.font = subFont; subW = ctx.measureText(matched.sub).width; }
+    const w = Math.max(nameW, subW) + 24;
+    const h = matched.sub ? 36 : 24;
+    const gap = 20;
+    let x = p[0] + gap;
+    if (x + w > view.W - 10) x = p[0] - gap - w; // flip left near the right edge
+    let y = Math.max(58, Math.min(view.H - 104 - h, p[1] - h / 2));
+
+    // connector: a hairline from the object to the bubble's near edge
+    const nearX = x > p[0] ? x : x + w;
+    ctx.strokeStyle = `rgba(220, 230, 250, ${0.3 * a})`;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(p[0] + (nearX > p[0] ? 7 : -7), p[1]);
+    ctx.lineTo(nearX, Math.max(y + 4, Math.min(y + h - 4, p[1])));
+    ctx.stroke();
+
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(x, y, w, h, 8); else ctx.rect(x, y, w, h);
+    ctx.fillStyle = `rgba(9, 13, 22, ${0.58 * a})`;
+    ctx.fill();
+    ctx.strokeStyle = `rgba(255, 255, 255, ${0.14 * a})`;
+    ctx.stroke();
+
+    ctx.fillStyle = matched.color;
+    ctx.globalAlpha = a;
+    ctx.beginPath();
+    ctx.arc(x + 11, y + 12, 2.5, 0, 6.2832);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.font = nameFont;
+    haloText(ctx, matched.name, x + 18, y + 12, `rgba(240, 244, 252, ${0.92 * a})`, `rgba(0, 0, 0, ${0.4 * a})`, 2);
+    if (matched.sub) {
+      ctx.font = subFont;
+      haloText(ctx, matched.sub, x + 18, y + 26, `rgba(190, 200, 220, ${0.75 * a})`, `rgba(0, 0, 0, ${0.35 * a})`, 2);
+    }
+    window.__dsaBubble = matched.name;
+  }
+
+  function showCard(e) {
     nameEl.textContent = e.name;
     subEl.textContent = e.sub;
     subEl.hidden = !e.sub;
@@ -83,12 +157,15 @@ export function initCenterId(aladin, { onPosition, onZoom }) {
     }
     if (dotEl) dotEl.style.background = e.color;
     card.hidden = false;
-    current = e;
   }
 
-  function hide() {
-    card.hidden = true;
-    current = null;
+  const hideCard = () => { card.hidden = true; };
+
+  function setMatched(e) {
+    matched = e;
+    if (!bubbleCtl && e) bubbleCtl = getOverlay(aladin).addLayer({ z: 26, draw: drawBubble });
+    if (e) { bubbleCtl.show(); bubbleCtl.dirty(); }
+    else if (bubbleCtl) { bubbleCtl.hide(); window.__dsaBubble = null; }
   }
 
   function check() {
@@ -99,18 +176,29 @@ export function initCenterId(aladin, { onPosition, onZoom }) {
     const fovX = aladin.getFov()[0];
     const W = wrap.clientWidth || window.innerWidth;
     const crossDeg = (CROSS_PX * fovX) / W; // the crosshair's angular reach at this zoom
-    let best = null, bestScore = Infinity, currentScore = Infinity, suppressedScore = Infinity;
+    let best = null, bestScore = Infinity, matchedScore = Infinity, suppressedScore = Infinity;
     for (const e of entries) {
       const score = angularSepDeg(cv, e.vec) / Math.max(crossDeg, e.rDeg);
       if (score < bestScore) { bestScore = score; best = e; }
-      if (e === current) currentScore = score;
+      if (e === matched) matchedScore = score;
       if (e === suppressed) suppressedScore = score;
     }
     if (suppressed && suppressedScore > HYSTERESIS) suppressed = null;
-    if (best && bestScore <= 1 && best !== suppressed) {
-      if (best !== current) show(best);
-    } else if (current && currentScore > HYSTERESIS) {
-      hide();
+    if (best && bestScore <= 1) {
+      if (best !== matched) {
+        // A tour flight just announced this exact object in its toast: the
+        // card stays quiet for this arrival (announcements expire quickly).
+        if (announce && performance.now() - announce.t < 20000 &&
+            angularSepDeg(best.vec, announce.vec) < 0.35) {
+          suppressed = best;
+        }
+        announce = null;
+        setMatched(best);
+        if (best !== suppressed) showCard(best); else hideCard();
+      }
+    } else if (matched && matchedScore > HYSTERESIS) {
+      setMatched(null);
+      hideCard();
     }
   }
 
@@ -119,7 +207,9 @@ export function initCenterId(aladin, { onPosition, onZoom }) {
   onPosition(settled);
   onZoom(settled);
 
-  closeBtn?.addEventListener('click', () => { suppressed = current; hide(); });
+  // ✕ quiets the card until the object leaves the crosshair; the sky
+  // bubble stays — it is a label on the sky, not a notification.
+  closeBtn?.addEventListener('click', () => { suppressed = matched; hideCard(); });
 
   const idle = window.requestIdleCallback || ((fn) => setTimeout(fn, 4000));
   idle(async () => {
