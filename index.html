@@ -34,13 +34,17 @@
 <!-- Full-bleed sky -->
 <main id="sky-wrap"><div id="aladin-lite-div"></div></main>
 
-<!-- Sharpen imagery filter: a mild optical unsharp mask (original scaled up,
-     a gaussian-blurred copy subtracted — pure local contrast, no invented
-     detail). Applied to the sky div via body.sharpen (Display checkbox). -->
+<!-- Sharpen imagery filter: a two-scale optical unsharp mask (blurred
+     copies subtracted from the amplified original — pure local contrast,
+     no invented detail). The fine pass (0.8 px) tightens star profiles,
+     the clarity pass (2.6 px) lifts nebular and cluster structure.
+     Applied to the sky div via body.sharpen (Display checkbox). -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <filter id="dsa-sharpen" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
-    <feGaussianBlur in="SourceGraphic" stdDeviation="1.1" result="blur"/>
-    <feComposite in="SourceGraphic" in2="blur" operator="arithmetic" k1="0" k2="1.55" k3="-0.55" k4="0"/>
+    <feGaussianBlur in="SourceGraphic" stdDeviation="0.8" result="b1"/>
+    <feComposite in="SourceGraphic" in2="b1" operator="arithmetic" k1="0" k2="2.6" k3="-1.6" k4="0" result="fine"/>
+    <feGaussianBlur in="fine" stdDeviation="2.6" result="b2"/>
+    <feComposite in="fine" in2="b2" operator="arithmetic" k1="0" k2="1.7" k3="-0.7" k4="0"/>
   </filter>
 </svg>
 

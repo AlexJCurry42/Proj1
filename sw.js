@@ -20,7 +20,7 @@
 // NOTE: never list Action-generated data files (exoplanets_snapshot,
 // constellations_lines/names/borders) here — they may not exist on a fresh
 // deploy and one 404 fails the entire install. Runtime caching covers them.
-const VERSION = 'dsa-shell-v56';
+const VERSION = 'dsa-shell-v57';
 
 const SHELL = [
   './',
