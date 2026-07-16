@@ -41,7 +41,12 @@ export function getOverlay(aladin) {
   let dirty = true;
 
   function resize() {
-    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    // Full native resolution, up to 3× (covers every current phone). The
+    // engine's own imagery canvas is hard-capped at 2× inside its wasm
+    // core, but THIS canvas draws the star bloom that covers the bright
+    // star cores — the exact pixels a viewer scrutinizes — plus the grid
+    // and horizon lines and labels. Crisp here is visibly crisper stars.
+    dpr = Math.min(window.devicePixelRatio || 1, 3);
     const r = wrap.getBoundingClientRect();
     W = r.width; H = r.height;
     canvas.width = Math.round(W * dpr);
