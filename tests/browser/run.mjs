@@ -448,17 +448,57 @@ await scenario('coordinate grid: draws, rescales with zoom, keeps edge labels', 
   await ctx.close();
 });
 
-await scenario('sharpen imagery: always on from boot, composes with red-light', async () => {
+await scenario('sharpen imagery: WebGL post-process active, shader really sharpens', async () => {
   const { ctx, page } = await newPage(browser, baseURL);
-  const skyFilter = () => page.evaluate(() => getComputedStyle(document.getElementById('aladin-lite-div')).filter);
-  const on = await skyFilter();
-  assert(on.includes('dsa-sharpen'), `sharpen filter must be applied at boot (got ${on})`);
-  // Red-light mode must CHAIN with it, not silently replace it.
+  const mode = await page.evaluate(() => ({
+    canvas: !!document.getElementById('dsa-sharpen-canvas'),
+    preserve: !!document.querySelector('.aladin-imageCanvas')?.getContext('webgl2')?.getContextAttributes()?.preserveDrawingBuffer,
+    cssFallback: document.body.classList.contains('sharpen')
+  }));
+  assert(mode.canvas, 'WebGL sharpen canvas must exist over the imagery');
+  assert(mode.preserve, 'engine context must have preserveDrawingBuffer injected');
+  assert(!mode.cssFallback, 'CSS fallback must stay off while the WebGL path runs');
+  // Red-light mode still tints the whole sky div (our canvas included).
   await page.click('#redlight-toggle');
-  const both = await skyFilter();
-  assert(both.includes('dsa-sharpen') && both.includes('sepia'), `red-light must chain (got ${both})`);
+  const rl = await page.evaluate(() => getComputedStyle(document.getElementById('aladin-lite-div')).filter);
+  assert(rl.includes('sepia'), `red-light must still apply over the sharpened sky (got ${rl})`);
   await page.click('#redlight-toggle');
-  assert((await skyFilter()).includes('dsa-sharpen'), 'filter must survive leaving red-light mode');
+  // The shader itself must measurably sharpen: run the SAME pipeline on a
+  // synthetic soft star field and compare edge energy (mean |Laplacian|).
+  const gain = await page.evaluate(async () => {
+    const { createSharpenPipeline } = await import('/js/sharpen.js');
+    const src = document.createElement('canvas');
+    src.width = src.height = 256;
+    const c = src.getContext('2d');
+    c.fillStyle = '#05070a'; c.fillRect(0, 0, 256, 256);
+    let seed = 7;
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    for (let i = 0; i < 80; i++) {
+      const x = rnd() * 256, y = rnd() * 256, r = 1 + rnd() * 5;
+      const g = c.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, 'rgba(255,250,235,0.9)');
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      c.fillStyle = g; c.beginPath(); c.arc(x, y, r, 0, 7); c.fill();
+    }
+    const energy = (data, w) => {
+      let t = 0, n = 0;
+      for (let y = 1; y < w - 1; y++) for (let x = 1; x < w - 1; x++) {
+        const i = (y * w + x) * 4;
+        t += Math.abs(4 * data[i] - data[i - 4] - data[i + 4] - data[i - w * 4] - data[i + w * 4]);
+        n++;
+      }
+      return t / n;
+    };
+    const before = energy(c.getImageData(0, 0, 256, 256).data, 256);
+    const dst = document.createElement('canvas');
+    const pipe = createSharpenPipeline(src, dst);
+    if (!pipe) return -1;
+    pipe.frame();
+    const px = new Uint8Array(256 * 256 * 4);
+    pipe.gl.readPixels(0, 0, 256, 256, pipe.gl.RGBA, pipe.gl.UNSIGNED_BYTE, px);
+    return energy(px, 256) / before;
+  });
+  assert(gain > 1.7, `shader should raise edge energy substantially, got ${gain.toFixed(2)}x`);
   assert(page.__errors.length === 0, `page errors: ${page.__errors.join('; ')}`);
   await ctx.close();
 });

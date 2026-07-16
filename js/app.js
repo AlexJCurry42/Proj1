@@ -34,6 +34,7 @@ import { initGridLayer } from './grid.js';
 import { showLocationCard, geoPermissionState } from './loccard.js';
 import { onTimeChange } from './clock.js';
 import { getOverlay } from './overlay.js';
+import { patchEngineContext, initSharpen } from './sharpen.js';
 
 const SGR_A_STAR = { ra: 266.41683, dec: -29.007811 };
 
@@ -87,10 +88,10 @@ async function main() {
     try { initChrome(); } catch (err) { console.error('chrome init failed:', err); }
   }
 
-  // Imagery sharpening is always on: a two-scale optical unsharp mask over
-  // the sky (see the SVG filter in index.html and the About panel). Pure
-  // local contrast on real pixels — never invented detail.
-  document.body.classList.add('sharpen');
+  // Imagery sharpening is always on (see js/sharpen.js: a WebGL unsharp
+  // post-process, since WebKit ignores SVG-referenced CSS filters). The
+  // engine's context must be patched BEFORE the engine boots.
+  patchEngineContext();
 
   // Spectrum position priority: shared link > saved position > legacy survey
   // preference > default (DSS2 optical).
@@ -166,6 +167,10 @@ async function main() {
   aladin.on('positionChanged', (...args) => { for (const fn of positionSubs) fn(...args); });
   const onZoom = (fn) => zoomSubs.add(fn);
   const onPosition = (fn) => positionSubs.add(fn);
+
+  // Always-on imagery sharpening: WebGL post-process over the engine's
+  // rendered frame; CSS-filter fallback where WebGL2 is out of reach.
+  initSharpen(aladin, { onPosition, onZoom });
 
 
   // Zoom stops where the data does. Each survey has an honest floor

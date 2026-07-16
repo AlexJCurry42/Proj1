@@ -2,6 +2,7 @@
 // about/credits modal, red-light night-vision mode.
 
 import { fetchJSON } from './net.js';
+import { SHELL_VERSION } from './version.js';
 import { attachRenderIfFamous } from './render3d.js';
 import { riseSet, raDecToVec, vecToRaDec, angularSepDeg } from './astro.js';
 import { cachedObserver } from './observer.js';
@@ -561,7 +562,7 @@ export function initAboutModal() {
       <li>DSS2, SDSS9, 2MASS, AllWISE/unWISE, Pan-STARRS DR1, Fermi and radio HiPS surveys, distributed via the CDS HiPS service</li>
     </ul>
     <p class="hint">Why do bright stars look blotchy up close? The DSS2 optical imagery comes from photographic sky-survey plates: a bright star saturated the emulsion, and the red and blue exposures were taken years apart, so their images don't quite align — the orange/blue/black cores are plate artifacts, not real structure. Other bands (2MASS, Pan-STARRS) have their own, different bright-star artifacts. The <strong>Clean bright stars</strong> checkbox (layer dock → Display) covers those cores with a synthetic glow — positioned, sized and colored from the Yale Bright Star Catalogue — and can be switched off any time to see the raw observations.</p>
-    <p class="hint">Want the sharpest possible view of a region? Slide the spectrum rail to <strong>Pan-STARRS</strong> — a modern CCD survey, far deeper and cleaner than the classic photographic DSS2 (it covers the sky north of declination −30°). Every stop on the rail is real observational data, so image quality is set by each survey's telescope and era, not by your screen. The sky is displayed with a strong two-scale <strong>unsharp mask</strong> applied — a fine pass that tightens star profiles and a wider "clarity" pass that lifts nebular structure. Pure local contrast on the real pixels, never invented detail; it also makes the surveys' own film grain and JPEG noise more visible, which is honest but not always pretty.</p>
+    <p class="hint">Want the sharpest possible view of a region? Slide the spectrum rail to <strong>Pan-STARRS</strong> — a modern CCD survey, far deeper and cleaner than the classic photographic DSS2 (it covers the sky north of declination −30°). Every stop on the rail is real observational data, so image quality is set by each survey's telescope and era, not by your screen. The sky is displayed with a strong two-scale <strong>unsharp mask</strong> applied (rendered as a WebGL post-process, so it works on every browser) — a fine pass that tightens star profiles and a wider "clarity" pass that lifts nebular structure. Pure local contrast on the real pixels, never invented detail; it also makes the surveys' own film grain and JPEG noise more visible, which is honest but not always pretty.</p>
     <h3>Catalogs</h3>
     <ul>
       <li><strong>SIMBAD</strong> astronomical database &mdash; CDS, Strasbourg</li>
@@ -588,6 +589,7 @@ export function initAboutModal() {
     <h3>Open source</h3>
     <p>MIT-licensed. Source, bug reports and suggestions: <a href="https://github.com/AlexJCurry42/Proj1" target="_blank" rel="noopener">github.com/AlexJCurry42/Proj1</a>. Curated data last reviewed July 2026.</p>
     <p class="hint">Every dataset should be cited per its provider's own guidelines in any derived publication. This tool is for exploration and education, not a substitute for primary catalogs. Planet/Moon positions are geocentric and approximate (±arcminutes; Moon up to ~1° due to parallax).</p>
+    <p class="hint">App build: shell ${SHELL_VERSION}.</p>
   `;
   let aboutReturnFocus = null;
   const open = () => {
