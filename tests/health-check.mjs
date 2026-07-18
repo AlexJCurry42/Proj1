@@ -120,13 +120,13 @@ check('SIMBAD TAP — black-hole otype query (Black holes layer)', async () => {
 // The tap-an-object detail lookup (js/ui.js fetchSimbadNear), both queries.
 check('SIMBAD TAP — nearest-object detail lookup + allfluxes magnitude', async () => {
   const q =
-    `SELECT TOP 1 oid, main_id, otype, ra, dec, plx_value, ` +
+    `SELECT TOP 1 oid, main_id, otype, ra, dec, plx_value, sp_type, ` +
     `DISTANCE(POINT('ICRS', ra, dec), POINT('ICRS', 10.684700, 41.269100)) AS dist ` +
     `FROM basic ` +
     `WHERE CONTAINS(POINT('ICRS', ra, dec), CIRCLE('ICRS', 10.684700, 41.269100, 0.02)) = 1 ` +
     `ORDER BY dist ASC`;
   const json = await getJSON(tapUrl(SIMBAD_TAP, q));
-  expectColumns(json, ['oid', 'main_id', 'otype', 'ra', 'dec', 'plx_value'], 'detail lookup');
+  expectColumns(json, ['oid', 'main_id', 'otype', 'ra', 'dec', 'plx_value', 'sp_type'], 'detail lookup');
   const cols = json.metadata.map((m) => m.name.toLowerCase());
   const oid = json.data[0][cols.indexOf('oid')];
   const magJson = await getJSON(tapUrl(SIMBAD_TAP, `SELECT V FROM allfluxes WHERE oidref = ${oid}`));

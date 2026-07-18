@@ -22,7 +22,7 @@ on:
   workflow_dispatch:
     inputs:
       datasets:
-        description: 'Space-separated: tles exoplanets ngc brightstars constellations, or all'
+        description: 'Space-separated: tles exoplanets ngc brightstars constellations zones, or all'
         default: 'all'
         type: string
 
@@ -40,11 +40,11 @@ jobs:
           case "${{ github.event_name }}:${{ github.event.schedule }}" in
             schedule:'41 4 * * *') SETS='tles' ;;
             schedule:'17 6 * * 1') SETS='exoplanets' ;;
-            schedule:'7 3 3 * *')  SETS='ngc brightstars constellations' ;;
+            schedule:'7 3 3 * *')  SETS='ngc brightstars constellations zones' ;;
             workflow_dispatch:*)   SETS='${{ inputs.datasets }}' ;;
             *)                     SETS='all' ;;
           esac
-          [ "$SETS" = 'all' ] && SETS='tles exoplanets ngc brightstars constellations'
+          [ "$SETS" = 'all' ] && SETS='tles exoplanets ngc brightstars constellations zones'
           echo "SETS=$SETS" >> "$GITHUB_ENV"
           echo "refreshing: $SETS"
 
@@ -276,6 +276,40 @@ jobs:
                 len(lines['features']), 'figures,',
                 len(names['features']), 'names,',
                 len(borders['features']), 'border features')
+          EOF
+
+      # ----------------------------------- IAU constellation zones (monthly) ---
+      # Roman 1987 (VizieR VI/42): the official constellation-determination
+      # table — ~357 declination-ordered zones in B1875 coordinates. Feeds
+      # the detail panel's Constellation row (js/constellation.js).
+      - name: IAU constellation zone table (VI/42)
+        if: contains(env.SETS, 'zones')
+        run: |
+          curl -fsS --retry 3 --retry-delay 15 \
+            'https://cdsarc.cds.unistra.fr/ftp/VI/42/data.dat' -o /tmp/zones.dat
+          python3 - <<'EOF'
+          import json
+
+          zones = []
+          for line in open('/tmp/zones.dat'):
+              parts = line.split()
+              if len(parts) < 4:
+                  continue
+              ra_lo, ra_hi, dec_lo = (float(p) for p in parts[:3])
+              abbr = parts[3].strip()
+              assert 0 <= ra_lo <= 24 and 0 < ra_hi <= 24 and -90 <= dec_lo < 90, f'bad zone: {line!r}'
+              zones.append([ra_lo, ra_hi, dec_lo, abbr])
+
+          assert 300 < len(zones) < 420, f'{len(zones)} zones — VI/42 format drift?'
+          # The catalog is ordered north → south; the final row must be the
+          # all-RA Octans zone that closes the south pole.
+          assert zones[-1][2] <= -80 and zones[-1][0] == 0 and zones[-1][1] == 24, \
+              f'unexpected final zone: {zones[-1]}'
+          json.dump(
+              {'_comment': 'IAU constellation zones (Roman 1987, VizieR VI/42): [ra_low_h, ra_high_h, dec_low_deg, abbr], B1875.0, catalog order. Scan-first-match after precessing J2000->B1875.',
+               'zones': zones},
+              open('data/constellation_zones.json', 'w'), separators=(',', ':'))
+          print(f'wrote {len(zones)} zones')
           EOF
 
       # ------------------------------------------------------------ Commit ---

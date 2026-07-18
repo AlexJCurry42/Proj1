@@ -56,6 +56,15 @@ moving with the sky. Identification is a property of the view itself: it
 works even when that object's layer is switched off (and it stands down
 politely when a tour's toast has already announced the destination).
 
+Object detail panels carry the full record: type, coordinates, magnitude,
+spectral type, distance, **constellation** (the official IAU
+determination — Roman 1987 zones after precessing to B1875, not a
+nearest-label guess), visible-tonight rows, and SIMBAD/NED/Wikipedia
+links. First-timers get a one-time, non-blocking **tips card**, a
+tappable coordinates readout that explains RA/Dec, and a **controls
+sheet** (press ?) listing gestures and keyboard shortcuts
+(/ search, + − zoom, Esc close).
+
 Also: instant search suggestions from the curated catalogs, shareable
 permalinks for any view (plus a native share button), installable as a
 PWA with an offline-cached shell, red-light night-vision mode, an

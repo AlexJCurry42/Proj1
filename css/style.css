@@ -1074,6 +1074,54 @@ body.redlight #crosshair{
 }
 #center-card #center-desc[hidden]{ display: none; }
 
+/* ================= First-visit tips & shortcuts sheet ================= */
+#tips-card{
+  position: fixed; z-index: 58;
+  left: 50%; transform: translateX(-50%);
+  bottom: calc(76px + var(--safe-bottom));
+  width: min(430px, calc(100vw - 24px));
+  padding: 14px 40px 12px 16px;
+  animation: sheet-in 0.34s var(--spring);
+}
+#tips-card[hidden]{ display: none; }
+#tips-card .tips-title, #shortcuts-sheet .tips-title{ font-size: 14px; letter-spacing: -0.01em; }
+#tips-card #tips-close, #shortcuts-sheet #shortcuts-close{ position: absolute; top: 8px; right: 8px; }
+#tips-card .tips-list{
+  margin: 8px 0 0; padding: 0; list-style: none;
+  display: flex; flex-direction: column; gap: 7px;
+}
+#tips-card .tips-list li{
+  display: flex; gap: 9px; align-items: baseline;
+  font-size: 12.5px; color: var(--text-secondary); line-height: 1.4;
+}
+/* The tips card owns the first-visit moment: the center-ID card waits. */
+#tips-card:not([hidden]) ~ #center-card{ display: none; }
+
+#shortcuts-sheet{
+  position: fixed; z-index: 210;
+  left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: min(340px, calc(100vw - 32px));
+  padding: 14px 16px;
+  animation: pop-in 0.2s var(--spring);
+}
+#shortcuts-sheet[hidden]{ display: none; }
+#shortcuts-sheet .sc-rows{ margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+#shortcuts-sheet .sc-rows div{
+  display: flex; justify-content: space-between; gap: 12px;
+  font-size: 12.5px; color: var(--text-secondary);
+}
+#shortcuts-sheet .sc-rows div span:first-child{ color: var(--text-primary); }
+#shortcuts-sheet kbd{
+  font: 600 11px ui-monospace, "SF Mono", Menlo, monospace;
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.09);
+  border: 0.5px solid rgba(255, 255, 255, 0.18);
+  border-radius: 5px; padding: 1.5px 6px;
+}
+
+/* The coords readout is tappable (it explains RA/Dec) */
+#coords-hud{ pointer-events: auto; cursor: help; }
+
 /* ================= Dock row loading shimmer ================= */
 /* A lazy layer is fetching after its first flip: the label breathes so the
    wait reads as loading, not a dead switch. */

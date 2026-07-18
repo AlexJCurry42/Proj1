@@ -187,7 +187,7 @@ await scenario('boot: lean fetch budget, no dead chrome, zero errors (granted ge
   // boot may fetch: tours, the star tiers (faint arrives on idle — off the
   // critical path by design), the ISS TLE (observer already granted) —
   // never the catalogs of default-off layers.
-  const allowed = ['tours.json', 'brightstars.json', 'brightstars_faint.json', 'brightstars_seed.json', 'satellites_tle.txt', 'messier_ngc.json'];
+  const allowed = ['tours.json', 'brightstars.json', 'brightstars_faint.json', 'brightstars_seed.json', 'satellites_tle.txt', 'messier_ngc.json', 'constellation_zones.json'];
   for (const f of dataFiles) {
     assert(allowed.includes(f), `unexpected boot fetch: ${f}`);
   }
@@ -541,6 +541,31 @@ await scenario('center ID: a known object under the crosshair pops its card', as
   const cross = await page.locator('#crosshair').boundingBox();
   const vp = page.viewportSize();
   assert(cross && Math.abs(cross.x + cross.width / 2 - vp.width / 2) < 2, 'crosshair must mark the view center');
+  assert(page.__errors.length === 0, `page errors: ${page.__errors.join('; ')}`);
+  await ctx.close();
+});
+
+await scenario('onboarding: tips wait for consent, dismiss persists; ? and / work', async () => {
+  // No geolocation permission → the consent card owns the first moment.
+  const { ctx, page } = await newPage(browser, baseURL, { geolocation: false });
+  await page.waitForFunction(() => !document.getElementById('loc-card').hidden, null, { timeout: 10000 });
+  assert(await page.evaluate(() => document.getElementById('tips-card').hidden), 'tips must wait for the consent card');
+  await page.click('#loc-decline');
+  await page.waitForFunction(() => !document.getElementById('tips-card').hidden, null, { timeout: 8000 });
+  await page.click('#tips-close');
+  await page.reload();
+  await page.waitForFunction(() => window.__aladin, null, { timeout: 60000 });
+  await page.click('#loc-decline').catch(() => {}); // clear the consent card again
+  await page.waitForTimeout(3500);
+  assert(await page.evaluate(() => document.getElementById('tips-card').hidden), 'dismissed tips must stay dismissed');
+  // Keyboard: "?" opens the controls sheet, Esc closes it, "/" focuses search.
+  await page.keyboard.press('?');
+  assert(!(await page.evaluate(() => document.getElementById('shortcuts-sheet').hidden)), '? must open the shortcuts sheet');
+  await page.keyboard.press('Escape');
+  assert(await page.evaluate(() => document.getElementById('shortcuts-sheet').hidden), 'Esc must close the shortcuts sheet');
+  await page.keyboard.press('/');
+  const focused = await page.evaluate(() => document.activeElement?.id);
+  assert(focused === 'search-input', `/ must focus search (focused: ${focused})`);
   assert(page.__errors.length === 0, `page errors: ${page.__errors.join('; ')}`);
   await ctx.close();
 });

@@ -11,8 +11,9 @@ import {
   showToast, renderDetailPanel, showDetailLoading, closeDetailPanel,
   fetchSimbadNear, humanObjectType, toSexagesimalRA, toSexagesimalDec,
   initTours, initAboutModal, initRedlightToggle,
-  initDetailPanelClose, initKeyboard
+  initDetailPanelClose, initKeyboard, initWelcomeTips
 } from './ui.js';
+import { primeConstellations } from './constellation.js';
 import { initGaiaHips, initGalaxiesLayer, initSimbadBlackHolesLayer, loadMessierNgc, loadNgcFull, loadExoplanets } from './catalogs.js';
 import { initIssLayer } from './iss.js';
 import { loadStellarBlackHoles, loadFlagshipSupermassive, initMilliquasLayer } from './blackholes.js';
@@ -84,9 +85,13 @@ async function main() {
   // stale index.html with fresh JS, and a missing element in one widget must
   // cost that widget, not the sky.
   for (const initChrome of [initMotion, initRedlightToggle, initAboutModal, initDetailPanelClose,
-                            initKeyboard, initDockCollapse, initTimeControl]) {
+                            initKeyboard, initDockCollapse, initTimeControl, initWelcomeTips]) {
     try { initChrome(); } catch (err) { console.error('chrome init failed:', err); }
   }
+
+  // The IAU constellation zone table (detail panel's Constellation row):
+  // tiny, but strictly off the boot path.
+  (window.requestIdleCallback || ((fn) => setTimeout(fn, 4000)))(() => primeConstellations());
 
   // Imagery sharpening is always on (see js/sharpen.js: a WebGL unsharp
   // post-process, since WebKit ignores SVG-referenced CSS filters). The
@@ -328,6 +333,11 @@ async function main() {
   onPosition(updateCoordsHud);
   onZoom(updateCoordsHud);
   updateCoordsHud();
+  // The readout doubles as its own explainer — a first-timer has no reason
+  // to know what "5h 34m / +22°" means until they tap it.
+  coordsHud?.addEventListener('click', () => {
+    showToast('These are the view center’s sky coordinates: Right Ascension (the sky’s longitude, measured in hours-minutes-seconds) and Declination (its latitude, in degrees). Flip on the Coordinate grid layer to see these lines drawn on the sky.', 'info', 12000);
+  });
 
   // Whatever known object sits under the crosshair gets named (layer
   // toggles notwithstanding) — with its full description when we have one.
@@ -359,6 +369,7 @@ async function main() {
         ra: rec.ra,
         dec: rec.dec,
         mag: rec.mag,
+        spType: rec.spType,
         distanceText: rec.distancePc ? `${rec.distancePc.toFixed(1)} pc (from parallax)` : null,
         source: 'SIMBAD (CDS Strasbourg), via SIMBAD TAP cone search'
       });

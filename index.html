@@ -193,6 +193,37 @@
 </div>
 <button id="time-chip" hidden aria-label="The sky is time-shifted — tap to adjust or reset"></button>
 
+<!-- First-visit tips: a small dismissible card, never a modal wall. Waits
+     for the location consent card to clear; never returns once closed. -->
+<div id="tips-card" class="glass-panel" role="status" hidden>
+  <button id="tips-close" class="glass-btn small" aria-label="Dismiss tips">
+    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="7" y1="7" x2="17" y2="17"/><line x1="17" y1="7" x2="7" y2="17"/></svg>
+  </button>
+  <strong class="tips-title">New here? Three things to try</strong>
+  <ul class="tips-list">
+    <li><span>🔍</span> Search anything — try “Andromeda” or “Ring Nebula”</li>
+    <li><span>🌈</span> The right-hand rail re-images the sky from gamma-ray to radio — every band is real telescope data</li>
+    <li><span>✨</span> “Show me something cool” flies you somewhere spectacular</li>
+  </ul>
+</div>
+
+<!-- Keyboard shortcuts / controls sheet (press ?) -->
+<div id="shortcuts-sheet" class="glass-panel" role="dialog" aria-label="Controls and keyboard shortcuts" hidden>
+  <button id="shortcuts-close" class="glass-btn small" aria-label="Close shortcuts">
+    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="7" y1="7" x2="17" y2="17"/><line x1="17" y1="7" x2="7" y2="17"/></svg>
+  </button>
+  <strong class="tips-title">Controls</strong>
+  <div class="sc-rows">
+    <div><span>Drag</span><span>Pan the sky</span></div>
+    <div><span>Pinch / scroll</span><span>Zoom</span></div>
+    <div><span>Two-finger twist</span><span>Rotate the view</span></div>
+    <div><kbd>/</kbd><span>Search</span></div>
+    <div><kbd>+</kbd> <kbd>−</kbd><span>Zoom in / out</span></div>
+    <div><kbd>Esc</kbd><span>Close panels</span></div>
+    <div><kbd>?</kbd><span>This sheet</span></div>
+  </div>
+</div>
+
 <!-- Center-object card: names whatever known object sits under the
      crosshair (with its description when one is known), regardless of
      which layers are switched on. Placed AFTER the location card so CSS

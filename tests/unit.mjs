@@ -266,6 +266,49 @@ await test('constants: D2R/R2D are radians↔degrees', () => {
   near(R2D * Math.PI, 180, 1e-9);
 });
 
+// ------------------------------------------- constellation determination ---
+// js/constellation.js: IAU zones (Roman 1987) after J2000 → B1875
+// precession. The zone table is Action-fetched; until data/ has it, only
+// the precession math is testable.
+
+const { toB1875, zoneLookup } = await import('../js/constellation.js');
+
+await test('precession J2000→B1875: plausible shift, poles stay polar', () => {
+  // General precession is ~1.74° along the ecliptic over 125 years: an
+  // equatorial point's RA must shift west by roughly that much.
+  const eq = toB1875(180, 0);
+  near(eq.raH * 15, 180 - 1.74, 0.35, 'equatorial RA shift');
+  // The J2000 celestial pole sits ~0.35°/25yr from the 1875 pole — well
+  // under 2° away, and never flips hemisphere.
+  const pole = toB1875(0, 90);
+  assert.ok(pole.dec > 88 && pole.dec <= 90, `pole dec ${pole.dec}`);
+});
+
+await test('constellation zones: famous objects land in the right constellation', async () => {
+  const { existsSync, readFileSync } = await import('node:fs');
+  const path = new URL('../data/constellation_zones.json', import.meta.url);
+  if (!existsSync(path)) {
+    console.log('      (data/constellation_zones.json not fetched yet — Action-generated; skipping lookups)');
+    return;
+  }
+  const zones = JSON.parse(readFileSync(path)).zones;
+  assert.ok(zones.length > 300, `${zones.length} zones`);
+  const expect = [
+    [101.287, -16.716, 'Canis Major'],   // Sirius
+    [37.955, 89.264, 'Ursa Minor'],      // Polaris
+    [10.685, 41.269, 'Andromeda'],       // M31
+    [88.793, 7.407, 'Orion'],            // Betelgeuse
+    [219.902, -60.834, 'Centaurus'],     // alpha Cen
+    [83.633, 22.015, 'Taurus'],          // Crab Nebula
+    [316.0, -88.0, 'Octans'],            // deep south
+    [266.417, -29.008, 'Sagittarius']    // Sgr A*
+  ];
+  for (const [ra, dec, want] of expect) {
+    const got = zoneLookup(zones, ra, dec);
+    assert.equal(got, want, `(${ra}, ${dec}) → ${got}, expected ${want}`);
+  }
+});
+
 // ------------------------------------------------------------- summary ---
 
 console.log(`\n${passed} passed, ${failures.length} failed`);

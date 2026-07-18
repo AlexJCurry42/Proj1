@@ -3,6 +3,8 @@
 
 import { fetchJSON } from './net.js';
 import { SHELL_VERSION } from './version.js';
+import { constellationAt } from './constellation.js';
+import { readPref, writePref } from './prefs.js';
 import { attachRenderIfFamous } from './render3d.js';
 import { riseSet, raDecToVec, vecToRaDec, angularSepDeg } from './astro.js';
 import { cachedObserver } from './observer.js';
@@ -116,7 +118,7 @@ export async function fetchSimbadNear(ra, dec, radiusDeg = 0.02) {
   // own TAP examples use. (Magnitude is skipped deliberately; the compound
   // flux join this replaced was 400-ing on the strict grammar.)
   const query =
-    `SELECT TOP 1 oid, main_id, otype, ra, dec, plx_value, ` +
+    `SELECT TOP 1 oid, main_id, otype, ra, dec, plx_value, sp_type, ` +
     `DISTANCE(POINT('ICRS', ra, dec), POINT('ICRS', ${raQ}, ${decQ})) AS dist ` +
     `FROM basic ` +
     `WHERE CONTAINS(POINT('ICRS', ra, dec), CIRCLE('ICRS', ${raQ}, ${decQ}, ${radiusDeg})) = 1 ` +
@@ -137,6 +139,7 @@ export async function fetchSimbadNear(ra, dec, radiusDeg = 0.02) {
     ra: get('ra'),
     dec: get('dec'),
     distancePc: get('plx_value') ? 1000 / get('plx_value') : null,
+    spType: get('sp_type') || null,
     mag: null
   };
 
@@ -206,14 +209,61 @@ export function closeLightbox() {
 
 /** Escape dismisses the topmost surface; Tab is trapped inside open modals. */
 export function initKeyboard() {
+  const typing = (e) => {
+    const t = e.target;
+    return t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
+  };
   document.addEventListener('keydown', (e) => {
-    if (e.key !== 'Escape') return;
-    // Let the search field's native Escape (clear text) win while focused.
-    if (e.target && e.target.id === 'search-input') return;
-    if (document.getElementById('lightbox')) { closeLightbox(); return; }
-    const about = document.getElementById('about-modal');
-    if (!about.hidden) { document.getElementById('about-close').click(); return; }
-    if (!detailPanel().hidden) closeDetailPanel();
+    if (e.key === 'Escape') {
+      // Let the search field's native Escape (clear text) win while focused.
+      if (e.target && e.target.id === 'search-input') return;
+      if (document.getElementById('lightbox')) { closeLightbox(); return; }
+      const sheet = document.getElementById('shortcuts-sheet');
+      if (sheet && !sheet.hidden) { sheet.hidden = true; return; }
+      const about = document.getElementById('about-modal');
+      if (!about.hidden) { document.getElementById('about-close').click(); return; }
+      if (!detailPanel().hidden) closeDetailPanel();
+      return;
+    }
+    if (typing(e) || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === '/') {
+      e.preventDefault();
+      document.getElementById('search-input')?.focus();
+    } else if (e.key === '+' || e.key === '=') {
+      document.getElementById('zoom-in')?.click();
+    } else if (e.key === '-' || e.key === '_') {
+      document.getElementById('zoom-out')?.click();
+    } else if (e.key === '?') {
+      const sheet = document.getElementById('shortcuts-sheet');
+      if (sheet) sheet.hidden = !sheet.hidden;
+    }
+  });
+  document.getElementById('shortcuts-close')?.addEventListener('click', () => {
+    document.getElementById('shortcuts-sheet').hidden = true;
+  });
+}
+
+// ------------------------------------------------------ Welcome tips ---
+// First-visit orientation WITHOUT a modal wall (retired deliberately): a
+// small dismissible card that waits its turn — it appears only after the
+// location consent card is out of the way, and never again once closed.
+export function initWelcomeTips() {
+  if (readPref('welcometips', false)) return;
+  const card = document.getElementById('tips-card');
+  if (!card) return;
+  const locCard = document.getElementById('loc-card');
+  let tries = 0;
+  const attempt = () => {
+    if (locCard && !locCard.hidden) {
+      if (++tries < 120) setTimeout(attempt, 500); // wait out the consent card
+      return;
+    }
+    card.hidden = false;
+  };
+  setTimeout(attempt, 2500);
+  document.getElementById('tips-close')?.addEventListener('click', () => {
+    card.hidden = true;
+    writePref('welcometips', true);
   });
 }
 
@@ -245,7 +295,10 @@ export function renderDetailPanel(obj) {
   rows.push(row('RA (ICRS)', `${toSexagesimalRA(obj.ra)} / ${obj.ra.toFixed(5)}°`));
   rows.push(row('Dec (ICRS)', `${toSexagesimalDec(obj.dec)} / ${obj.dec.toFixed(5)}°`));
   if (obj.mag !== undefined && obj.mag !== null) rows.push(row('Magnitude', obj.mag));
+  if (obj.spType) rows.push(row('Spectral type', obj.spType));
   if (obj.distanceText) rows.push(row('Distance', obj.distanceText));
+  const constName = constellationAt(obj.ra, obj.dec); // IAU determination; null until the zone table's first fetch
+  if (constName) rows.push(row('Constellation', constName));
   for (const r of visibilityRows(obj)) rows.push(r);
   for (const [label, value] of obj.extraRows || []) rows.push(row(label, value));
 
@@ -589,6 +642,7 @@ export function initAboutModal() {
     <h3>Open source</h3>
     <p>MIT-licensed. Source, bug reports and suggestions: <a href="https://github.com/AlexJCurry42/Proj1" target="_blank" rel="noopener">github.com/AlexJCurry42/Proj1</a>. Curated data last reviewed July 2026.</p>
     <p class="hint">Every dataset should be cited per its provider's own guidelines in any derived publication. This tool is for exploration and education, not a substitute for primary catalogs. Planet/Moon positions are geocentric and approximate (±arcminutes; Moon up to ~1° due to parallax).</p>
+    <p class="hint">Tip: press <strong>?</strong> on a keyboard for controls and shortcuts; tap the little coordinates readout (bottom right) to learn what RA/Dec mean.</p>
     <p class="hint">App build: shell ${SHELL_VERSION}.</p>
   `;
   let aboutReturnFocus = null;
