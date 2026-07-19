@@ -589,6 +589,21 @@ await scenario('onboarding: tips appear once, dismiss persists; ? and / work', a
   await page.keyboard.press('/');
   const focused = await page.evaluate(() => document.activeElement?.id);
   assert(focused === 'search-input', `/ must focus search (focused: ${focused})`);
+  // Hostile markup in a search must render as TEXT, never execute — the
+  // history dropdown once fed raw queries through innerHTML (stored XSS).
+  await page.evaluate(async () => {
+    const { addToHistory } = await import('/js/search.js');
+    addToHistory({ query: '<img src=x onerror="window.__xss=1">', ra: null, dec: null, label: '<b>evil</b>' });
+    document.getElementById('search-input').blur();
+  });
+  await page.click('#search-input');
+  await page.waitForTimeout(400);
+  const hist = await page.evaluate(() => ({
+    xss: window.__xss,
+    html: document.getElementById('search-history').innerHTML
+  }));
+  assert(!hist.xss && hist.html.includes('&lt;b&gt;evil&lt;/b&gt;'),
+    'search history must render hostile input inert');
   assert(page.__errors.length === 0, `page errors: ${page.__errors.join('; ')}`);
   await ctx.close();
 });

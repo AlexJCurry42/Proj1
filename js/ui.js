@@ -16,7 +16,7 @@ import { motionOK } from './motion.js';
 const SIMBAD_TAP_URL = 'https://simbad.cds.unistra.fr/simbad/sim-tap/sync';
 
 let objectTypesDict = null;
-const simbadCache = new Map(); // "ra,dec" (rounded) -> result
+const simbadCache = new Map(); // "ra,dec,radius" (rounded) -> result
 
 // ---------------------------------------------------------------- Toasts ---
 
@@ -120,7 +120,9 @@ export async function fetchSimbadNear(ra, dec, radiusDeg = 0.02) {
     throw new Error('this source did not report usable coordinates');
   }
   const raQ = raNum.toFixed(6), decQ = decNum.toFixed(6);
-  const key = `${raQ},${decQ}`;
+  // The radius is part of the query, so it must be part of the key — a
+  // same-position lookup at a different radius is a different answer.
+  const key = `${raQ},${decQ},${radiusDeg}`;
   if (simbadCache.has(key)) return simbadCache.get(key);
 
   // Minimal, parser-safe ADQL: no joins, and the DISTANCE expression is
@@ -357,7 +359,7 @@ export function renderDetailPanel(obj) {
   for (const [label, value] of obj.extraRows || []) rows.push(row(label, value));
 
   const nameForLinks = encodeURIComponent(obj.name || '');
-  const badges = (obj.badges || []).map(b => `<span class="badge-eht">${b}</span>`).join('');
+  const badges = (obj.badges || []).map(b => `<span class="badge-eht">${escapeHtml(b)}</span>`).join('');
 
   detailContent().innerHTML = `
     <h3>${escapeHtml(obj.name || 'Unknown object')}${badges}</h3>
@@ -489,10 +491,17 @@ export async function initTours(aladin, spectrum) {
   if (!btn) return;
 
   // A shuffle bag: every press is a surprise, and nothing repeats until
-  // every destination has been seen once.
+  // every destination has been seen once. Fisher–Yates — a sort(random)
+  // comparator is a known non-uniform shuffle.
   let bag = [];
   function draw() {
-    if (!bag.length) bag = [...tours].sort(() => Math.random() - 0.5);
+    if (!bag.length) {
+      bag = [...tours];
+      for (let i = bag.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [bag[i], bag[j]] = [bag[j], bag[i]];
+      }
+    }
     return bag.pop();
   }
 

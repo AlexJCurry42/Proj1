@@ -76,13 +76,16 @@ export function getHistory() {
 }
 
 /** Fly the Aladin view to a target, respecting the animations switch. */
+let fovTimer = null; // a newer flight must cancel the older one's pending
+                     // FoV landing, or the stale timer snaps the view back
 export function flyTo(aladin, ra, dec, fovDeg = 0.6) {
+  clearTimeout(fovTimer);
   if (!motionOK() || typeof aladin.animateToRaDec !== 'function') {
     aladin.gotoRaDec(ra, dec);
     aladin.setFoV(fovDeg);
   } else {
     aladin.animateToRaDec(ra, dec, 1.2);
-    setTimeout(() => aladin.setFoV(fovDeg), 1200);
+    fovTimer = setTimeout(() => aladin.setFoV(fovDeg), 1200);
   }
 }
 

@@ -21,11 +21,22 @@ export function initSearchUI(aladin) {
   let currentSuggs = [];
   let activeIdx = -1;
 
+  // DOM nodes + textContent, never innerHTML: history labels and queries are
+  // RAW USER INPUT (and suggestion names come from data files) — a query
+  // like "<img src=x onerror=…>" must render as text, not execute.
+  function itemLi(title, sub, idxAttr, idx) {
+    const li = document.createElement('li');
+    li.dataset[idxAttr] = String(idx);
+    li.append(title);
+    const s = document.createElement('div');
+    s.className = 'item-sub';
+    s.textContent = sub;
+    li.appendChild(s);
+    return li;
+  }
+
   function renderHistory() {
-    const items = getHistory();
-    historyList.innerHTML = items.map((h, i) =>
-      `<li data-idx="${i}">${h.label}<div class="item-sub">${h.query}</div></li>`
-    ).join('');
+    historyList.replaceChildren(...getHistory().map((h, i) => itemLi(h.label, h.query, 'idx', i)));
   }
   searchInput.addEventListener('focus', () => {
     if (searchInput.value.trim().length >= 2) return;
@@ -52,9 +63,7 @@ export function initSearchUI(aladin) {
     activeIdx = -1;
     if (!currentSuggs.length) { suggList.hidden = true; return; }
     historyList.hidden = true;
-    suggList.innerHTML = currentSuggs.map((s, i) =>
-      `<li data-i="${i}">${s.name}<div class="item-sub">${s.typeLabel}</div></li>`
-    ).join('');
+    suggList.replaceChildren(...currentSuggs.map((s, i) => itemLi(s.name, s.typeLabel, 'i', i)));
     suggList.hidden = false;
   }, 140);
   searchInput.addEventListener('input', () => {
