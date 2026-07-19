@@ -114,6 +114,16 @@ async function main() {
   });
   try { aladin.setBackgroundColor?.('#000000'); } catch (err) { /* option above covers newer builds */ }
   window.__boot?.to(94); // engine live — what remains is wiring the chrome
+
+  // A lost WebGL context leaves a permanently black sky (the wasm renderer
+  // has no recovery path) — surface it with a one-tap reload instead of a
+  // frozen app. Capture phase: webglcontextlost does not bubble, but the
+  // capture traversal still passes through this ancestor.
+  document.getElementById('aladin-lite-div').addEventListener('webglcontextlost', (e) => {
+    e.preventDefault();
+    showFatalError('the browser reclaimed the graphics context (low memory or a long-backgrounded tab is the usual cause). Reloading restores the sky.',
+      'The sky renderer stopped');
+  }, true);
   const fadeCatalog = initMarkerFades(aladin); // layer toggles cross-fade markers
 
   // Time-lapse playback: each clock tick must wake the overlay engine (its
@@ -279,14 +289,14 @@ function initDebugConsole() {
 
 // Persistent (non-toast) failure banner: if the sky engine can't start there
 // is no app to speak of, so the user must see why, not a 15-second toast.
-function showFatalError(message) {
-  console.error('Pocket Planetarium failed to start:', message);
+function showFatalError(message, title = 'The sky engine failed to start') {
+  console.error('Pocket Planetarium fatal:', message);
   document.getElementById('fatal-banner')?.remove();
   const banner = document.createElement('div');
   banner.id = 'fatal-banner';
   banner.setAttribute('role', 'alert');
   const h = document.createElement('h2');
-  h.textContent = 'The sky engine failed to start';
+  h.textContent = title;
   const p = document.createElement('p');
   p.textContent = `Reason: ${message}`;
   const tips = document.createElement('p');

@@ -14,6 +14,11 @@ export async function fetchText(url, { timeoutMs = DEFAULT_TIMEOUT_MS, retries =
     // retries: 0 disables the retry for requests where a repeat would just
     // double the pain (e.g. a 90-second full-catalog download).
     if (attempt <= retries) return fetchText(url, { timeoutMs, retries, attempt: attempt + 1 });
+    // A clear offline story beats "TypeError: Failed to fetch": every
+    // layer/search toast built from this message now says WHY.
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      throw new Error('you appear to be offline');
+    }
     throw err;
   } finally {
     clearTimeout(timer);

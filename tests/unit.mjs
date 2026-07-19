@@ -309,6 +309,19 @@ await test('constellation zones: famous objects land in the right constellation'
   }
 });
 
+await test('version consistency: sw.js VERSION and js/version.js SHELL_VERSION match', async () => {
+  // The two constants are hand-synced (a worker script can't import an ES
+  // module); this test is the drift guard — CI fails any commit that bumps
+  // one without the other.
+  const { readFileSync } = await import('node:fs');
+  const sw = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
+  const ver = readFileSync(new URL('../js/version.js', import.meta.url), 'utf8');
+  const swV = sw.match(/VERSION = 'dsa-shell-(v\d+)'/)?.[1];
+  const shellV = ver.match(/SHELL_VERSION = '(v\d+)'/)?.[1];
+  assert.ok(swV && shellV, 'both version constants must be present and well-formed');
+  assert.equal(swV, shellV, `sw.js is ${swV} but js/version.js is ${shellV}`);
+});
+
 // ------------------------------------------------------------- summary ---
 
 console.log(`\n${passed} passed, ${failures.length} failed`);

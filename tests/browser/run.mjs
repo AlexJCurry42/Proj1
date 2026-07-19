@@ -141,9 +141,23 @@ async function newPage(browser, baseURL, { geolocation = true, guide = false } =
   return { ctx, page };
 }
 
-const row = (label) => `[...document.querySelectorAll('#layer-dock-list li')].find(li => li.querySelector('.toggle-text')?.textContent === ${JSON.stringify(label)})`;
-const flipRow = (page, label) => page.evaluate(`${row(label)}.querySelector('input').click()`);
-const rowState = (page, label) => page.evaluate(`(() => { const li = ${row(label)}; return li ? { checked: li.querySelector('input').checked, count: li.querySelector('.toggle-count')?.textContent || '', loading: li.classList.contains('loading') } : null; })()`);
+// Dock-row helpers as real functions with arguments — no string-built code
+// anywhere in the suite (mirrors the app's own no-eval discipline).
+const flipRow = (page, label) => page.evaluate((lbl) => {
+  const find = (l) => [...document.querySelectorAll('#layer-dock-list li')].find(
+    (li) => li.querySelector('.toggle-text')?.textContent === l);
+  find(lbl).querySelector('input').click();
+}, label);
+const rowState = (page, label) => page.evaluate((lbl) => {
+  const find = (l) => [...document.querySelectorAll('#layer-dock-list li')].find(
+    (li) => li.querySelector('.toggle-text')?.textContent === l);
+  const li = find(lbl);
+  return li ? {
+    checked: li.querySelector('input').checked,
+    count: li.querySelector('.toggle-count')?.textContent || '',
+    loading: li.classList.contains('loading')
+  } : null;
+}, label);
 
 // ============================================================ scenarios ===
 const pw = await loadPlaywright();
@@ -175,12 +189,16 @@ await scenario('boot: lean fetch budget, no dead chrome, zero errors (granted ge
   for (const f of dataFiles) {
     assert(allowed.includes(f), `unexpected boot fetch: ${f}`);
   }
-  const boot = await page.evaluate(`(() => ({
-    warp: !!document.getElementById('warp-canvas'),
-    satToggle: !!${row('Satellites & ISS')},
-    horizon: ${row('Horizon & compass')}?.querySelector('input').checked,
-    locCardHidden: document.getElementById('loc-card').hidden
-  }))()`);
+  const boot = await page.evaluate(() => {
+    const find = (l) => [...document.querySelectorAll('#layer-dock-list li')].find(
+      (li) => li.querySelector('.toggle-text')?.textContent === l);
+    return {
+      warp: !!document.getElementById('warp-canvas'),
+      satToggle: !!find('Satellites & ISS'),
+      horizon: find('Horizon & compass')?.querySelector('input').checked,
+      locCardHidden: document.getElementById('loc-card').hidden
+    };
+  });
   assert(!boot.warp, 'warp canvas should not exist');
   assert(!boot.satToggle, 'satellite toggle should not exist');
   assert(boot.horizon === true, 'horizon should default on');
@@ -223,15 +241,16 @@ await scenario('lazy dock: Deep sky fetches its own files on first flip, shimmer
   page.__dataReqs.length = 0;
   // The shimmer can clear within milliseconds against a local server, so
   // watch for it with an observer instead of sampling on a timer.
-  const sawShimmer = page.evaluate(`new Promise((resolve) => {
-    const li = ${row('Deep sky')};
+  const sawShimmer = page.evaluate((lbl) => new Promise((resolve) => {
+    const li = [...document.querySelectorAll('#layer-dock-list li')].find(
+      (el) => el.querySelector('.toggle-text')?.textContent === lbl);
     if (li.classList.contains('loading')) { resolve(true); return; }
     const mo = new MutationObserver(() => {
       if (li.classList.contains('loading')) { mo.disconnect(); resolve(true); }
     });
     mo.observe(li, { attributes: true, attributeFilter: ['class'] });
     setTimeout(() => { mo.disconnect(); resolve(li.classList.contains('loading')); }, 3000);
-  })`);
+  }), 'Deep sky');
   await flipRow(page, 'Deep sky');
   assert(await sawShimmer, 'row should shimmer while loading');
   await page.waitForTimeout(3500);
@@ -516,7 +535,7 @@ await scenario('coordinate grid: draws, rescales with zoom, keeps edge labels', 
   });
   await page.waitForTimeout(900);
   const before = await overlayInk();
-  await page.evaluate((sel) => eval(sel).querySelector('input').click(), row('Coordinate grid'));
+  await flipRow(page, 'Coordinate grid');
   await page.waitForTimeout(800);
   const wide = await overlayInk();
   assert(wide > before + 2000, `grid should add visible lines (ink ${before} -> ${wide})`);
@@ -527,7 +546,7 @@ await scenario('coordinate grid: draws, rescales with zoom, keeps edge labels', 
   await page.waitForFunction(() => /crab/i.test(window.__dsaBubble || ''), null, { timeout: 20000 });
   await page.waitForTimeout(500);
   const deepOn = await overlayInk();
-  await page.evaluate((sel) => eval(sel).querySelector('input').click(), row('Coordinate grid'));
+  await flipRow(page, 'Coordinate grid');
   await page.waitForTimeout(600);
   const deepOff = await overlayInk();
   assert(deepOn > deepOff + 2000, `grid must draw at deep zoom and clear when off (on ${deepOn}, off ${deepOff})`);
@@ -673,17 +692,17 @@ await scenario('sound effects: gestures tick, boot is silent, checkbox mutes', a
   await page.click('#dock-collapse');
   await page.waitForTimeout(120);
   // Two gesture toggles (the first click also unlocks the AudioContext).
-  await page.evaluate((sel) => eval(sel).querySelector('input').click(), row('Coordinate grid'));
+  await flipRow(page, 'Coordinate grid');
   await page.waitForTimeout(150);
-  await page.evaluate((sel) => eval(sel).querySelector('input').click(), row('Coordinate grid'));
+  await flipRow(page, 'Coordinate grid');
   await page.waitForTimeout(150);
   const afterTicks = await sfx();
   assert(afterTicks >= 1, `gesture toggles should tick (count ${afterTicks})`);
   // Mute via the Sound effects checkbox: later gestures stay silent.
-  await page.evaluate((sel) => eval(sel).querySelector('input').click(), row('Sound effects'));
+  await flipRow(page, 'Sound effects');
   await page.waitForTimeout(150);
   const muted = await sfx();
-  await page.evaluate((sel) => eval(sel).querySelector('input').click(), row('Constellations'));
+  await flipRow(page, 'Constellations');
   await page.waitForTimeout(300);
   assert((await sfx()) === muted, 'no ticks while Sound effects is off');
   assert(page.__errors.length === 0, `page errors: ${page.__errors.join('; ')}`);

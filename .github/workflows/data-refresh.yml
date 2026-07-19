@@ -29,9 +29,14 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: data-refresh # two refreshes racing each other's pushes helps no one
+  cancel-in-progress: false
+
 jobs:
   refresh:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -45,6 +50,15 @@ jobs:
             *)                     SETS='all' ;;
           esac
           [ "$SETS" = 'all' ] && SETS='tles exoplanets ngc brightstars constellations zones'
+          # Dispatch input is free text: allowlist every token so a typo (or
+          # anything stranger) fails loudly instead of silently no-opping —
+          # and so SETS can never smuggle shell metacharacters downstream.
+          for tok in $SETS; do
+            case "$tok" in
+              tles|exoplanets|ngc|brightstars|constellations|zones) ;;
+              *) echo "::error::unknown dataset '$tok'"; exit 1 ;;
+            esac
+          done
           echo "SETS=$SETS" >> "$GITHUB_ENV"
           echo "refreshing: $SETS"
 
@@ -310,6 +324,48 @@ jobs:
                'zones': zones},
               open('data/constellation_zones.json', 'w'), separators=(',', ':'))
           print(f'wrote {len(zones)} zones')
+          EOF
+
+      # -------------------------------------------------------- Provenance ---
+      # Every Action-refreshed file gets a recorded origin: sha256, size,
+      # source URL, and the exact run that produced it. Upstreams like
+      # OpenNGC master move without versions — the hash trail is what makes
+      # "what changed, when, from where" answerable after the fact.
+      - name: Record provenance for refreshed files
+        run: |
+          python3 - <<'EOF'
+          import hashlib, json, os, datetime
+
+          SOURCES = {
+            'satellites_tle.txt':      'https://celestrak.org/NORAD/elements/gp.php?GROUP=stations&FORMAT=tle',
+            'exoplanets_snapshot.csv': 'https://exoplanetarchive.ipac.caltech.edu/TAP/sync (pscomppars)',
+            'ngc_full.json':           'https://raw.githubusercontent.com/mattiaverga/OpenNGC/master/database_files/NGC.csv',
+            'brightstars.json':        'VizieR TAP V/50 (Yale BSC)',
+            'brightstars_faint.json':  'VizieR TAP I/259 (Tycho-2)',
+            'constellations_lines.json':   'd3-celestial (Stellarium sky culture)',
+            'constellations_names.json':   'd3-celestial (Stellarium sky culture)',
+            'constellations_borders.json': 'd3-celestial (Stellarium sky culture)',
+            'constellation_zones.json':    'VizieR VI/42 (Roman 1987)'
+          }
+          path = 'data/PROVENANCE.json'
+          prov = {}
+          if os.path.exists(path):
+              try: prov = json.load(open(path)).get('files', {})
+              except Exception: prov = {}
+          now = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds')
+          run = os.environ.get('GITHUB_RUN_ID', 'local')
+          for name, src in SOURCES.items():
+              f = os.path.join('data', name)
+              if not os.path.exists(f):
+                  continue
+              digest = hashlib.sha256(open(f, 'rb').read()).hexdigest()
+              if prov.get(name, {}).get('sha256') == digest:
+                  continue  # unchanged: keep its original provenance entry
+              prov[name] = {'sha256': digest, 'bytes': os.path.getsize(f),
+                            'source': src, 'refreshed': now, 'run': run}
+          json.dump({'_comment': 'Origin of every Action-refreshed data file: sha256, size, source, refresh time (UTC), workflow run id. Written by data-refresh.yml; entries persist until the file content actually changes.',
+                     'files': prov}, open(path, 'w'), indent=1, sort_keys=True)
+          print('provenance entries:', len(prov))
           EOF
 
       # ------------------------------------------------------------ Commit ---

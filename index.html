@@ -12,6 +12,9 @@
      locking script execution, not data loading, is what defuses XSS.
      frame-ancestors can't be set from a meta tag, so it is omitted. -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' data: https:; media-src 'self'; font-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'" />
+<!-- No Referer header on any outbound request: sky-data providers learn
+     which tiles/objects are asked for, never which view URL asked. -->
+<meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -55,7 +58,8 @@
 <a class="skip-link" href="#aladin-lite-div">Skip to sky view</a>
 
 <!-- Full-bleed sky -->
-<main id="sky-wrap"><div id="aladin-lite-div"></div></main>
+<!-- tabindex=-1: the skip link must actually MOVE keyboard focus here. -->
+<main id="sky-wrap"><div id="aladin-lite-div" tabindex="-1"></div></main>
 
 <!-- Center crosshair: four faint ticks marking the identification point -->
 <div id="crosshair" aria-hidden="true"></div>

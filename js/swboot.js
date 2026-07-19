@@ -24,5 +24,10 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
   });
   navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' })
     .then((reg) => reg.update())
-    .catch(() => { /* shell caching is optional */ });
+    .catch((err) => {
+      // Shell caching is optional — the app runs fine without it — but a
+      // failed install must be VISIBLE (console + the ?debug=1 pane), not
+      // silently degrade offline support.
+      console.warn('Service worker registration failed (offline support disabled):', err?.message || err);
+    });
 }

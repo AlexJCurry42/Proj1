@@ -1,37 +1,32 @@
-# Pocket Planetarium — scheduled health check. The app has no backend: it
-# talks straight to CDS, VizieR, NASA, CelesTrak and Wikimedia Commons from
-# the browser, and any of them can drift (TAP column renames, retired HiPS
-# IDs, moved Commons files). This workflow replays every live service call
-# daily and fails loudly when something breaks, alongside the pure-math unit
-# suite. Both scripts are dependency-free Node — nothing to install.
+# Pocket Planetarium — scheduled LIVE health check only. The app has no
+# backend: it talks straight to CDS, VizieR, NASA, CelesTrak and Wikimedia
+# Commons from the browser, and any of them can drift (TAP column renames,
+# retired HiPS IDs, moved Commons files). This workflow replays every live
+# service call daily and fails loudly when something breaks.
+#
+# Deliberately NOT run on push: a provider outage must never redden an
+# unrelated code change. Deterministic tests live in unit-tests.yml and
+# browser-tests.yml.
 
-name: Tests & live endpoint health
+name: Live endpoint health
 
 on:
   schedule:
     - cron: '52 5 * * *' # daily, 05:52 UTC
   workflow_dispatch:
-  push:
-    paths:
-      - 'tests/**'
-      - 'package.json'
-      - '.github/workflows/health-check.yml'
 
 permissions:
   contents: read
 
-jobs:
-  unit:
-    name: Unit tests (astro math, ephemeris, clock, SGP4)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Run unit tests
-        run: node tests/unit.mjs
+concurrency:
+  group: health-check
+  cancel-in-progress: true
 
+jobs:
   live:
     name: Live endpoint health check
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - name: Replay every live service call the app makes

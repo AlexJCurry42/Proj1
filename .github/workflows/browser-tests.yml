@@ -32,9 +32,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'   # pinned major: the suite is plain ESM + fetch
-      - name: Install Playwright + Chromium
+      - name: Install Playwright + Chromium (pinned — the version the suite is verified against)
         run: |
-          npm i --no-save playwright
+          npm i --no-save playwright@1.56.1
           npx playwright install --with-deps chromium
       - name: Run browser regression suite
         run: node tests/browser/run.mjs

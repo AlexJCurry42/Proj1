@@ -261,6 +261,14 @@ export function makeDismissable(el, onDismiss, baseTransform = '') {
   el.addEventListener('pointercancel', end);
 }
 
+// Focus restoration for the shortcuts sheet: closing a dialog must return
+// the keyboard where it was, not drop it on <body>.
+let sheetOpener = null;
+function restoreSheetFocus() {
+  try { sheetOpener?.focus?.(); } catch (err) { /* element gone */ }
+  sheetOpener = null;
+}
+
 export function initKeyboard() {
   const typing = (e) => {
     const t = e.target;
@@ -272,7 +280,7 @@ export function initKeyboard() {
       if (e.target && e.target.id === 'search-input') return;
       if (document.getElementById('lightbox')) { closeLightbox(); return; }
       const sheet = document.getElementById('shortcuts-sheet');
-      if (sheet && !sheet.hidden) { sheet.hidden = true; return; }
+      if (sheet && !sheet.hidden) { sheet.hidden = true; restoreSheetFocus(); return; }
       const about = document.getElementById('about-modal');
       if (!about.hidden) { document.getElementById('about-close').click(); return; }
       if (!detailPanel().hidden) closeDetailPanel();
@@ -288,11 +296,23 @@ export function initKeyboard() {
       document.getElementById('zoom-out')?.click();
     } else if (e.key === '?') {
       const sheet = document.getElementById('shortcuts-sheet');
-      if (sheet) sheet.hidden = !sheet.hidden;
+      if (!sheet) return;
+      if (sheet.hidden) {
+        // Opening: remember where focus came from, move it into the
+        // dialog, keep Tab inside — the standard modal contract.
+        sheetOpener = document.activeElement;
+        sheet.hidden = false;
+        document.getElementById('shortcuts-close')?.focus();
+      } else {
+        sheet.hidden = true;
+        restoreSheetFocus();
+      }
     }
   });
+  trapFocus(document.getElementById('shortcuts-sheet'));
   document.getElementById('shortcuts-close')?.addEventListener('click', () => {
     document.getElementById('shortcuts-sheet').hidden = true;
+    restoreSheetFocus();
   });
 }
 

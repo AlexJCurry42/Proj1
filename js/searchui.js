@@ -27,12 +27,28 @@ export function initSearchUI(aladin) {
   function itemLi(title, sub, idxAttr, idx) {
     const li = document.createElement('li');
     li.dataset[idxAttr] = String(idx);
+    li.role = 'option';
+    li.id = `${idxAttr === 'idx' ? 'hist' : 'sugg'}-opt-${idx}`;
+    li.setAttribute('aria-selected', 'false');
     li.append(title);
     const s = document.createElement('div');
     s.className = 'item-sub';
     s.textContent = sub;
     li.appendChild(s);
     return li;
+  }
+
+  // The combobox contract: aria-expanded mirrors whether EITHER list is
+  // open, aria-controls names the open one, aria-activedescendant tracks
+  // the keyboard-highlighted option.
+  function syncExpanded() {
+    const open = !historyList.hidden ? historyList : (!suggList.hidden ? suggList : null);
+    searchInput.setAttribute('aria-expanded', String(!!open));
+    if (open) searchInput.setAttribute('aria-controls', open.id);
+    else {
+      searchInput.removeAttribute('aria-controls');
+      searchInput.removeAttribute('aria-activedescendant');
+    }
   }
 
   function renderHistory() {
@@ -42,10 +58,12 @@ export function initSearchUI(aladin) {
     if (searchInput.value.trim().length >= 2) return;
     renderHistory();
     historyList.hidden = getHistory().length === 0;
+    syncExpanded();
   });
   searchInput.addEventListener('blur', () => setTimeout(() => {
     historyList.hidden = true;
     suggList.hidden = true;
+    syncExpanded();
   }, 150));
   historyList.addEventListener('click', (e) => {
     const li = e.target.closest('li');
@@ -61,14 +79,15 @@ export function initSearchUI(aladin) {
   const runSuggest = debounce(async () => {
     currentSuggs = await querySuggestions(searchInput.value);
     activeIdx = -1;
-    if (!currentSuggs.length) { suggList.hidden = true; return; }
+    if (!currentSuggs.length) { suggList.hidden = true; syncExpanded(); return; }
     historyList.hidden = true;
     suggList.replaceChildren(...currentSuggs.map((s, i) => itemLi(s.name, s.typeLabel, 'i', i)));
     suggList.hidden = false;
+    syncExpanded();
   }, 140);
   searchInput.addEventListener('input', () => {
     if (searchInput.value.trim().length >= 2) runSuggest();
-    else { suggList.hidden = true; }
+    else { suggList.hidden = true; syncExpanded(); }
   });
 
   function pickSuggestion(s) {
@@ -79,6 +98,7 @@ export function initSearchUI(aladin) {
     renderDetailPanel({ name: s.name, typeLabel: s.typeLabel, ra: c.ra, dec: c.dec });
     suggList.hidden = true;
     historyList.hidden = true;
+    syncExpanded();
     searchInput.value = s.name;
     searchInput.blur();
   }
@@ -95,7 +115,11 @@ export function initSearchUI(aladin) {
       e.preventDefault();
       const n = currentSuggs.length;
       activeIdx = ((activeIdx + (e.key === 'ArrowDown' ? 1 : -1)) % n + n) % n;
-      [...suggList.children].forEach((el, i) => el.classList.toggle('active', i === activeIdx));
+      [...suggList.children].forEach((el, i) => {
+        el.classList.toggle('active', i === activeIdx);
+        el.setAttribute('aria-selected', String(i === activeIdx));
+      });
+      searchInput.setAttribute('aria-activedescendant', `sugg-opt-${activeIdx}`);
     } else if (e.key === 'Enter' && activeIdx >= 0) {
       e.preventDefault();
       pickSuggestion(currentSuggs[activeIdx]);
@@ -105,6 +129,7 @@ export function initSearchUI(aladin) {
   searchForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     suggList.hidden = true;
+    syncExpanded();
     const result = await runSearch(aladin, searchInput.value);
     renderHistory();
     searchInput.blur();
