@@ -43,7 +43,7 @@ export async function findRenderFor(name, aliases = [], typeLabel = '') {
   }
   // Every black hole gets the signature render even without a curated entry.
   if (/black hole/i.test(typeLabel)) {
-    return { title: null, type: 'black_hole', params: {}, blurb: null, source: null };
+    return { title: null, type: 'black_hole', params: {}, blurb: null };
   }
   return null;
 }

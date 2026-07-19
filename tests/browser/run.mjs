@@ -247,9 +247,14 @@ await scenario('lazy dock: Deep sky fetches its own files on first flip, shimmer
   const done = await rowState(page, 'Deep sky');
   assert(!done.loading, 'shimmer must clear');
   assert(done.count === '12,149', `Deep sky count should be 12,149, got "${done.count}"`);
-  const fetched = new Set(page.__dataReqs.map((u) => u.split('?')[0]));
-  assert(fetched.has('messier_ngc.json') && fetched.has('ngc_full.json'),
-    `expected deep-sky files, got: ${[...fetched].join(', ')}`);
+  // ngc_full is this layer's own lazy file — the flip must fetch it. The
+  // curated messier_ngc file is SHARED (crosshair ID loads it at idle) and
+  // fetchJSON dedupes per session, so it must NOT appear a second time here.
+  const fetched = page.__dataReqs.map((u) => u.split('?')[0]);
+  assert(fetched.includes('ngc_full.json'),
+    `expected ngc_full.json on first flip, got: ${[...new Set(fetched)].join(', ')}`);
+  assert(fetched.filter((u) => u === 'messier_ngc.json').length <= 1,
+    'messier_ngc.json must be fetched at most once per session (dedupe)');
   assert(page.__errors.length === 0, `page errors: ${page.__errors.join('; ')}`);
   await ctx.close();
 });

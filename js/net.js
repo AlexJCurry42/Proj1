@@ -20,7 +20,23 @@ export async function fetchText(url, { timeoutMs = DEFAULT_TIMEOUT_MS, retries =
   }
 }
 
-export async function fetchJSON(url, opts = {}) {
-  const text = await fetchText(url, opts);
-  return JSON.parse(text);
+// Bundled data files are immutable within a session (the service worker
+// refreshes them BETWEEN sessions), yet several modules want the same file —
+// tours.json and messier_ngc.json were each fetched three separate times per
+// session (cool button, crosshair ID, search index...), triple-downloaded on
+// a first visit and triple-parsed on every one. One shared promise per URL
+// serves them all. External URLs (TAP queries, live services) are never
+// cached — those must stay live. Consumers treat the shared object as
+// read-only (verified: the one shuffler copies first).
+const dataCache = new Map();
+
+export function fetchJSON(url, opts = {}) {
+  if (!url.startsWith('data/')) return fetchText(url, opts).then((t) => JSON.parse(t));
+  let p = dataCache.get(url);
+  if (!p) {
+    p = fetchText(url, opts).then((t) => JSON.parse(t));
+    p.catch(() => dataCache.delete(url)); // a failure must not poison later retries
+    dataCache.set(url, p);
+  }
+  return p;
 }

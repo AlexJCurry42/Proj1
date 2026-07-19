@@ -94,10 +94,15 @@ function airNoise(c, t0, { dur, type = 'bandpass', f0, f1 = null, q = 0.8, peak,
   flt.Q.value = q;
   flt.frequency.setValueAtTime(f0, t0);
   if (f1 != null) flt.frequency.exponentialRampToValueAtTime(f1, t0 + dur);
+  const g = bus(c, t0, { peak, a, decayAt, tau });
   src.connect(flt);
-  flt.connect(bus(c, t0, { peak, a, decayAt, tau }));
+  flt.connect(g);
   src.start(t0);
   src.stop(t0 + dur + tau * 5);
+  // A connection into the destination graph keeps a node ALIVE: without
+  // this, every sound left its filter+gain chained to the master bus
+  // forever, and the graph grew with each button tick for the whole session.
+  src.onended = () => { flt.disconnect(); g.disconnect(); };
 }
 
 /** A muted struck partial: sine through a lowpass, dying exponentially —
@@ -108,10 +113,12 @@ function struck(c, t0, { f, peak, tau, lp = 2600, a = 0.003 }) {
   const flt = c.createBiquadFilter();
   flt.type = 'lowpass';
   flt.frequency.value = lp;
+  const g = bus(c, t0, { peak, a, tau });
   o.connect(flt);
-  flt.connect(bus(c, t0, { peak, a, tau }));
+  flt.connect(g);
   o.start(t0);
   o.stop(t0 + tau * 6 + 0.05);
+  o.onended = () => { flt.disconnect(); g.disconnect(); }; // see airNoise
 }
 
 /** The signature "muted glass tap": a breath of high air + two quiet
