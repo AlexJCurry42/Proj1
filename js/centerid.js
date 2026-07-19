@@ -19,6 +19,7 @@ import { raDecToVec, angularSepDeg } from './astro.js';
 import { TYPE_STYLE } from './catalogs.js';
 import { getOverlay, haloText } from './overlay.js';
 import { cardAppear } from './sound.js';
+import { makeDismissable } from './ui.js';
 
 // The crosshair's identification reach, in screen pixels — matches the
 // drawn crosshair's footprint so "overlaps the crosshair" is literal.
@@ -28,6 +29,9 @@ const CROSS_PX = 26;
 const HYSTERESIS = 1.6;
 // The in-sky bubble appears only when genuinely zoomed in on the object.
 const BUBBLE_MAX_FOV = 25;
+// And identification as a WHOLE is a zoomed-in feature: wide fields cross
+// dozens of showpieces, and a card popping at every one read as spam.
+const ID_MAX_FOV = 30;
 
 export function initCenterId(aladin, { onPosition, onZoom }) {
   const card = document.getElementById('center-card');
@@ -176,6 +180,10 @@ export function initCenterId(aladin, { onPosition, onZoom }) {
     try { center = aladin.getRaDec(); } catch (err) { return; }
     const cv = raDecToVec(center[0], center[1]);
     const fovX = aladin.getFov()[0];
+    if (fovX > ID_MAX_FOV) { // zoomed out: no cards, no bubbles, no pings
+      if (matched) { setMatched(null); hideCard(); }
+      return;
+    }
     const W = wrap.clientWidth || window.innerWidth;
     const crossDeg = (CROSS_PX * fovX) / W; // the crosshair's angular reach at this zoom
     let best = null, bestScore = Infinity, matchedScore = Infinity, suppressedScore = Infinity;
@@ -209,9 +217,11 @@ export function initCenterId(aladin, { onPosition, onZoom }) {
   onPosition(settled);
   onZoom(settled);
 
-  // ✕ quiets the card until the object leaves the crosshair; the sky
-  // bubble stays — it is a label on the sky, not a notification.
-  closeBtn?.addEventListener('click', () => { suppressed = matched; hideCard(); });
+  // ✕ (or a swipe) quiets the card until the object leaves the crosshair;
+  // the sky bubble stays — it is a label on the sky, not a notification.
+  const quiet = () => { suppressed = matched; hideCard(); };
+  closeBtn?.addEventListener('click', quiet);
+  makeDismissable(card, quiet, 'translateX(-50%)');
 
   const idle = window.requestIdleCallback || ((fn) => setTimeout(fn, 4000));
   idle(async () => {

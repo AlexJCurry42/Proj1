@@ -32,10 +32,9 @@ import { initTimeControl } from './timeui.js';
 import { initSearchUI } from './searchui.js';
 import { initCenterId } from './centerid.js';
 import { initGridLayer } from './grid.js';
-import { showLocationCard, geoPermissionState } from './loccard.js';
+import { geoPermissionState } from './loccard.js';
 import { onTimeChange } from './clock.js';
 import { getOverlay } from './overlay.js';
-import { patchEngineContext, initSharpen } from './sharpen.js';
 import { initTimeSky } from './timesky.js';
 import { setSfxEnabled } from './sound.js';
 
@@ -95,10 +94,6 @@ async function main() {
   // tiny, but strictly off the boot path.
   (window.requestIdleCallback || ((fn) => setTimeout(fn, 4000)))(() => primeConstellations());
 
-  // Imagery sharpening is always on (see js/sharpen.js: a WebGL unsharp
-  // post-process, since WebKit ignores SVG-referenced CSS filters). The
-  // engine's context must be patched BEFORE the engine boots.
-  patchEngineContext();
 
   // Spectrum position priority: shared link > saved position > legacy survey
   // preference > default (DSS2 optical).
@@ -174,10 +169,6 @@ async function main() {
   aladin.on('positionChanged', (...args) => { for (const fn of positionSubs) fn(...args); });
   const onZoom = (fn) => zoomSubs.add(fn);
   const onPosition = (fn) => positionSubs.add(fn);
-
-  // Always-on imagery sharpening: WebGL post-process over the engine's
-  // rendered frame; CSS-filter fallback where WebGL2 is out of reach.
-  initSharpen(aladin, { onPosition, onZoom });
 
   // Time travel turns the SKY, planetarium-style: the camera holds the
   // user's line of sight in their local frame while the clock moves.
@@ -410,24 +401,15 @@ async function main() {
       if (v && !horizonRef.ctl && !horizonRef.busy) {
         horizonRef.busy = true;
         try {
-          // At boot (no gesture) NEVER let the browser prompt cold: ask in
-          // the app's own words first, and anchor the real permission prompt
-          // to the user's tap. Already-granted permission skips the card;
-          // already-denied quietly unchecks without nagging.
+          // Boot NEVER asks for location — not even with the in-app card.
+          // The only prompt moments are the Sky Now button (see skynow.js)
+          // and a deliberate flip of this switch. Without permission the
+          // layer just waits, quietly unchecked.
           if (!gesture && !cachedObserver()) {
-            const perm = await geoPermissionState();
-            if (perm === 'denied') {
+            if ((await geoPermissionState()) !== 'granted') {
               horizonToggle.setChecked(false);
               horizonRef.busy = false;
               return;
-            }
-            if (perm !== 'granted') {
-              const accepted = await showLocationCard();
-              if (!accepted) {
-                horizonToggle.setChecked(false);
-                horizonRef.busy = false;
-                return;
-              }
             }
           }
           horizonToggle.setLoading(true);

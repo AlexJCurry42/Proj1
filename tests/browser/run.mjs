@@ -209,19 +209,20 @@ await scenario('boot: lean fetch budget, no dead chrome, zero errors (granted ge
   await ctx.close();
 });
 
-await scenario('location consent: card shows without permission; decline is remembered', async () => {
+await scenario('location consent: boot never asks; Sky Now anchors the card', async () => {
   const { ctx, page } = await newPage(browser, baseURL, { geolocation: false });
-  const shown = await page.evaluate(() => !document.getElementById('loc-card').hidden);
-  assert(shown, 'consent card should show at boot in permission-prompt state');
+  await page.waitForTimeout(1200);
+  assert(await page.evaluate(() => document.getElementById('loc-card').hidden),
+    'boot must NEVER show the consent card');
+  const horizon = await rowState(page, 'Horizon & compass');
+  assert(horizon.checked === false, 'horizon layer waits quietly without permission');
+  // The first (and only) ask is anchored to the Sky Now tap.
+  await page.click('#skynow-btn');
+  await page.waitForFunction(() => !document.getElementById('loc-card').hidden, null, { timeout: 5000 });
   await page.click('#loc-decline');
   await page.waitForTimeout(400);
-  const after = await rowState(page, 'Horizon & compass');
-  assert(after.checked === false, 'declining must uncheck the horizon');
-  await page.reload();
-  await page.waitForFunction(() => window.__aladin, null, { timeout: 45000 });
-  await page.waitForTimeout(2500);
-  const again = await page.evaluate(() => !document.getElementById('loc-card').hidden);
-  assert(!again, 'the card must not nag after a decline');
+  assert(await page.evaluate(() => document.getElementById('loc-card').hidden),
+    'declining hides the card');
   assert(page.__errors.length === 0, `page errors: ${page.__errors.join('; ')}`);
   await ctx.close();
 });
@@ -436,7 +437,7 @@ await scenario('time: playback moves the Moon; Back to now stops and resets', as
   assert(await page.evaluate(() => !window.__eggWanted), 'egg must be unarmed before day/s playback');
   await page.click('#time-btn');
   await page.waitForTimeout(300);
-  await page.click('#time-speeds .speed-btn[data-mult="86400"]');
+  await page.click('#time-speeds .speed-btn[data-mult="51840"]');
   await page.click('#time-play');
   await page.waitForTimeout(400);
   assert(await page.evaluate(() => window.__eggWanted === true), 'egg must arm on day/s playback');
@@ -478,60 +479,6 @@ await scenario('coordinate grid: draws, rescales with zoom, keeps edge labels', 
   await ctx.close();
 });
 
-await scenario('sharpen imagery: WebGL post-process active, shader really sharpens', async () => {
-  const { ctx, page } = await newPage(browser, baseURL);
-  const mode = await page.evaluate(() => ({
-    canvas: !!document.getElementById('dsa-sharpen-canvas'),
-    preserve: !!document.querySelector('.aladin-imageCanvas')?.getContext('webgl2')?.getContextAttributes()?.preserveDrawingBuffer,
-    cssFallback: document.body.classList.contains('sharpen')
-  }));
-  assert(mode.canvas, 'WebGL sharpen canvas must exist over the imagery');
-  assert(mode.preserve, 'engine context must have preserveDrawingBuffer injected');
-  assert(!mode.cssFallback, 'CSS fallback must stay off while the WebGL path runs');
-  // Red-light mode still tints the whole sky div (our canvas included).
-  await page.click('#redlight-toggle');
-  const rl = await page.evaluate(() => getComputedStyle(document.getElementById('aladin-lite-div')).filter);
-  assert(rl.includes('sepia'), `red-light must still apply over the sharpened sky (got ${rl})`);
-  await page.click('#redlight-toggle');
-  // The shader itself must measurably sharpen: run the SAME pipeline on a
-  // synthetic soft star field and compare edge energy (mean |Laplacian|).
-  const gain = await page.evaluate(async () => {
-    const { createSharpenPipeline } = await import('/js/sharpen.js');
-    const src = document.createElement('canvas');
-    src.width = src.height = 256;
-    const c = src.getContext('2d');
-    c.fillStyle = '#05070a'; c.fillRect(0, 0, 256, 256);
-    let seed = 7;
-    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-    for (let i = 0; i < 80; i++) {
-      const x = rnd() * 256, y = rnd() * 256, r = 1 + rnd() * 5;
-      const g = c.createRadialGradient(x, y, 0, x, y, r);
-      g.addColorStop(0, 'rgba(255,250,235,0.9)');
-      g.addColorStop(1, 'rgba(0,0,0,0)');
-      c.fillStyle = g; c.beginPath(); c.arc(x, y, r, 0, 7); c.fill();
-    }
-    const energy = (data, w) => {
-      let t = 0, n = 0;
-      for (let y = 1; y < w - 1; y++) for (let x = 1; x < w - 1; x++) {
-        const i = (y * w + x) * 4;
-        t += Math.abs(4 * data[i] - data[i - 4] - data[i + 4] - data[i - w * 4] - data[i + w * 4]);
-        n++;
-      }
-      return t / n;
-    };
-    const before = energy(c.getImageData(0, 0, 256, 256).data, 256);
-    const dst = document.createElement('canvas');
-    const pipe = createSharpenPipeline(src, dst);
-    if (!pipe) return -1;
-    pipe.frame();
-    const px = new Uint8Array(256 * 256 * 4);
-    pipe.gl.readPixels(0, 0, 256, 256, pipe.gl.RGBA, pipe.gl.UNSIGNED_BYTE, px);
-    return energy(px, 256) / before;
-  });
-  assert(gain > 1.7, `shader should raise edge energy substantially, got ${gain.toFixed(2)}x`);
-  assert(page.__errors.length === 0, `page errors: ${page.__errors.join('; ')}`);
-  await ctx.close();
-});
 
 await scenario('center ID: a known object under the crosshair pops its card', async () => {
   const { ctx, page } = await newPage(browser, baseURL);
@@ -575,17 +522,15 @@ await scenario('center ID: a known object under the crosshair pops its card', as
   await ctx.close();
 });
 
-await scenario('onboarding: tips wait for consent, dismiss persists; ? and / work', async () => {
-  // No geolocation permission → the consent card owns the first moment.
+await scenario('onboarding: tips appear once, dismiss persists; ? and / work', async () => {
+  // Boot never shows the consent card anymore — tips arrive on their own.
   const { ctx, page } = await newPage(browser, baseURL, { geolocation: false });
-  await page.waitForFunction(() => !document.getElementById('loc-card').hidden, null, { timeout: 10000 });
-  assert(await page.evaluate(() => document.getElementById('tips-card').hidden), 'tips must wait for the consent card');
-  await page.click('#loc-decline');
-  await page.waitForFunction(() => !document.getElementById('tips-card').hidden, null, { timeout: 8000 });
+  await page.waitForFunction(() => !document.getElementById('tips-card').hidden, null, { timeout: 10000 });
+  const hasDisclaimer = await page.evaluate(() => document.querySelector('#tips-card .tips-note')?.textContent.includes('location'));
+  assert(hasDisclaimer, 'tips must carry the optional-location disclaimer');
   await page.click('#tips-close');
   await page.reload();
   await page.waitForFunction(() => window.__aladin, null, { timeout: 60000 });
-  await page.click('#loc-decline').catch(() => {}); // clear the consent card again
   await page.waitForTimeout(3500);
   assert(await page.evaluate(() => document.getElementById('tips-card').hidden), 'dismissed tips must stay dismissed');
   // Keyboard: "?" opens the controls sheet, Esc closes it, "/" focuses search.

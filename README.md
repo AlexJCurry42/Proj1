@@ -74,9 +74,7 @@ permalinks for any view (plus a native share button), installable as a
 PWA with an offline-cached shell, red-light night-vision mode, an
 **Animations switch** in the layer dock (on by default for everyone;
 flipping it off makes every flight, fade, reveal and CSS transition
-instant, persistently), always-on **imagery sharpening** (a strong
-two-scale optical unsharp mask over the sky — pure local contrast,
-never invented detail, disclosed in the About panel), a hushed
+instant, persistently), a hushed
 **sound design** synthesized in-code with WebAudio (departure swells
 and arrival chimes on flights, crystalline sweeps on wavelength
 changes, watch-like ticks on switches — no audio files, no downloads,

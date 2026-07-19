@@ -12,6 +12,7 @@ import { flyTo } from './search.js';
 import { D2R, R2D, altAzToRaDec, zenithRaDec, raDecToVec, vecToRaDec, vecMix } from './astro.js';
 import { appNow, isTimeShifted } from './clock.js';
 import { requestObserver, seedObserver } from './observer.js';
+import { geoPermissionState, showLocationCard } from './loccard.js';
 import { motionOK } from './motion.js';
 
 
@@ -271,6 +272,13 @@ export function initSkyNow(aladin, { onTrackingStart } = {}) {
 
     let obs;
     try {
+      // THE location moment: the app never asks at boot — the first ask is
+      // anchored right here, to the user's own Sky Now tap, with the in-app
+      // card explaining before any browser prompt appears.
+      if ((await geoPermissionState()) === 'prompt') {
+        const accepted = await showLocationCard();
+        if (!accepted) return;
+      }
       showToast('Finding your sky…', 'info', 3000);
       obs = await requestObserver(); // shared, session-cached location
     } catch (err) {

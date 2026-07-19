@@ -43,9 +43,18 @@ export function showToast(message, kind = 'info', timeoutMs = 6000) {
   const el = document.createElement('div');
   el.className = `toast toast-${kind}`;
   el.setAttribute('role', kind === 'error' ? 'alert' : 'status');
-  el.textContent = message;
+  const msgSpan = document.createElement('span');
+  msgSpan.className = 'toast-msg';
+  msgSpan.textContent = message;
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'toast-close';
+  closeBtn.setAttribute('aria-label', 'Dismiss');
+  closeBtn.innerHTML = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="7" y1="7" x2="17" y2="17"/><line x1="17" y1="7" x2="7" y2="17"/></svg>';
+  el.append(msgSpan, closeBtn);
   container.appendChild(el);
   activeToast = el;
+  closeBtn.addEventListener('click', () => el.__dismiss());
+  makeDismissable(el, () => el.__dismiss());
 
   el.__dismiss = () => {
     if (activeToast === el) { activeToast = null; activeTimer = null; }
@@ -210,6 +219,46 @@ export function closeLightbox() {
 // ------------------------------------------------------ Global keyboard ---
 
 /** Escape dismisses the topmost surface; Tab is trapped inside open modals. */
+/**
+ * Swipe-to-dismiss for cards and toasts: a horizontal drag past the
+ * threshold slides the element away and calls onDismiss; short drags
+ * spring back. Drags that begin on buttons/links/inputs are ignored so
+ * every explicit control keeps working.
+ */
+export function makeDismissable(el, onDismiss, baseTransform = '') {
+  let startX = null, startY = null, dx = 0, active = false;
+  const setX = (x) => { el.style.transform = `${baseTransform} translateX(${x}px)`.trim(); };
+  el.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('button, a, input, select')) return;
+    startX = e.clientX; startY = e.clientY; dx = 0; active = true;
+    el.setPointerCapture?.(e.pointerId);
+  });
+  el.addEventListener('pointermove', (e) => {
+    if (!active) return;
+    dx = e.clientX - startX;
+    if (Math.abs(e.clientY - startY) > 60 && Math.abs(dx) < 30) { active = false; el.style.transform = ''; return; }
+    el.style.transition = 'none';
+    setX(dx);
+    el.style.opacity = String(Math.max(0.25, 1 - Math.abs(dx) / 180));
+  });
+  const end = () => {
+    if (!active) return;
+    active = false;
+    if (Math.abs(dx) > 70) {
+      el.style.transition = 'transform 0.18s ease, opacity 0.18s ease';
+      setX(dx > 0 ? 400 : -400);
+      el.style.opacity = '0';
+      setTimeout(() => { el.style.cssText = ''; onDismiss(); }, 180);
+    } else {
+      el.style.transition = 'transform 0.2s ease, opacity 0.2s ease';
+      el.style.transform = '';
+      el.style.opacity = '';
+    }
+  };
+  el.addEventListener('pointerup', end);
+  el.addEventListener('pointercancel', end);
+}
+
 export function initKeyboard() {
   const typing = (e) => {
     const t = e.target;
@@ -263,10 +312,12 @@ export function initWelcomeTips() {
     card.hidden = false;
   };
   setTimeout(attempt, 2500);
-  document.getElementById('tips-close')?.addEventListener('click', () => {
+  const dismiss = () => {
     card.hidden = true;
     writePref('welcometips', true);
-  });
+  };
+  document.getElementById('tips-close')?.addEventListener('click', dismiss);
+  makeDismissable(card, dismiss, 'translateX(-50%)');
 }
 
 function trapFocus(container) {
@@ -620,7 +671,7 @@ export function initAboutModal() {
       <li>DSS2, SDSS9, 2MASS, AllWISE/unWISE, Pan-STARRS DR1, Fermi and radio HiPS surveys, distributed via the CDS HiPS service</li>
     </ul>
     <p class="hint">Why do bright stars look blotchy up close? The DSS2 optical imagery comes from photographic sky-survey plates: a bright star saturated the emulsion, and the red and blue exposures were taken years apart, so their images don't quite align — the orange/blue/black cores are plate artifacts, not real structure. Other bands (2MASS, Pan-STARRS) have their own, different bright-star artifacts. The <strong>Clean bright stars</strong> checkbox (layer dock → Display) covers those cores with a synthetic glow — positioned, sized and colored from the Yale Bright Star Catalogue — and can be switched off any time to see the raw observations.</p>
-    <p class="hint">Want the sharpest possible view of a region? Slide the spectrum rail to <strong>Pan-STARRS</strong> — a modern CCD survey, far deeper and cleaner than the classic photographic DSS2 (it covers the sky north of declination −30°). Every stop on the rail is real observational data, so image quality is set by each survey's telescope and era, not by your screen. The sky is displayed with a strong two-scale <strong>unsharp mask</strong> applied (rendered as a WebGL post-process, so it works on every browser) — a fine pass that tightens star profiles and a wider "clarity" pass that lifts nebular structure. Pure local contrast on the real pixels, never invented detail; it also makes the surveys' own film grain and JPEG noise more visible, which is honest but not always pretty.</p>
+    <p class="hint">Want the sharpest possible view of a region? Slide the spectrum rail to <strong>Pan-STARRS</strong> — a modern CCD survey, far deeper and cleaner than the classic photographic DSS2 (it covers the sky north of declination −30°). Every stop on the rail is real observational data, displayed exactly as the archives serve it — no post-processing — so image quality is set by each survey's telescope and era, not by your screen.</p>
     <h3>Catalogs</h3>
     <ul>
       <li><strong>SIMBAD</strong> astronomical database &mdash; CDS, Strasbourg</li>

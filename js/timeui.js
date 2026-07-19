@@ -31,6 +31,11 @@ export function initTimeControl() {
   const editingInputs = () => document.activeElement === dateIn || document.activeElement === timeIn;
 
   let selectedMult = 3600; // an hour per second: the sweet spot for sky motion
+  // The "day/s" scale runs at 0.6 day per real second (slowed 40% by
+  // request — full-rate diurnal motion spun too fast to read). The clock,
+  // the chip and the sky all share this one multiplier, so what the label
+  // shows and what the heavens do can never drift apart.
+  const DAY_MULT = 51840;
 
   // ---- the Easter egg ----
   // Play the sky at a DAY per second and the app cues a bundled audio
@@ -48,7 +53,7 @@ export function initTimeControl() {
     eggEl = null;
   }
   function syncEgg() {
-    const want = playSpeed() !== 0 && selectedMult === 86400 && !eggDismissed;
+    const want = playSpeed() !== 0 && selectedMult === DAY_MULT && !eggDismissed;
     window.__eggWanted = want; // test hook: the trigger logic, independent of the audio file
     if (want && !eggAudio) {
       eggAudio = new Audio('assets/egg-crucified.mp3');
