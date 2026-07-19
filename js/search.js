@@ -8,6 +8,7 @@ const SESAME_URL = 'https://cds.unistra.fr/cgi-bin/nph-sesame/-oxp/SNVA?';
 
 const sesameCache = new Map(); // name (lowercased) -> resolved result
 let searchHistory = []; // in-memory only, most-recent-first, max 10
+let searchSeq = 0; // monotonic: identifies the newest runSearch call
 
 /**
  * Parse "13 29 52 +47 11 43" (sexagesimal RA h m s, Dec d m s) or
@@ -103,6 +104,9 @@ export function flyTo(aladin, ra, dec, fovDeg = 0.6) {
 export async function runSearch(aladin, rawQuery) {
   const query = rawQuery.trim();
   if (!query) return;
+  // A newer search supersedes any resolution still in flight — a slow
+  // Sesame answer must not fly the view away from the search that beat it.
+  const token = ++searchSeq;
 
   const coords = parseCoordinates(query);
   if (coords) {
@@ -113,10 +117,12 @@ export async function runSearch(aladin, rawQuery) {
 
   try {
     const result = await resolveName(query);
+    if (token !== searchSeq) return null;
     flyTo(aladin, result.ra, result.dec);
     addToHistory({ query, ra: result.ra, dec: result.dec, label: result.name });
     return result;
   } catch (err) {
+    if (token !== searchSeq) return null;
     showToast(`Couldn't resolve "${query}": ${err.message}`, 'error');
     // Fall back to Aladin's own bundled resolver, which uses Sesame server-side
     // and may succeed even if our direct client-side Sesame call failed (CORS, etc).

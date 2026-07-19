@@ -21,7 +21,7 @@
 // constellations_lines/names/borders) here — they may not exist on a fresh
 // deploy and one 404 fails the entire install. Runtime caching covers them.
 // Bump together with js/version.js (shown in the About panel).
-const VERSION = 'dsa-shell-v90';
+const VERSION = 'dsa-shell-v91';
 
 const SHELL = [
   './',
@@ -110,9 +110,14 @@ self.addEventListener('install', (e) => {
 });
 
 self.addEventListener('activate', (e) => {
+  // Delete ONLY this app's outdated caches. Project pages share one origin
+  // (alexjcurry42.github.io), so an unscoped cleanup would silently wipe
+  // any sibling project's caches on every update here.
   e.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== VERSION).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(
+        keys.filter((k) => k.startsWith('dsa-shell-') && k !== VERSION).map((k) => caches.delete(k))
+      ))
       .then(() => self.clients.claim())
   );
 });

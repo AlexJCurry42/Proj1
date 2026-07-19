@@ -75,9 +75,15 @@ export function initSearchUI(aladin) {
     searchForm.requestSubmit(); // re-run the search, don't just fill the box
   });
 
-  // Instant suggestions from the app's own curated objects (no network).
+  // Instant suggestions from the app's own curated objects (no network —
+  // but the FIRST query awaits the catalog files, so a slow first call can
+  // outlive later keystrokes; the token keeps only the newest one's list).
+  let suggSeq = 0;
   const runSuggest = debounce(async () => {
-    currentSuggs = await querySuggestions(searchInput.value);
+    const token = ++suggSeq;
+    const suggs = await querySuggestions(searchInput.value);
+    if (token !== suggSeq) return;
+    currentSuggs = suggs;
     activeIdx = -1;
     if (!currentSuggs.length) { suggList.hidden = true; syncExpanded(); return; }
     historyList.hidden = true;
@@ -87,7 +93,7 @@ export function initSearchUI(aladin) {
   }, 140);
   searchInput.addEventListener('input', () => {
     if (searchInput.value.trim().length >= 2) runSuggest();
-    else { suggList.hidden = true; syncExpanded(); }
+    else { suggSeq++; suggList.hidden = true; syncExpanded(); }
   });
 
   function pickSuggestion(s) {
@@ -126,8 +132,13 @@ export function initSearchUI(aladin) {
     }
   });
 
+  // Submit token: runSearch already refuses to fly for a superseded search,
+  // but the panel render below awaits one more lookup — guard it too so a
+  // slow older submit can't overwrite the newer search's panel.
+  let submitSeq = 0;
   searchForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+    const token = ++submitSeq;
     suggList.hidden = true;
     syncExpanded();
     const result = await runSearch(aladin, searchInput.value);
@@ -136,6 +147,7 @@ export function initSearchUI(aladin) {
     // A resolved named object opens its detail card (with media if famous).
     if (result && result.name) {
       const typeLabel = result.otype ? await humanObjectType(result.otype) : 'Astronomical object';
+      if (token !== submitSeq) return;
       renderDetailPanel({
         name: result.name,
         aliases: result.aliases,

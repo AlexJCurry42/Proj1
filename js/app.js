@@ -213,7 +213,12 @@ async function main() {
   initSearchUI(aladin);
 
   // ----------------------------------------------------- Object detail UX ---
+  // Tap sequence token: two quick taps launch two SIMBAD lookups, and on a
+  // slow connection the FIRST can resolve last — without the token it would
+  // overwrite the newer panel (or reopen one the user already dismissed).
+  let tapSeq = 0;
   aladin.on('objectClicked', async (object) => {
+    tapSeq++; // every tap supersedes any lookup still in flight
     if (!object) { closeDetailPanel(); return; }
     const data = object.data || {};
     if (data._detail) {
@@ -224,12 +229,15 @@ async function main() {
     // (SIMBAD or Gaia HiPS) — resolve it on demand via SIMBAD TAP. Different
     // catalog sources expose their position under different keys, so try the
     // common ones and validate before querying.
+    const token = tapSeq;
     showDetailLoading();
+    const closed = () => document.getElementById('detail-panel')?.hidden; // ✕/Esc while loading
     try {
       const ra = [object.ra, data.ra, data.RA, data.RAJ2000, data.RA_ICRS].map(Number).find(Number.isFinite);
       const dec = [object.dec, data.dec, data.DE, data.DEJ2000, data.DE_ICRS].map(Number).find(Number.isFinite);
       const rec = await fetchSimbadNear(ra, dec);
       const typeLabel = await humanObjectType(rec.otype);
+      if (token !== tapSeq || closed()) return;
       renderDetailPanel({
         name: rec.name,
         typeLabel,
@@ -241,6 +249,7 @@ async function main() {
         source: 'SIMBAD (CDS Strasbourg), via SIMBAD TAP cone search'
       });
     } catch (err) {
+      if (token !== tapSeq || closed()) return;
       showToast(`Could not resolve object details: ${err.message}`, 'error');
       closeDetailPanel();
     }

@@ -179,6 +179,12 @@ const detailContent = () => document.getElementById('detail-content');
 
 export function closeDetailPanel() {
   if (!detailPanel().hidden) panelClose();
+  // If the keyboard was inside the panel (✕ or Escape), hand it back to the
+  // sky container instead of letting it drop to <body> — the panel's opener
+  // is usually a canvas tap, so there is no single control to return to.
+  if (detailPanel().contains(document.activeElement)) {
+    document.getElementById('aladin-lite-div')?.focus?.({ preventScroll: true });
+  }
   detailPanel().hidden = true;
   detailContent().innerHTML = '';
 }

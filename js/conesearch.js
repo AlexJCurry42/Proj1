@@ -33,6 +33,8 @@ export function makeConeLayer(aladin, onZoom, onPosition, opts) {
   let failed = false;
   let enabled = true;
   let hinted = false;
+  let seq = 0; // the debounce spaces LAUNCHES, not landings: a slow query
+               // can still land after a newer one — only the newest applies
 
   async function refresh() {
     if (failed || !enabled) return; // dead endpoint or layer toggled off: no queries
@@ -47,12 +49,15 @@ export function makeConeLayer(aladin, onZoom, onPosition, opts) {
     const key = `${ra.toFixed(2)},${dec.toFixed(2)},${radius.toFixed(2)}`;
     if (key === lastKey) return;
     lastKey = key;
+    const token = ++seq;
 
     try {
       const sources = await opts.fetchSources(ra, dec, radius);
+      if (token !== seq || !enabled) return; // superseded, or switched off mid-flight
       if (typeof cat.removeAll === 'function') cat.removeAll();
       cat.addSources(sources);
     } catch (err) {
+      if (token !== seq) return;
       failed = true;
       showToast(opts.failMsg, 'error');
     }

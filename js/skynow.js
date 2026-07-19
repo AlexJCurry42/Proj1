@@ -253,11 +253,13 @@ export function initSkyNow(aladin, { onTrackingStart } = {}) {
   // gesture, before any other await), then location, then track or snapshot.
   // Re-entrancy guard: engage() spends seconds awaiting permission and
   // location, and a second tap in that window must not spin up a competing
-  // tracker loop.
+  // tracker loop — it reads as "never mind" and cancels the engagement.
   let engaging = false;
+  let cancelEngage = false;
   async function engage(wantTracking) {
-    if (engaging) return;
+    if (engaging) { cancelEngage = true; return; }
     engaging = true;
+    cancelEngage = false;
     try { await engageInner(wantTracking); } finally { engaging = false; }
   }
   async function engageInner(wantTracking) {
@@ -286,6 +288,7 @@ export function initSkyNow(aladin, { onTrackingStart } = {}) {
       return;
     }
     const { lat: latitude, lon: longitude } = seedObserver(obs.lat, obs.lon);
+    if (cancelEngage) return; // a second tap while we awaited = never mind
 
     if (!wantTracking) { oneShotZenith(latitude, longitude); return; }
     if (!motionAllowed) {

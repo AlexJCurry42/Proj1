@@ -98,6 +98,7 @@ export function initUiGuide() {
     active = false;
     writePref('uiguide', true);
     window.removeEventListener('resize', place);
+    document.removeEventListener('keydown', onKey);
     document.body.classList.remove('guiding');
     card.remove();
     ring.remove();
@@ -109,6 +110,10 @@ export function initUiGuide() {
   });
   skip.addEventListener('click', finish);
   makeDismissable(card, finish);
+  // The same keyboard contract as every other dismissable surface:
+  // Escape puts the tour away (it counts as done — it never returns).
+  const onKey = (e) => { if (e.key === 'Escape' && active) finish(); };
+  document.addEventListener('keydown', onKey);
 
   // Let the boot screen fade and the sky settle before speaking up.
   setTimeout(() => {
@@ -118,5 +123,8 @@ export function initUiGuide() {
     document.body.append(ring, card);
     window.addEventListener('resize', place);
     show(0);
+    // First boot: nothing owns focus yet, so give it to Next — the whole
+    // tour becomes Enter, Enter, … for keyboard users.
+    next.focus({ preventScroll: true });
   }, 1800);
 }

@@ -125,9 +125,18 @@ export function initTimeControl() {
   }
   onTimeChange(refresh);
 
+  let idleSync = null;
   function openPanel() {
     setInputs(appNow());
     panel.hidden = false;
+    // A panel left sitting open while REAL time passes shows increasingly
+    // stale pickers ("play" would read as starting minutes ago) — keep them
+    // honest, gently, whenever the user isn't scrubbing or editing.
+    clearInterval(idleSync);
+    idleSync = setInterval(() => {
+      if (panel.hidden) { clearInterval(idleSync); idleSync = null; return; }
+      if (!isTimeShifted() && playSpeed() === 0 && !editingInputs()) setInputs(appNow());
+    }, 30000);
   }
   btn.addEventListener('click', () => {
     if (panel.hidden) openPanel(); else panel.hidden = true;
