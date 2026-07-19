@@ -102,7 +102,10 @@ export function initDockCollapse() {
     writePref('dockcollapsed', c);
   }
   btn.addEventListener('click', () => setCollapsed(!dock.classList.contains('collapsed')));
-  if (readPref('dockcollapsed', false) === true) {
+  // Collapsed by default: the dock must not open itself over the sky on a
+  // first visit — the guided tour points it out instead. The user's own
+  // expand/collapse choice persists from then on.
+  if (readPref('dockcollapsed', true) === true) {
     dock.classList.add('collapsed');
     btn.setAttribute('aria-expanded', 'false');
     btn.setAttribute('aria-label', 'Expand the layers menu');

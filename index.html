@@ -206,20 +206,8 @@
 </div>
 <button id="time-chip" hidden aria-label="The sky is time-shifted — tap to adjust or reset"></button>
 
-<!-- First-visit tips: a small dismissible card, never a modal wall. Waits
-     for the location consent card to clear; never returns once closed. -->
-<div id="tips-card" class="glass-panel" role="status" hidden>
-  <button id="tips-close" class="glass-btn small" aria-label="Dismiss tips">
-    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="7" y1="7" x2="17" y2="17"/><line x1="17" y1="7" x2="7" y2="17"/></svg>
-  </button>
-  <strong class="tips-title">New here? Three things to try</strong>
-  <ul class="tips-list">
-    <li>Search anything — try “Andromeda” or “Ring Nebula”</li>
-    <li>The right-hand rail re-images the sky from gamma-ray to radio — every band is real telescope data</li>
-    <li>“Show me something cool” flies you somewhere spectacular</li>
-    <li class="tips-note">To see YOUR current sky (the Sky Now button), location access is needed — entirely optional, used only on this device, never transmitted</li>
-  </ul>
-</div>
+<!-- First-run guided tour: built dynamically by js/guide.js — a click-through
+     callout with a highlight ring, replacing the old static tips card. -->
 
 <!-- Keyboard shortcuts / controls sheet (press ?) -->
 <div id="shortcuts-sheet" class="glass-panel" role="dialog" aria-label="Controls and keyboard shortcuts" hidden>

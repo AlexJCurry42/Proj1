@@ -1099,29 +1099,52 @@ body.redlight #crosshair{
 }
 #center-card #center-desc[hidden]{ display: none; }
 
-/* ================= First-visit tips & shortcuts sheet ================= */
-#tips-card{
-  position: fixed; z-index: 58;
-  left: 50%; transform: translateX(-50%);
-  bottom: calc(76px + var(--safe-bottom));
-  width: min(430px, calc(100vw - 24px));
-  padding: 14px 40px 12px 16px;
+/* ================= First-run guided tour & shortcuts sheet ================= */
+/* The click-through tour (built by js/guide.js): a small glass callout with
+   page dots, Skip and Next, plus a sprung highlight ring that glides from
+   target to target. Never a modal wall — the sky stays live throughout. */
+#ui-guide{
+  position: fixed; z-index: 85;
+  width: min(300px, calc(100vw - 24px));
+  padding: 14px 16px 12px;
   animation: sheet-in 0.34s var(--spring);
+  transition: top 0.45s var(--spring), bottom 0.45s var(--spring), left 0.45s var(--spring);
 }
-#tips-card[hidden]{ display: none; }
-#tips-card .tips-title, #shortcuts-sheet .tips-title{ font-size: 14px; letter-spacing: -0.01em; }
-#tips-card #tips-close, #shortcuts-sheet #shortcuts-close{ position: absolute; top: 8px; right: 8px; }
-#tips-card .tips-list{
-  margin: 8px 0 0; padding: 0; list-style: none;
-  display: flex; flex-direction: column; gap: 7px;
+#ui-guide .guide-text{
+  margin: 0 0 10px;
+  font-size: 13.5px; line-height: 1.45; color: var(--text-primary);
 }
-#tips-card .tips-list li{
-  display: flex; gap: 9px; align-items: baseline;
-  font-size: 12.5px; color: var(--text-secondary); line-height: 1.4;
+#ui-guide .guide-row{ display: flex; align-items: center; gap: 10px; }
+#ui-guide .guide-dots{ display: flex; gap: 5px; flex: 1; }
+#ui-guide .guide-dots span{
+  width: 6px; height: 6px; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.22);
+  transition: background 0.25s ease;
 }
-/* The tips card owns the first-visit moment: the center-ID card waits. */
-#tips-card:not([hidden]) ~ #center-card{ display: none; }
+#ui-guide .guide-dots span.on{ background: var(--blue); }
+#ui-guide .guide-skip{
+  background: none; border: none; cursor: pointer;
+  color: var(--text-tertiary); font: 500 12.5px var(--font);
+  padding: 6px 4px;
+}
+#ui-guide .guide-next{
+  border: none; border-radius: 999px; cursor: pointer;
+  padding: 7px 16px; background: var(--blue); color: #fff;
+  font: 600 13px var(--font);
+  transition: transform 0.12s ease;
+}
+#ui-guide .guide-next:active{ transform: scale(0.95); }
+#guide-ring{
+  position: fixed; z-index: 84; pointer-events: none;
+  border: 1.5px solid rgba(90, 200, 250, 0.85); border-radius: 16px;
+  box-shadow: 0 0 0 4px rgba(90, 200, 250, 0.16), 0 0 18px rgba(90, 200, 250, 0.3);
+  transition: all 0.45s var(--spring);
+}
+/* The tour owns the first-visit moment: the center-ID card waits. */
+body.guiding #center-card{ display: none; }
 
+#shortcuts-sheet .tips-title{ font-size: 14px; letter-spacing: -0.01em; }
+#shortcuts-sheet #shortcuts-close{ position: absolute; top: 8px; right: 8px; }
 #shortcuts-sheet{
   position: fixed; z-index: 210;
   left: 50%; top: 50%; transform: translate(-50%, -50%);

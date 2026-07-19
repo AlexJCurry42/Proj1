@@ -62,13 +62,15 @@ async function prepareFixture() {
   const isEsm = /\bexport\s*(\{|default\b)/.test(engineSrc.slice(-2000));
   // The ESM shim must be an EXTERNAL same-origin module: the app's
   // Content-Security-Policy (script-src without 'unsafe-inline') blocks
-  // inline scripts, in the fixture exactly as in production.
+  // inline scripts, in the fixture exactly as in production. Named .js —
+  // module scripts get strict MIME checking, and this server's MIME map
+  // types .js, not .mjs (an octet-stream module is silently rejected).
   if (isEsm) {
-    await writeFile(path.join(CACHE, 'engine-esm-wrapper.mjs'),
+    await writeFile(path.join(CACHE, 'engine-esm-wrapper.js'),
       'import A from "./aladin-local.js";\nwindow.A = A;\n');
   }
   const engineTag = isEsm
-    ? '<script type="module" src="/tests/browser/.cache/engine-esm-wrapper.mjs"></script>'
+    ? '<script type="module" src="/tests/browser/.cache/engine-esm-wrapper.js"></script>'
     : '<script src="/tests/browser/.cache/aladin-local.js" charset="utf-8" defer></script>';
   const html = (await readFile(path.join(ROOT, 'index.html'), 'utf8')).replace(
     /<script src="https:\/\/aladin\.cds\.unistra\.fr[^"]*" charset="utf-8" defer><\/script>/,
@@ -130,11 +132,18 @@ const INIT = () => {
 };
 const IGNORE_ERR = /HiPS|CDS ID|Failed to fetch|points to a HiPS|NetworkError|Load failed/i;
 
-async function newPage(browser, baseURL, { geolocation = true } = {}) {
+async function newPage(browser, baseURL, { geolocation = true, guide = false } = {}) {
   const ctx = await browser.newContext({ viewport: { width: 600, height: 700 } });
   if (geolocation) {
     await ctx.grantPermissions(['geolocation'], { origin: baseURL });
     await ctx.setGeolocation({ latitude: 37.77, longitude: -122.42 });
+  }
+  // The first-run guided tour would sit over the UI in every scenario;
+  // pre-dismiss it except where the tour itself is under test.
+  if (!guide) {
+    await ctx.addInitScript(() => {
+      try { localStorage.setItem('dsa-uiguide', 'true'); } catch (e) { /* private mode */ }
+    });
   }
   const page = await ctx.newPage();
   page.__errors = [];
@@ -577,17 +586,43 @@ await scenario('center ID: a known object under the crosshair pops its card', as
   await ctx.close();
 });
 
-await scenario('onboarding: tips appear once, dismiss persists; ? and / work', async () => {
-  // Boot never shows the consent card anymore — tips arrive on their own.
-  const { ctx, page } = await newPage(browser, baseURL, { geolocation: false });
-  await page.waitForFunction(() => !document.getElementById('tips-card').hidden, null, { timeout: 10000 });
-  const hasDisclaimer = await page.evaluate(() => document.querySelector('#tips-card .tips-note')?.textContent.includes('location'));
-  assert(hasDisclaimer, 'tips must carry the optional-location disclaimer');
-  await page.click('#tips-close');
+await scenario('onboarding: guided tour steps through, persists; ? and / work', async () => {
+  const { ctx, page } = await newPage(browser, baseURL, { geolocation: false, guide: true });
+  // Menus must NOT open themselves on a first visit — the tour points
+  // instead. (Their expanded state is the user's choice, persisted.)
+  assert(await page.evaluate(() => document.getElementById('layer-dock').classList.contains('collapsed')),
+    'layer dock must start collapsed');
+  assert(await page.evaluate(() => document.getElementById('spectrum-rail').classList.contains('collapsed')),
+    'spectrum rail must start collapsed');
+  // The click-through tour: welcome first, then Next walks the targets with
+  // the highlight ring; the Sky Now step keeps the optional-location promise.
+  await page.waitForSelector('#ui-guide', { timeout: 10000 });
+  const welcome = await page.textContent('#ui-guide .guide-text');
+  assert(/welcome/i.test(welcome), `first step should welcome, got: ${welcome}`);
+  let sawLocationPromise = false;
+  let ringShown = false;
+  for (let i = 0; i < 5; i++) {
+    await page.click('#ui-guide .guide-next');
+    await page.waitForTimeout(250);
+    const t = await page.textContent('#ui-guide .guide-text');
+    if (/location/i.test(t) && /optional/i.test(t)) sawLocationPromise = true;
+    if (await page.evaluate(() => {
+      const r = document.getElementById('guide-ring');
+      return r && r.style.opacity === '1' && parseFloat(r.style.width) > 10;
+    })) ringShown = true;
+  }
+  assert(sawLocationPromise, 'a tour step must carry the optional-location promise');
+  assert(ringShown, 'the highlight ring must mark targets');
+  await page.click('#ui-guide .guide-next'); // "Done" on the last step
+  await page.waitForTimeout(300);
+  assert(await page.evaluate(() => !document.getElementById('ui-guide')),
+    'finishing the tour must remove it');
   await page.reload();
   await page.waitForFunction(() => window.__aladin, null, { timeout: 60000 });
   await page.waitForTimeout(3500);
-  assert(await page.evaluate(() => document.getElementById('tips-card').hidden), 'dismissed tips must stay dismissed');
+  await page.waitForTimeout(2500); // past the tour's own appearance delay
+  assert(await page.evaluate(() => !document.getElementById('ui-guide')),
+    'a finished tour must never return');
   // Keyboard: "?" opens the controls sheet, Esc closes it, "/" focuses search.
   await page.keyboard.press('?');
   assert(!(await page.evaluate(() => document.getElementById('shortcuts-sheet').hidden)), '? must open the shortcuts sheet');

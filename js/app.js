@@ -10,8 +10,9 @@ import {
   showToast, renderDetailPanel, showDetailLoading, closeDetailPanel,
   fetchSimbadNear, humanObjectType,
   initTours, initAboutModal, initRedlightToggle,
-  initDetailPanelClose, initKeyboard, initWelcomeTips
+  initDetailPanelClose, initKeyboard
 } from './ui.js';
+import { initUiGuide } from './guide.js';
 import { primeConstellations } from './constellation.js';
 import { SURVEYS, STOP, MAX_VALUE, DEFAULT_VALUE, initSpectrumBar } from './spectrum.js';
 import { readPref, writePref } from './prefs.js';
@@ -45,7 +46,7 @@ async function main() {
   // stale index.html with fresh JS, and a missing element in one widget must
   // cost that widget, not the sky.
   for (const initChrome of [initMotion, initRedlightToggle, initAboutModal, initDetailPanelClose,
-                            initKeyboard, initDockCollapse, initTimeControl, initWelcomeTips]) {
+                            initKeyboard, initDockCollapse, initTimeControl, initUiGuide]) {
     try { initChrome(); } catch (err) { console.error('chrome init failed:', err); }
   }
 
@@ -155,7 +156,9 @@ async function main() {
   // One slider, the whole spectrum: settles persist position + permalink.
   spectrum = initSpectrumBar(aladin, {
     onSettle: (v) => { writePref('spectrum', v); view.updateHash(); view.applyFovLimits(); },
-    collapsed: readPref('spectrumcollapsed', false) === true,
+    // Collapsed by default: menus must not open themselves over the sky on
+    // a first visit — the guided tour points them out instead.
+    collapsed: readPref('spectrumcollapsed', true) === true,
     onCollapse: (c) => writePref('spectrumcollapsed', c)
   });
   spectrum.setValue(initialSpectrum);

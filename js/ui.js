@@ -296,31 +296,8 @@ export function initKeyboard() {
   });
 }
 
-// ------------------------------------------------------ Welcome tips ---
-// First-visit orientation WITHOUT a modal wall (retired deliberately): a
-// small dismissible card that waits its turn — it appears only after the
-// location consent card is out of the way, and never again once closed.
-export function initWelcomeTips() {
-  if (readPref('welcometips', false)) return;
-  const card = document.getElementById('tips-card');
-  if (!card) return;
-  const locCard = document.getElementById('loc-card');
-  let tries = 0;
-  const attempt = () => {
-    if (locCard && !locCard.hidden) {
-      if (++tries < 120) setTimeout(attempt, 500); // wait out the consent card
-      return;
-    }
-    card.hidden = false;
-  };
-  setTimeout(attempt, 2500);
-  const dismiss = () => {
-    card.hidden = true;
-    writePref('welcometips', true);
-  };
-  document.getElementById('tips-close')?.addEventListener('click', dismiss);
-  makeDismissable(card, dismiss, 'translateX(-50%)');
-}
+// First-visit orientation lives in js/guide.js (the click-through guided
+// tour); the old static tips card it replaced was rendered from here.
 
 function trapFocus(container) {
   container.addEventListener('keydown', (e) => {
