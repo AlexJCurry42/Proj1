@@ -43,6 +43,13 @@
    "sha256": "ab4ae692027cbc042c0d6791a84456a65eb7c55656107fd00c58ff6e55d4d8b2",
    "source": "d3-celestial (Stellarium sky culture)"
   },
+  "descriptions.json": {
+   "bytes": 164973,
+   "refreshed": "2026-07-19T23:39:31+00:00",
+   "run": "29708164642",
+   "sha256": "5e12eebb47fbb9e0b8d9d042d59ebd9f8af8e4b4ee2d72f0da16e7ba4c26d09e",
+   "source": "English Wikipedia REST lead extracts (CC BY-SA 4.0), tools/fetch_descriptions.py"
+  },
   "exoplanets_snapshot.csv": {
    "bytes": 504241,
    "refreshed": "2026-07-19T21:56:58+00:00",
