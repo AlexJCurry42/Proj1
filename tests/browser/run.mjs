@@ -205,6 +205,10 @@ await scenario('boot: lean fetch budget, no dead chrome, zero errors (granted ge
   await page.waitForTimeout(1500);
   const solar = await rowState(page, 'Solar System');
   assert(solar.count === '12', `Solar System count should be 12 with ISS, got "${solar.count}"`);
+  // The boot loading screen must have retired itself (removed, not merely
+  // faded — a lingering full-screen div would swallow every tap).
+  assert(await page.evaluate(() => !document.getElementById('boot-screen')),
+    'boot screen must remove itself once the sky is interactive');
   assert(page.__errors.length === 0, `page errors: ${page.__errors.join('; ')}`);
   await ctx.close();
 });

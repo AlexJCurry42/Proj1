@@ -29,6 +29,41 @@
 </head>
 <body>
 
+<!-- Boot screen: painted before any script has even downloaded, so the
+     first thing a visitor sees is a live loading bar rather than a black
+     void. Driven inline (window.__boot) because app.js may itself still be
+     in flight; app.js reports real milestones and removes it when the sky
+     is interactive. -->
+<div id="boot-screen" aria-hidden="true">
+  <div class="boot-title">Pocket Planetarium</div>
+  <div class="boot-bar"><div class="boot-fill" id="boot-fill"></div></div>
+</div>
+<script>
+window.__boot = (() => {
+  const fill = document.getElementById('boot-fill');
+  let target = 12, shown = 0, timer = null;
+  // Ease toward the current stage's cap so the bar keeps breathing while a
+  // slow stage (the wasm engine download + compile) is still in flight —
+  // asymptotic, so it never falsely reaches the cap.
+  timer = setInterval(() => {
+    shown = Math.min(target, shown + Math.max(0.35, (target - shown) * 0.10));
+    fill.style.width = shown + '%';
+  }, 120);
+  return {
+    to(p) { target = Math.max(target, p); },
+    done() {
+      if (!timer) return;
+      clearInterval(timer);
+      timer = null;
+      fill.style.width = '100%';
+      const el = document.getElementById('boot-screen');
+      el.classList.add('boot-out');
+      setTimeout(() => el.remove(), 500);
+    }
+  };
+})();
+</script>
+
 <a class="skip-link" href="#aladin-lite-div">Skip to sky view</a>
 
 <!-- Full-bleed sky -->

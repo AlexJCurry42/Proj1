@@ -80,6 +80,9 @@ function parseViewHash() {
 }
 
 async function main() {
+  // Reaching here means the whole module graph (and the engine script ahead
+  // of it) has downloaded and parsed — the boot bar's first real milestone.
+  window.__boot?.to(45);
   // Aladin-independent chrome first, so a sky-engine failure still leaves a
   // working shell (dock, about modal, red-light mode). Each piece is
   // fault-isolated: right after a deploy the HTTP cache can briefly pair a
@@ -127,6 +130,7 @@ async function main() {
   // A.init resolves once Aladin's WASM core is downloaded and compiled. It can
   // stall silently (e.g. Safari Lockdown Mode disables WebAssembly), so race
   // it against a timeout rather than awaiting it unconditionally.
+  window.__boot?.to(85); // the compile is the long pole: let the bar creep toward here
   await Promise.race([
     A.init,
     new Promise((_, reject) => setTimeout(() =>
@@ -153,6 +157,7 @@ async function main() {
     backgroundColor: '#000000'
   });
   try { aladin.setBackgroundColor?.('#000000'); } catch (err) { /* option above covers newer builds */ }
+  window.__boot?.to(94); // engine live — what remains is wiring the chrome
   fadeCatalog = initMarkerFades(aladin); // layer toggles can now cross-fade markers
 
   // Time-lapse playback: each clock tick must wake the overlay engine (its
@@ -729,6 +734,10 @@ async function main() {
   // network-first (always fresh), while THIS file is cache-first and may be
   // a version behind — registration from here once left phones running new
   // HTML against stale CSS/JS with no way to converge.
+
+  // Everything interactive is wired: retire the boot screen (tiles keep
+  // streaming in behind it regardless — the sky is usable now).
+  window.__boot?.done();
 }
 
 // On-page debug console for devices without dev tools (phones): append
@@ -779,5 +788,6 @@ function showFatalError(message) {
 
 initDebugConsole();
 main().catch(err => {
+  window.__boot?.done(); // the banner (z:150) sits below the boot screen (z:400)
   showFatalError(err.message);
 });

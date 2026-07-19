@@ -1276,3 +1276,28 @@ body.heaven #crosshair{
     linear-gradient(rgba(238, 148, 255, 0.60), rgba(238, 148, 255, 0.60)) left center / 7px 1px no-repeat,
     linear-gradient(rgba(238, 148, 255, 0.60), rgba(238, 148, 255, 0.60)) right center / 7px 1px no-repeat;
 }
+
+/* ================= Boot screen ================= */
+/* Above everything (incl. the lightbox at 350) — but removed from the DOM
+   the moment the sky is interactive, and BEFORE the fatal banner (z:150)
+   would need to show through. */
+#boot-screen{
+  position: fixed; inset: 0; z-index: 400;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 20px; background: #000;
+  transition: opacity 0.45s ease;
+}
+#boot-screen.boot-out{ opacity: 0; pointer-events: none; }
+.boot-title{
+  font: 600 13px var(--font); color: var(--text-tertiary);
+  letter-spacing: 0.22em; text-transform: uppercase;
+}
+.boot-bar{
+  width: min(220px, 60vw); height: 3px; border-radius: 2px;
+  background: rgba(255, 255, 255, 0.12); overflow: hidden;
+}
+.boot-fill{
+  width: 0%; height: 100%; border-radius: 2px;
+  background: linear-gradient(90deg, #7da2e8, #dfe9ff);
+  transition: width 0.25s ease;
+}
