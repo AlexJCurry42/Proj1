@@ -37,6 +37,7 @@ import { onTimeChange } from './clock.js';
 import { getOverlay } from './overlay.js';
 import { patchEngineContext, initSharpen } from './sharpen.js';
 import { initTimeSky } from './timesky.js';
+import { setSfxEnabled } from './sound.js';
 
 const SGR_A_STAR = { ra: 266.41683, dec: -29.007811 };
 
@@ -720,6 +721,13 @@ async function main() {
       if (bloomToggle.isChecked()) bloomRef.ctl.show(); else bloomRef.ctl.hide();
     }
   });
+  // Sound effects: the synthesized audio responses on flights, fades,
+  // toggles and panels (js/sound.js). All on-device, nothing fetched.
+  const sfxToggle = addToggle(catalogList, {
+    label: 'Sound effects', color: '#64d2ff', checked: true, sub: true,
+    onToggle: (v) => setSfxEnabled(v)
+  });
+  setSfxEnabled(sfxToggle.isChecked()); // saved OFF never boot-fires: sync explicitly
 
   window.addEventListener('error', (e) => {
     console.error('Unhandled error:', e.error || e.message);

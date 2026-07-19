@@ -9,6 +9,7 @@
 // marking the shift, and "Back to now" as the one-tap exit.
 
 import { appNow, setAppTime, isTimeShifted, onTimeChange, setPlaySpeed, playSpeed } from './clock.js';
+import { playStart, playStop } from './sound.js';
 
 export function initTimeControl() {
   const btn = document.getElementById('time-btn');
@@ -125,7 +126,9 @@ export function initTimeControl() {
 
   // ---- play controls ----
   playBtn?.addEventListener('click', () => {
-    setPlaySpeed(playSpeed() === 0 ? selectedMult : 0);
+    const starting = playSpeed() === 0;
+    setPlaySpeed(starting ? selectedMult : 0);
+    if (starting) playStart(); else playStop();
   });
   for (const sb of speedBtns) {
     sb.addEventListener('click', () => {

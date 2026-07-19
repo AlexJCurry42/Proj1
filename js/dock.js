@@ -4,6 +4,7 @@
 // actual dock from these.
 
 import { readPref, writePref } from './prefs.js';
+import { layerToggle } from './sound.js';
 
 const savedLayers = readPref('layers', {});
 
@@ -44,6 +45,7 @@ export function addToggle(listEl, { label, color, checked = true, sub = false, p
       savedLayers[label] = input.checked;
       writePref('layers', savedLayers);
     }
+    layerToggle(input.checked); // gesture-only by construction: change events come from taps
     onToggle(input.checked, { gesture: true });
   });
   // Any layer that starts enabled — by default or from last visit — must

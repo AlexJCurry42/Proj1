@@ -76,7 +76,11 @@ PWA with an offline-cached shell, red-light night-vision mode, an
 flipping it off makes every flight, fade, reveal and CSS transition
 instant, persistently), always-on **imagery sharpening** (a strong
 two-scale optical unsharp mask over the sky — pure local contrast,
-never invented detail, disclosed in the About panel), and preferences
+never invented detail, disclosed in the About panel), a hushed
+**sound design** synthesized in-code with WebAudio (departure swells
+and arrival chimes on flights, crystalline sweeps on wavelength
+changes, watch-like ticks on switches — no audio files, no downloads,
+and a Sound effects checkbox to silence it all), and preferences
 that persist locally. **No tracking, no analytics, no
 accounts — ever.** MIT licensed (code); all data and imagery remain
 under their providers' licenses, credited in-app.

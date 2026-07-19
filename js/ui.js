@@ -5,6 +5,7 @@ import { fetchJSON } from './net.js';
 import { SHELL_VERSION } from './version.js';
 import { constellationAt } from './constellation.js';
 import { readPref, writePref } from './prefs.js';
+import { flightStart, flightLand, panelOpen, panelClose } from './sound.js';
 import { attachRenderIfFamous } from './render3d.js';
 import { riseSet, raDecToVec, vecToRaDec, angularSepDeg } from './astro.js';
 import { cachedObserver } from './observer.js';
@@ -165,6 +166,7 @@ const detailPanel = () => document.getElementById('detail-panel');
 const detailContent = () => document.getElementById('detail-content');
 
 export function closeDetailPanel() {
+  if (!detailPanel().hidden) panelClose();
   detailPanel().hidden = true;
   detailContent().innerHTML = '';
 }
@@ -291,6 +293,7 @@ export function showDetailLoading() {
 export function renderDetailPanel(obj) {
   const wasHidden = detailPanel().hidden;
   detailPanel().hidden = false;
+  if (wasHidden) panelOpen();
   const rows = [];
   rows.push(row('RA (ICRS)', `${toSexagesimalRA(obj.ra)} / ${obj.ra.toFixed(5)}°`));
   rows.push(row('Dec (ICRS)', `${toSexagesimalDec(obj.dec)} / ${obj.dec.toFixed(5)}°`));
@@ -558,6 +561,7 @@ export async function initTours(aladin, spectrum) {
         if (v != null) spectrum.setValue(v, { settle: true });
       }
       aladin.setFoV(t.fov_deg);
+      flightLand(); // no animation, but the arrival still lands
       return;
     }
 
@@ -582,11 +586,12 @@ export async function initTours(aladin, spectrum) {
     };
 
     let landed = false;
+    flightStart(); // the departure swell rides the arc
     try {
       landed = await flyPath(t.ra, t.dec, t.fov_deg, token, (u01, ms) => {
         if (u01 >= 0.55) startFade(ms * (1 - u01));
       });
-      if (landed) startFade(900); // short hop that never crossed 55%
+      if (landed) { startFade(900); flightLand(); } // arrival chime at touchdown
     } finally {
       if (token === flightToken) {
         // Canceled before any fade could settle: re-lock the zoom limits

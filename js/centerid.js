@@ -18,6 +18,7 @@ import { fetchJSON } from './net.js';
 import { raDecToVec, angularSepDeg } from './astro.js';
 import { TYPE_STYLE } from './catalogs.js';
 import { getOverlay, haloText } from './overlay.js';
+import { cardAppear } from './sound.js';
 
 // The crosshair's identification reach, in screen pixels — matches the
 // drawn crosshair's footprint so "overlaps the crosshair" is literal.
@@ -157,6 +158,7 @@ export function initCenterId(aladin, { onPosition, onZoom }) {
     }
     if (dotEl) dotEl.style.background = e.color;
     card.hidden = false;
+    cardAppear();
   }
 
   const hideCard = () => { card.hidden = true; };

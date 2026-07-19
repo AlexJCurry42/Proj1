@@ -18,6 +18,7 @@
 // grain — on DSS2 the misregistered red/blue plates dissolve into orange,
 // blue and black blotches — so the app stops where the data does.
 import { motionOK } from './motion.js';
+import { spectrumShift } from './sound.js';
 
 export const SURVEYS = [
   { id: 'P/Fermi/color', name: 'Fermi', band: 'Gamma-ray — the violent universe', minFov: 1.0 },
@@ -342,6 +343,9 @@ export function initSpectrumBar(aladin, { onSettle, collapsed = false, onCollaps
       if (i < 0) return;
       const toV = i * STOP;
       const fromV = target;
+      // The wavelength change gets its crystalline sweep — rising toward
+      // gamma (index 0), falling toward radio.
+      if (Math.round(fromV) !== toV && motionOK()) spectrumShift(toV < fromV);
       // Taps and keyboard steps show the chip before fading; every exit
       // from here must schedule its retirement or it lingers forever.
       if (Math.round(fromV) === toV || !motionOK()) {

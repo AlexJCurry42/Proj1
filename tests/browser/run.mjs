@@ -600,6 +600,35 @@ await scenario('onboarding: tips wait for consent, dismiss persists; ? and / wor
   await ctx.close();
 });
 
+await scenario('sound effects: gestures tick, boot is silent, checkbox mutes', async () => {
+  const { ctx, page } = await newPage(browser, baseURL);
+  const row = (label) => `[...document.querySelectorAll('#layer-dock-list li')].find(li => li.textContent.includes('${label}'))`;
+  const sfx = () => page.evaluate(() => window.__sfx || 0);
+  // Boot fires programmatic toggles — none of them may make a sound.
+  assert((await sfx()) === 0, 'boot must be silent');
+  // A REAL pointer gesture unlocks audio (synthetic .click() does not).
+  await page.click('#dock-collapse');
+  await page.waitForTimeout(120);
+  await page.click('#dock-collapse');
+  await page.waitForTimeout(120);
+  // Two gesture toggles (the first click also unlocks the AudioContext).
+  await page.evaluate((sel) => eval(sel).querySelector('input').click(), row('Coordinate grid'));
+  await page.waitForTimeout(150);
+  await page.evaluate((sel) => eval(sel).querySelector('input').click(), row('Coordinate grid'));
+  await page.waitForTimeout(150);
+  const afterTicks = await sfx();
+  assert(afterTicks >= 1, `gesture toggles should tick (count ${afterTicks})`);
+  // Mute via the Sound effects checkbox: later gestures stay silent.
+  await page.evaluate((sel) => eval(sel).querySelector('input').click(), row('Sound effects'));
+  await page.waitForTimeout(150);
+  const muted = await sfx();
+  await page.evaluate((sel) => eval(sel).querySelector('input').click(), row('Constellations'));
+  await page.waitForTimeout(300);
+  assert((await sfx()) === muted, 'no ticks while Sound effects is off');
+  assert(page.__errors.length === 0, `page errors: ${page.__errors.join('; ')}`);
+  await ctx.close();
+});
+
 // ---------------------------------------------------------------- done ---
 await browser.close();
 server.close();
