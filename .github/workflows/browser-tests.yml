@@ -18,12 +18,20 @@ on:
 permissions:
   contents: read
 
+# A newer push supersedes an in-flight run of the same branch.
+concurrency:
+  group: browser-tests-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'   # pinned major: the suite is plain ESM + fetch
       - name: Install Playwright + Chromium
         run: |
           npm i --no-save playwright

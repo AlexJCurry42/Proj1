@@ -16,13 +16,16 @@ let searchHistory = []; // in-memory only, most-recent-first, max 10
  */
 export function parseCoordinates(raw) {
   const text = raw.trim();
+  if (text.length > 80) return null; // no coordinate form is this long
 
   // Decimal degrees: "ra dec" or "ra, dec", two floats.
   const decimalMatch = text.match(/^(-?\d+(?:\.\d+)?)\s*[, ]\s*(-?\d+(?:\.\d+)?)$/);
   if (decimalMatch) {
     const ra = parseFloat(decimalMatch[1]);
     const dec = parseFloat(decimalMatch[2]);
-    if (ra >= 0 && ra <= 360 && dec >= -90 && dec <= 90) return { ra, dec };
+    // 360° IS 0°: normalize to one canonical form.
+    if (ra >= 0 && ra <= 360 && dec >= -90 && dec <= 90) return { ra: ra % 360, dec };
+    return null;
   }
 
   // Sexagesimal: "HH MM SS(.s) +/-DD MM SS(.s)" with space or colon separators.
@@ -31,10 +34,17 @@ export function parseCoordinates(raw) {
   );
   if (sexMatch) {
     const [, rh, rm, rs, dd, dm, ds] = sexMatch;
-    const ra = (parseFloat(rh) + parseFloat(rm) / 60 + parseFloat(rs) / 3600) * 15;
+    const h = parseFloat(rh), m = parseFloat(rm), s = parseFloat(rs);
+    const dDeg = Math.abs(parseFloat(dd)), dMin = parseFloat(dm), dSec = parseFloat(ds);
+    // Reject impossible clock/angle values instead of silently overflowing
+    // (25h, 61m, 75s, ±95°…); the poles are ±90° 00′ 00″ exactly.
+    if (h > 23 || m > 59 || s >= 60) return null;
+    if (dDeg > 90 || dMin > 59 || dSec >= 60) return null;
+    const decAbs = dDeg + dMin / 60 + dSec / 3600;
+    if (decAbs > 90) return null;
+    const ra = ((h + m / 60 + s / 3600) * 15) % 360;
     const decSign = dd.trim().startsWith('-') ? -1 : 1;
-    const dec = decSign * (Math.abs(parseFloat(dd)) + parseFloat(dm) / 60 + parseFloat(ds) / 3600);
-    return { ra, dec };
+    return { ra, dec: decSign * decAbs };
   }
 
   return null;

@@ -75,17 +75,24 @@ PWA with an offline-cached shell, red-light night-vision mode, an
 **Animations switch** in the layer dock (on by default for everyone;
 flipping it off makes every flight, fade, reveal and CSS transition
 instant, persistently), a hushed
-**sound design** synthesized in-code with WebAudio (departure swells
-and arrival chimes on flights, crystalline sweeps on wavelength
-changes, watch-like ticks on switches — no audio files, no downloads,
-and a Sound effects checkbox to silence it all), and preferences
-that persist locally. **No tracking, no analytics, no
-accounts — ever.** MIT licensed (code); all data and imagery remain
-under their providers' licenses, credited in-app.
+**sound design** synthesized in-code with WebAudio (textural air and
+muted glass-tap responses on flights, wavelength changes, switches and
+panels — plus one bundled Easter-egg music track, supplied by the
+project owner, that plays only when deliberately triggered), and
+preferences that persist locally. **No tracking, no analytics, no
+accounts — ever.**
+
+Licensing: the app's **own code** is MIT. Bundled third-party components
+keep their own licenses — [Aladin Lite](https://github.com/cds-astro/aladin-lite)
+v3.9.0-beta (LGPL-3.0-or-later, vendored in `js/vendor/aladin/`),
+satellite.js (MIT, `js/vendor/satellite/`) — and all astronomical data
+and imagery remain under their providers' licenses, credited in-app
+(About → Credits).
 
 Built with [Aladin Lite v3](https://aladin.cds.unistra.fr/AladinLite/) as the
-sky-rendering engine. No build step, no framework, no backend, no API keys —
-plain ES modules, HTML and CSS.
+sky-rendering engine — **bundled with the app** (pinned v3.9.0-beta, no
+mutable CDN dependency). No build step, no framework, no backend, no API
+keys — plain ES modules, HTML and CSS.
 
 ## Running it
 

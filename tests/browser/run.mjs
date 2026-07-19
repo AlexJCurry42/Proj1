@@ -6,20 +6,18 @@
 // missed.
 //
 // Run: `node tests/browser/run.mjs`
-//   needs: playwright (CI: `npm i --no-save playwright`), a chromium
-//   (CI: `npx playwright install --with-deps chromium`), and network access
-//   to fetch the engine bundle once (cached in tests/browser/.cache).
-// Env overrides: PLAYWRIGHT_MODULE, CHROME_PATH, ALADIN_JS (path to a local
-// engine bundle instead of downloading).
+//   needs: playwright (CI: `npm i --no-save playwright`) and a chromium
+//   (CI: `npx playwright install --with-deps chromium`). The sky engine is
+//   bundled with the app (js/vendor/aladin/), so no engine download.
+// Env overrides: PLAYWRIGHT_MODULE, CHROME_PATH.
 
 import { createServer } from 'node:http';
-import { readFile, writeFile, mkdir, rm, copyFile, access } from 'node:fs/promises';
+import { readFile, mkdir, rm, copyFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const CACHE = path.join(ROOT, 'tests/browser/.cache');
-const ENGINE_URL = 'https://aladin.cds.unistra.fr/AladinLite/api/v3/latest/aladin.js';
 
 // ---- locate playwright + chromium (CI installs them; the dev sandbox has
 // them preinstalled at fixed paths) ----
@@ -39,44 +37,14 @@ function chromePath() {
   return undefined; // let playwright resolve its own managed chromium
 }
 
-// ---- fixture: the app served locally with the engine bundle inlined ----
+// ---- fixture ----
+// The engine is BUNDLED with the app (js/vendor/aladin/), so the fixture is
+// simply the production page: no download, no tag surgery, and the suite
+// exercises the exact engine build every user runs. The engine-test.html
+// name is kept so scenario URLs stay stable.
 async function prepareFixture() {
   await mkdir(CACHE, { recursive: true });
-  const enginePath = path.join(CACHE, 'aladin-local.js');
-  const hasEngine = await access(enginePath).then(() => true, () => false);
-  if (!hasEngine) {
-    if (process.env.ALADIN_JS) {
-      await copyFile(process.env.ALADIN_JS, enginePath);
-    } else {
-      const res = await fetch(ENGINE_URL, { signal: AbortSignal.timeout(60000) });
-      if (!res.ok) throw new Error(`engine download failed: HTTP ${res.status}`);
-      await writeFile(enginePath, Buffer.from(await res.arrayBuffer()));
-    }
-  }
-  // The engine ships in two shapes: the CDN api/v3 bundle is a classic
-  // script that assigns window.A itself; the npm dist (the usual ALADIN_JS
-  // override) is an ES module with a default export, which a classic tag
-  // can't even parse. Sniff the file and emit the matching tag — both keep
-  // the engine executing before app.js, like the tag they replace.
-  const engineSrc = await readFile(enginePath, 'utf8');
-  const isEsm = /\bexport\s*(\{|default\b)/.test(engineSrc.slice(-2000));
-  // The ESM shim must be an EXTERNAL same-origin module: the app's
-  // Content-Security-Policy (script-src without 'unsafe-inline') blocks
-  // inline scripts, in the fixture exactly as in production. Named .js —
-  // module scripts get strict MIME checking, and this server's MIME map
-  // types .js, not .mjs (an octet-stream module is silently rejected).
-  if (isEsm) {
-    await writeFile(path.join(CACHE, 'engine-esm-wrapper.js'),
-      'import A from "./aladin-local.js";\nwindow.A = A;\n');
-  }
-  const engineTag = isEsm
-    ? '<script type="module" src="/tests/browser/.cache/engine-esm-wrapper.js"></script>'
-    : '<script src="/tests/browser/.cache/aladin-local.js" charset="utf-8" defer></script>';
-  const html = (await readFile(path.join(ROOT, 'index.html'), 'utf8')).replace(
-    /<script src="https:\/\/aladin\.cds\.unistra\.fr[^"]*" charset="utf-8" defer><\/script>/,
-    engineTag
-  );
-  await writeFile(path.join(CACHE, 'engine-test.html'), html);
+  await copyFile(path.join(ROOT, 'index.html'), path.join(CACHE, 'engine-test.html'));
 }
 
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.csv': 'text/csv', '.txt': 'text/plain', '.png': 'image/png', '.webmanifest': 'application/manifest+json' };
@@ -670,6 +638,25 @@ await scenario('onboarding: guided tour steps through, persists; ? and / work', 
   }));
   assert(!hist.xss && hist.html.includes('&lt;b&gt;evil&lt;/b&gt;'),
     'search history must render hostile input inert');
+  // Coordinate parsing: impossible clock/angle values must be rejected, and
+  // 360° must normalize to the canonical 0°.
+  const coords = await page.evaluate(async () => {
+    const { parseCoordinates } = await import('/js/search.js');
+    return {
+      badHour: parseCoordinates('25 10 10 +20 10 10'),
+      badMin: parseCoordinates('10 61 10 +20 10 10'),
+      badDec: parseCoordinates('10 10 10 +91 10 10'),
+      overPole: parseCoordinates('10 10 10 +90 00 01'),
+      wrap: parseCoordinates('360 45'),
+      good: parseCoordinates('12 30 00 -45 30 00'),
+      huge: parseCoordinates('1'.repeat(500))
+    };
+  });
+  assert(coords.badHour === null && coords.badMin === null && coords.badDec === null &&
+    coords.overPole === null && coords.huge === null, 'impossible coordinates must be rejected');
+  assert(coords.wrap && coords.wrap.ra === 0 && coords.wrap.dec === 45, '360° must normalize to 0°');
+  assert(coords.good && Math.abs(coords.good.ra - 187.5) < 1e-9 && Math.abs(coords.good.dec + 45.5) < 1e-9,
+    'valid sexagesimal must parse exactly');
   assert(page.__errors.length === 0, `page errors: ${page.__errors.join('; ')}`);
   await ctx.close();
 });

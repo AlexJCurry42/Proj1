@@ -81,7 +81,7 @@ async function main() {
 
   // ----------------------------------------------------------- Sky engine ---
   if (typeof window.A === 'undefined') {
-    throw new Error('the Aladin Lite script never loaded from aladin.cds.unistra.fr — a content blocker, DNS filter, or captive network is the usual cause.');
+    throw new Error('the bundled Aladin Lite engine failed to load (js/vendor/aladin/) — an incomplete deploy or a corrupted cache is the usual cause; reload to re-fetch.');
   }
   // A.init resolves once Aladin's WASM core is downloaded and compiled. It can
   // stall silently (e.g. Safari Lockdown Mode disables WebAssembly), so race

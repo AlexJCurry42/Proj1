@@ -11,7 +11,7 @@
      to many mirrors and Commons photos redirect to upload.wikimedia.org;
      locking script execution, not data loading, is what defuses XSS.
      frame-ancestors can't be set from a meta tag, so it is omitted. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://aladin.cds.unistra.fr 'wasm-unsafe-eval'; style-src 'self' https://aladin.cds.unistra.fr 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' data: https:; media-src 'self'; font-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' data: https:; media-src 'self'; font-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -24,7 +24,6 @@
 
 <!-- Warm up the critical origins: the engine CDN and the HiPS tile server
      get full preconnects; everything queried later gets cheap DNS prefetch. -->
-<link rel="preconnect" href="https://aladin.cds.unistra.fr" crossorigin />
 <link rel="preconnect" href="https://alasky.cds.unistra.fr" crossorigin />
 <link rel="dns-prefetch" href="https://axel.u-strasbg.fr" />
 <link rel="dns-prefetch" href="https://simbad.cds.unistra.fr" />
@@ -34,7 +33,8 @@
 <link rel="dns-prefetch" href="https://commons.wikimedia.org" />
 <link rel="dns-prefetch" href="https://upload.wikimedia.org" />
 
-<link rel="stylesheet" href="https://aladin.cds.unistra.fr/AladinLite/api/v3/latest/aladin.css" />
+<!-- No external engine stylesheet: the bundled v3.9 build injects its own
+     styles from JS, and the app hides all engine chrome regardless. -->
 <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
@@ -255,8 +255,10 @@
 <!-- Toasts -->
 <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
 
-<!-- defer: parse HTML without blocking; executes before the module below. -->
-<script src="https://aladin.cds.unistra.fr/AladinLite/api/v3/latest/aladin.js" charset="utf-8" defer></script>
+<!-- The sky engine, BUNDLED (v3.9.0-beta, LGPL-3.0-or-later) — no mutable
+     CDN /latest/ URL can change the app unreviewed, and offline startup is
+     complete. Module scripts run in order: A exists before app.js runs. -->
+<script type="module" src="js/vendor/aladin/loader.js"></script>
 <!-- Service-worker bootstrap: loaded from THIS page (always network-first,
      always fresh) so update detection never depends on cached JS. External
      rather than inline for the CSP; see js/swboot.js for the full story. -->

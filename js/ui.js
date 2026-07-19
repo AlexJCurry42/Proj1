@@ -663,7 +663,8 @@ export function initAboutModal() {
     <p>A planetarium in your pocket: a browser-based sky atlas built with <a href="https://aladin.cds.unistra.fr/AladinLite/" target="_blank" rel="noopener">Aladin Lite v3</a>, streaming imagery and catalog data live from public astronomical archives.</p>
     <h3>Imagery &amp; sky rendering</h3>
     <ul>
-      <li><strong>Aladin Lite</strong> &mdash; CDS, Observatoire de Strasbourg &amp; CNRS</li>
+      <li><strong>Aladin Lite v3.9.0-beta</strong> &mdash; CDS, Observatoire de Strasbourg &amp; CNRS. Bundled with this app; LGPL-3.0-or-later, <a href="https://github.com/cds-astro/aladin-lite" target="_blank" rel="noopener">source</a></li>
+      <li><strong>satellite.js</strong> (SGP4 propagation) &mdash; MIT license, bundled</li>
       <li>DSS2, SDSS9, 2MASS, AllWISE/unWISE, Pan-STARRS DR1, Fermi and radio HiPS surveys, distributed via the CDS HiPS service</li>
     </ul>
     <p class="hint">Why do bright stars look blotchy up close? The DSS2 optical imagery comes from photographic sky-survey plates: a bright star saturated the emulsion, and the red and blue exposures were taken years apart, so their images don't quite align — the orange/blue/black cores are plate artifacts, not real structure. Other bands (2MASS, Pan-STARRS) have their own, different bright-star artifacts. The <strong>Clean bright stars</strong> checkbox (layer dock → Display) covers those cores with a synthetic glow — positioned, sized and colored from the Yale Bright Star Catalogue — and can be switched off any time to see the raw observations.</p>
@@ -690,7 +691,8 @@ export function initAboutModal() {
     <h3>Procedural renders</h3>
     <p>Objects without real imagery fall back to <strong>procedural illustrations</strong> generated in-browser from published parameters (planet class, stellar temperature, accretion physics) — never passed off as observations, and labeled as such.</p>
     <h3>Privacy</h3>
-    <p><strong>No tracking, ever.</strong> No analytics, no cookies, no accounts. Preferences (layers, night-vision mode) live only in your browser's local storage. The Sky&nbsp;Now feature reads your location and motion sensors on this device solely to compute and track what's overhead — nothing is ever transmitted anywhere.</p>
+    <p><strong>No tracking by this app, ever.</strong> No analytics, no cookies, no accounts. Preferences (layers, night-vision mode) live only in your browser's local storage. The Sky&nbsp;Now feature reads your location and motion sensors <em>on this device only</em> — your coordinates are never sent anywhere.</p>
+    <p class="hint">To show the sky at all, the app necessarily talks to public astronomy services: imagery tiles stream from CDS Strasbourg, object lookups and name searches query SIMBAD/VizieR/Sesame, and photographs load from Wikimedia Commons. Like any web request, those providers see standard connection metadata (your IP address, the tiles or object names requested). The app adds nothing to that — no identifiers, no profiling — and your precise location is never part of any request.</p>
     <h3>Open source</h3>
     <p>MIT-licensed. Source, bug reports and suggestions: <a href="https://github.com/AlexJCurry42/Proj1" target="_blank" rel="noopener">github.com/AlexJCurry42/Proj1</a>. Curated data last reviewed July 2026.</p>
     <p class="hint">Every dataset should be cited per its provider's own guidelines in any derived publication. This tool is for exploration and education, not a substitute for primary catalogs. Planet/Moon positions are geocentric and approximate (±arcminutes; Moon up to ~1° due to parallax).</p>
