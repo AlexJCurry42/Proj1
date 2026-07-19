@@ -497,6 +497,16 @@ input[type="range"]::-moz-range-thumb{
 .render-blurb{ font-size: 13.5px; line-height: 1.5; color: var(--text-primary); margin: 12px 0 0; }
 .render-caption{ font-size: 11px; color: var(--text-tertiary); margin: 6px 0 0; }
 
+/* Bundled object descriptions (Wikipedia extracts, CC BY-SA 4.0): shown in
+   the detail panel's desc-slot and appended to the crosshair card. */
+.desc-slot{ margin: 12px 0 2px; }
+.obj-desc{ font-size: 13.5px; line-height: 1.5; color: var(--text-primary); margin: 0 0 3px; }
+.obj-desc-credit{
+  font-size: 10.5px; color: var(--text-tertiary);
+  text-decoration: none; white-space: nowrap;
+}
+.obj-desc-credit:hover{ text-decoration: underline; }
+
 /* ================= Zoom controls ================= */
 #zoom-stack{
   position: fixed; z-index: 45;
@@ -875,13 +885,15 @@ body.reduce-motion *, body.reduce-motion *::before, body.reduce-motion *::after{
   #brand-btn{ width: 40px; padding: 0; }
 
   #layer-dock{
-    width: 198px;
+    /* Wide enough that the longest row ("Horizon & compass" + its count)
+       never ellipsizes — a truncated switch label reads as a broken UI. */
+    width: 222px;
     max-height: calc(100vh - 320px);
     padding: 2px 10px 6px;
     border-radius: 16px;
   }
   #layer-dock .fold-btn{ margin-left: -8px; }
-  #layer-dock-list{ min-width: 178px; }
+  #layer-dock-list{ min-width: 202px; }
   #layer-dock .toggle-label{ font-size: 13px; }
 
   #detail-panel{

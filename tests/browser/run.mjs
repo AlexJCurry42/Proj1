@@ -6,10 +6,13 @@
 // missed.
 //
 // Run: `node tests/browser/run.mjs`
-//   needs: playwright (CI: `npm i --no-save playwright`) and a chromium
-//   (CI: `npx playwright install --with-deps chromium`). The sky engine is
-//   bundled with the app (js/vendor/aladin/), so no engine download.
-// Env overrides: PLAYWRIGHT_MODULE, CHROME_PATH.
+//   needs: playwright (CI: `npm i --no-save playwright`) and a browser
+//   (CI: `npx playwright install --with-deps chromium` or `webkit`). The
+//   sky engine is bundled with the app (js/vendor/aladin/), so no download.
+// Env overrides: PLAYWRIGHT_MODULE, CHROME_PATH, and BROWSER_ENGINE
+//   (chromium | webkit — webkit is the closest CI proxy for iOS Safari,
+//   the platform where every audio/gesture bug in this app's history
+//   actually lived; see docs/DEVICE-CHECKLIST.md for the on-device pass).
 
 import { createServer } from 'node:http';
 import { readFile, mkdir, rm, copyFile } from 'node:fs/promises';
@@ -100,8 +103,8 @@ const INIT = () => {
 };
 const IGNORE_ERR = /HiPS|CDS ID|Failed to fetch|points to a HiPS|NetworkError|Load failed/i;
 
-async function newPage(browser, baseURL, { geolocation = true, guide = false } = {}) {
-  const ctx = await browser.newContext({ viewport: { width: 600, height: 700 } });
+async function newPage(browser, baseURL, { geolocation = true, guide = false, viewport = { width: 600, height: 700 } } = {}) {
+  const ctx = await browser.newContext({ viewport });
   if (geolocation) {
     await ctx.grantPermissions(['geolocation'], { origin: baseURL });
     await ctx.setGeolocation({ latitude: 37.77, longitude: -122.42 });
@@ -164,9 +167,12 @@ const pw = await loadPlaywright();
 await prepareFixture();
 const server = await startServer();
 const baseURL = `http://127.0.0.1:${server.address().port}`;
+const ENGINE = process.env.BROWSER_ENGINE || 'chromium';
 const LAUNCH_ARGS = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'];
 let browser;
-if (chromePath()) {
+if (ENGINE === 'webkit') {
+  browser = await pw.webkit.launch();
+} else if (chromePath()) {
   browser = await pw.chromium.launch({ executablePath: chromePath(), args: LAUNCH_ARGS });
 } else {
   // Playwright's default headless target is the minimal "headless shell",
@@ -178,6 +184,7 @@ if (chromePath()) {
     browser = await pw.chromium.launch({ args: LAUNCH_ARGS });
   }
 }
+console.log(`engine: ${ENGINE}`);
 
 await scenario('boot: lean fetch budget, no dead chrome, zero errors (granted geo)', async () => {
   const { ctx, page } = await newPage(browser, baseURL);
@@ -185,7 +192,9 @@ await scenario('boot: lean fetch budget, no dead chrome, zero errors (granted ge
   // boot may fetch: tours, the star tiers (faint arrives on idle — off the
   // critical path by design), the ISS TLE (observer already granted) —
   // never the catalogs of default-off layers.
-  const allowed = ['tours.json', 'brightstars.json', 'brightstars_faint.json', 'brightstars_seed.json', 'satellites_tle.txt', 'messier_ngc.json', 'constellation_zones.json'];
+  // (descriptions.json joins on idle with the identification set; the file
+  // is Action-generated, so a 404 for it is normal on a fresh checkout.)
+  const allowed = ['tours.json', 'brightstars.json', 'brightstars_faint.json', 'brightstars_seed.json', 'satellites_tle.txt', 'messier_ngc.json', 'constellation_zones.json', 'descriptions.json'];
   for (const f of dataFiles) {
     assert(allowed.includes(f), `unexpected boot fetch: ${f}`);
   }
@@ -676,6 +685,27 @@ await scenario('onboarding: guided tour steps through, persists; ? and / work', 
   assert(coords.wrap && coords.wrap.ra === 0 && coords.wrap.dec === 45, '360° must normalize to 0°');
   assert(coords.good && Math.abs(coords.good.ra - 187.5) < 1e-9 && Math.abs(coords.good.dec + 45.5) < 1e-9,
     'valid sexagesimal must parse exactly');
+  assert(page.__errors.length === 0, `page errors: ${page.__errors.join('; ')}`);
+  await ctx.close();
+});
+
+await scenario('phone layout: dock rows never truncate their labels', async () => {
+  // iPhone-class viewport: the dock narrows via the max-width media query,
+  // and "Horizon & compass" once ellipsized there — the first thing a
+  // design-minded eye catches. Deep sky is flipped on first so the widest
+  // count ("12,149") is in play while measuring.
+  const { ctx, page } = await newPage(browser, baseURL, { viewport: { width: 390, height: 844 } });
+  await page.click('#dock-collapse');
+  await page.waitForTimeout(700);
+  await flipRow(page, 'Deep sky');
+  await page.waitForTimeout(3000);
+  const bad = await page.evaluate(() => [...document.querySelectorAll('#layer-dock-list .toggle-text')]
+    .filter((el) => el.scrollWidth > el.clientWidth + 1)
+    .map((el) => el.textContent));
+  assert(bad.length === 0, `truncated dock labels at phone width: ${bad.join(', ')}`);
+  // The dock as a whole must still fit the narrow viewport.
+  const dock = await page.locator('#layer-dock').boundingBox();
+  assert(dock.x >= 0 && dock.x + dock.width <= 390, 'dock must fit the phone viewport');
   assert(page.__errors.length === 0, `page errors: ${page.__errors.join('; ')}`);
   await ctx.close();
 });

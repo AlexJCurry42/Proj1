@@ -4,7 +4,8 @@
 # other's pushes on busy days). Which datasets run depends on the trigger:
 #   · daily cron          → ISS orbital elements (SGP4 accuracy decays in days)
 #   · weekly cron         → exoplanet snapshot (the archive has no CORS)
-#   · monthly cron        → OpenNGC, bright stars, constellations (near-static)
+#   · monthly cron        → OpenNGC, bright stars, constellations, object
+#                           descriptions (near-static)
 #   · dispatch / push     → everything (or a chosen subset via the input)
 # Each dataset's validation gate is unchanged from its original workflow: a
 # failed fetch or a suspicious file fails the run and nothing is committed.
@@ -22,7 +23,7 @@ on:
   workflow_dispatch:
     inputs:
       datasets:
-        description: 'Space-separated: tles exoplanets ngc brightstars constellations zones, or all'
+        description: 'Space-separated: tles exoplanets ngc brightstars constellations zones descriptions, or all'
         default: 'all'
         type: string
 
@@ -41,21 +42,26 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Decide which datasets this trigger covers
+        env:
+          # Free text reaches the shell only through this env var — never by
+          # ${{ }} interpolation into script source, where a crafted value
+          # would BE shell code before the allowlist below could veto it.
+          RAW_SETS: ${{ inputs.datasets }}
         run: |
           case "${{ github.event_name }}:${{ github.event.schedule }}" in
             schedule:'41 4 * * *') SETS='tles' ;;
             schedule:'17 6 * * 1') SETS='exoplanets' ;;
-            schedule:'7 3 3 * *')  SETS='ngc brightstars constellations zones' ;;
-            workflow_dispatch:*)   SETS='${{ inputs.datasets }}' ;;
+            schedule:'7 3 3 * *')  SETS='ngc brightstars constellations zones descriptions' ;;
+            workflow_dispatch:*)   SETS="$RAW_SETS" ;;
             *)                     SETS='all' ;;
           esac
-          [ "$SETS" = 'all' ] && SETS='tles exoplanets ngc brightstars constellations zones'
+          [ "$SETS" = 'all' ] && SETS='tles exoplanets ngc brightstars constellations zones descriptions'
           # Dispatch input is free text: allowlist every token so a typo (or
           # anything stranger) fails loudly instead of silently no-opping —
           # and so SETS can never smuggle shell metacharacters downstream.
           for tok in $SETS; do
             case "$tok" in
-              tles|exoplanets|ngc|brightstars|constellations|zones) ;;
+              tles|exoplanets|ngc|brightstars|constellations|zones|descriptions) ;;
               *) echo "::error::unknown dataset '$tok'"; exit 1 ;;
             esac
           done
@@ -326,6 +332,16 @@ jobs:
           print(f'wrote {len(zones)} zones')
           EOF
 
+      # --------------------------------------- Object descriptions (monthly) ---
+      # Two-sentence English Wikipedia lead extracts for the ~1,000 most
+      # notable deep-sky objects, bundled so tapping around the sky teaches
+      # something at every stop (js/descriptions.js renders them with their
+      # CC BY-SA attribution links). Runs after the ngc step on purpose: it
+      # reads data/ngc_full.json to rank candidates.
+      - name: Bundled object descriptions from Wikipedia
+        if: contains(env.SETS, 'descriptions')
+        run: python3 tools/fetch_descriptions.py
+
       # -------------------------------------------------------- Provenance ---
       # Every Action-refreshed file gets a recorded origin: sha256, size,
       # source URL, and the exact run that produced it. Upstreams like
@@ -345,7 +361,8 @@ jobs:
             'constellations_lines.json':   'd3-celestial (Stellarium sky culture)',
             'constellations_names.json':   'd3-celestial (Stellarium sky culture)',
             'constellations_borders.json': 'd3-celestial (Stellarium sky culture)',
-            'constellation_zones.json':    'VizieR VI/42 (Roman 1987)'
+            'constellation_zones.json':    'VizieR VI/42 (Roman 1987)',
+            'descriptions.json':           'English Wikipedia REST lead extracts (CC BY-SA 4.0), tools/fetch_descriptions.py'
           }
           path = 'data/PROVENANCE.json'
           prov = {}

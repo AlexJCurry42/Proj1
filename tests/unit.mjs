@@ -309,6 +309,23 @@ await test('constellation zones: famous objects land in the right constellation'
   }
 });
 
+await test('object names: one canonical spelling across every lookup', async () => {
+  const { normalizeName, matchKeysFor } = await import('../js/objnames.js');
+  // Designations collapse to one form no matter how they arrive.
+  assert.equal(normalizeName('M 31'), 'm31');
+  assert.equal(normalizeName('Messier 31'), 'm31');
+  assert.equal(normalizeName('NGC104'), 'ngc 104');
+  assert.equal(normalizeName('IC434'), 'ic 434');
+  assert.equal(normalizeName('NAME Andromeda Galaxy'), 'andromeda galaxy');
+  assert.equal(normalizeName('V* V645 Cen'), 'v645 cen');
+  // tools/fetch_descriptions.py mirrors these rules when writing lookup
+  // keys — this block is the JS half of that contract.
+  const keys = matchKeysFor('NGC 7293 — Helix Nebula', ['Ring Nebula (M57)']);
+  for (const want of ['ngc 7293', 'helix nebula', 'm57', 'ring nebula']) {
+    assert.ok(keys.includes(want), `compound labels must yield "${want}" (got ${keys.join(', ')})`);
+  }
+});
+
 await test('version consistency: sw.js VERSION and js/version.js SHELL_VERSION match', async () => {
   // The two constants are hand-synced (a worker script can't import an ES
   // module); this test is the drift guard — CI fails any commit that bumps

@@ -70,6 +70,7 @@ Two kinds of data, deliberately separated:
 | CDS SIMBAD/VizieR/Sesame | TAP/name queries | object taps, search, live layers |
 | Wikimedia Commons | photographs | detail panel of famous objects |
 | NASA Exoplanet Archive, CelesTrak, OpenNGC, VizieR | dataset snapshots | **GitHub Actions only** — never from users' browsers |
+| Wikipedia (REST API) | two-sentence object descriptions (CC BY-SA 4.0, attributed in-app) | **GitHub Actions only** — bundled as `data/descriptions.json` |
 
 The user's precise location never crosses any boundary: alt-az math is
 entirely on-device.
@@ -98,8 +99,10 @@ entirely on-device.
 
 - `tests/unit.mjs` — pure-math/deterministic (astro, ephemeris, clock,
   SGP4, parsing, version consistency); runs on every push.
-- `tests/browser/run.mjs` — 12 scenarios of the real app + the bundled
-  engine in headless Chromium; runs on every code push.
+- `tests/browser/run.mjs` — 13 scenarios of the real app + the bundled
+  engine, in headless Chromium **and headless WebKit** (the closest CI
+  proxy for iOS Safari, where the app's real users are); runs on every
+  code push. The pre-release on-device pass is `docs/DEVICE-CHECKLIST.md`.
 - `tests/health-check.mjs` — replays every LIVE service call; scheduled
   daily and dispatchable, **never** on push, so provider outages cannot
   redden code changes.

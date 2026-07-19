@@ -20,6 +20,7 @@ import { TYPE_STYLE } from './catalogs.js';
 import { getOverlay, haloText } from './overlay.js';
 import { cardAppear } from './sound.js';
 import { makeDismissable } from './ui.js';
+import { findDescriptionFor, descriptionCredit } from './descriptions.js';
 
 // The crosshair's identification reach, in screen pixels — matches the
 // drawn crosshair's footprint so "overlaps the crosshair" is literal.
@@ -71,6 +72,7 @@ export function initCenterId(aladin, { onPosition, onZoom }) {
         const style = TYPE_STYLE[o.type];
         out.push({
           name: o.name || o.id,
+          aliases: [o.id],
           sub: [style?.label, o.name ? o.id : null].filter(Boolean).join(' · '),
           color: style?.color || '#7dd3ff',
           desc: null,
@@ -95,6 +97,14 @@ export function initCenterId(aladin, { onPosition, onZoom }) {
         }
       }
     }
+    // Curated objects without a hand-written tour caption borrow their
+    // bundled Wikipedia extract (loaded here, in the same idle moment;
+    // shown with the attribution CC BY-SA requires).
+    await Promise.all(out.map(async (e) => {
+      if (e.desc) return;
+      const d = await findDescriptionFor(e.name, e.aliases).catch(() => null);
+      if (d) { e.desc = d.text; e.descSrc = d; }
+    }));
     return out;
   }
 
@@ -158,6 +168,7 @@ export function initCenterId(aladin, { onPosition, onZoom }) {
     subEl.hidden = !e.sub;
     if (descEl) {
       descEl.textContent = e.desc || '';
+      if (e.desc && e.descSrc) descEl.append(' ', descriptionCredit(e.descSrc));
       descEl.hidden = !e.desc;
     }
     if (dotEl) dotEl.style.background = e.color;

@@ -8,6 +8,7 @@
 import { fetchJSON } from './net.js';
 import { openLightbox } from './ui.js';
 import { motionOK } from './motion.js';
+import { matchKeysFor } from './objnames.js';
 
 const TYPE_IDS = { rocky: 0, gas_giant: 1, ice_giant: 2, lava: 3, star: 4, black_hole: 5, cloudy: 6, black_hole_binary: 7 };
 
@@ -17,27 +18,9 @@ function loadRenders() {
   return rendersPromise;
 }
 
-// SIMBAD main_ids arrive as "NAME Betelgeuse", "* alf Ori", "V* V645 Cen" etc.
-function normalizeName(s) {
-  return String(s || '')
-    .toLowerCase()
-    .replace(/^name\s+/, '')
-    .replace(/^v?\*\s+/, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
 export async function findRenderFor(name, aliases = [], typeLabel = '') {
   const { entries } = await loadRenders();
-  // Layer names arrive compound — "NGC 7293 — Helix Nebula" from the full
-  // NGC catalog, "Ring Nebula (M57)" style elsewhere — so every part is
-  // offered as its own key alongside the whole string.
-  const raw = [name, ...(aliases || [])].flatMap((s) => {
-    const t = String(s || '');
-    const paren = t.match(/\(([^)]+)\)/);
-    return [t, ...t.split('—'), t.replace(/\s*\([^)]*\)/g, ''), ...(paren ? [paren[1]] : [])];
-  });
-  const keys = [...new Set(raw.map(normalizeName).filter(Boolean))];
+  const keys = matchKeysFor(name, aliases);
   for (const e of entries) {
     if (e.match.some(m => keys.includes(m))) return e;
   }
@@ -97,7 +80,10 @@ export async function attachRenderIfFamous(containerEl, detailObj) {
     // Insert into the DOM before mounting: the render loop stops itself when
     // its canvas is disconnected, so a canvas started pre-insertion dies on
     // its first frame.
-    const anchor = containerEl.querySelector('.drows');
+    // Land above the description slot when one exists (media, then text,
+    // then the data rows — a deterministic order even though both attach
+    // calls race), else above the rows directly.
+    const anchor = containerEl.querySelector('.desc-slot, .drows');
     containerEl.insertBefore(wrap, anchor || null);
 
     if (entry.photo) {

@@ -87,7 +87,9 @@ keep their own licenses — [Aladin Lite](https://github.com/cds-astro/aladin-li
 v3.9.0-beta (LGPL-3.0-or-later, vendored in `js/vendor/aladin/`),
 satellite.js (MIT, `js/vendor/satellite/`) — and all astronomical data
 and imagery remain under their providers' licenses, credited in-app
-(About → Credits).
+(About → Credits). Bundled object descriptions are adapted from
+English Wikipedia (CC BY-SA 4.0), each linked to its source article
+in-app.
 
 Built with [Aladin Lite v3](https://aladin.cds.unistra.fr/AladinLite/) as the
 sky-rendering engine — **bundled with the app** (pinned v3.9.0-beta, no
@@ -200,6 +202,7 @@ app's code.
 | **OpenNGC** | Full NGC/IC catalog layer (~13,000 objects) | Mattia Verga, CC-BY-SA-4.0, `github.com/mattiaverga/OpenNGC` (monthly snapshot) |
 | **CelesTrak** | ISS + bright satellite orbital elements (TLEs) | Dr. T.S. Kelso, `celestrak.org` (daily snapshot); propagated on-device with SGP4 (`satellite.js`, MIT) |
 | **Yale Bright Star Catalogue (V/50) + Tycho-2 (I/259)** | "Clean bright stars" bloom overlay (positions, V magnitudes, B−V colors); bright tier loads with the app, the faint Tycho-2 tier lazy-loads on idle | Hoffleit & Warren 1991; Høg et al. 2000 — via VizieR TAP (monthly snapshot; curated seed until first fetch) |
+| **Wikipedia (English)** | Bundled two-sentence descriptions for the ~1,000 most notable deep-sky objects (`data/descriptions.json`) | Wikipedia contributors, CC BY-SA 4.0 — monthly snapshot via the REST API (`tools/fetch_descriptions.py`); every description links to its source article in-app |
 
 Every curated JSON file carries a `source` field per entry, and an
 `approx: true` flag wherever the literature disagrees or a value (especially

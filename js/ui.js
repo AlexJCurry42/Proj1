@@ -7,6 +7,7 @@ import { constellationAt } from './constellation.js';
 import { readPref, writePref } from './prefs.js';
 import { flightStart, panelOpen, panelClose } from './sound.js';
 import { attachRenderIfFamous } from './render3d.js';
+import { attachDescription } from './descriptions.js';
 import { riseSet, raDecToVec, vecToRaDec, angularSepDeg } from './astro.js';
 import { cachedObserver } from './observer.js';
 import { appNow } from './clock.js';
@@ -362,6 +363,7 @@ export function renderDetailPanel(obj) {
     <h3>${escapeHtml(obj.name || 'Unknown object')}${badges}</h3>
     <span class="dtype">${escapeHtml(obj.typeLabel || 'Unknown type')}</span>
     ${obj.aliases && obj.aliases.length ? `<p class="hint">Also known as: ${escapeHtml(obj.aliases.join(', '))}</p>` : ''}
+    <div class="desc-slot" hidden></div>
     <div class="drows">${rows.join('')}</div>
     ${obj.approxNote ? `<p class="approx-note">⚠ ${escapeHtml(obj.approxNote)}</p>` : ''}
     ${obj.source ? `<p class="hint">Source: ${escapeHtml(obj.source)}</p>` : ''}
@@ -372,8 +374,10 @@ export function renderDetailPanel(obj) {
     </div>
   `;
   // Famous objects (and every black hole) get a procedural 3-D render,
-  // inserted between the type chip and the data rows. Fire-and-forget.
+  // inserted between the type chip and the data rows; notable objects get
+  // their bundled two-sentence description. Both fire-and-forget.
   attachRenderIfFamous(detailContent(), obj);
+  attachDescription(detailContent().querySelector('.desc-slot'), obj);
   // Move keyboard focus into the freshly-opened panel (a11y), without
   // yanking it on every re-render while the panel is already open.
   if (wasHidden) document.getElementById('detail-close').focus({ preventScroll: true });
@@ -708,6 +712,8 @@ export function initAboutModal() {
     <p>Object search uses the CDS <strong>Sesame</strong> name resolver, querying SIMBAD, NED and VizieR.</p>
     <h3>Photographs &amp; artist impressions</h3>
     <p>Object photographs are real mission and observatory images — NASA/JPL-Caltech, NASA/ESA Hubble, ESO, ALMA, MESSENGER, Cassini, Voyager, New Horizons, and the Event Horizon Telescope Collaboration — served via <strong>Wikimedia Commons</strong> and credited individually beneath each image. Famous exoplanets use official NASA/ESO artist impressions.</p>
+    <h3>Object descriptions</h3>
+    <p>Short descriptions of notable objects are adapted (trimmed to two sentences) from <strong>Wikipedia</strong>, licensed <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener">CC BY-SA 4.0</a>; each one links to its source article. They are bundled with the app — showing them sends no request to Wikipedia.</p>
     <h3>Procedural renders</h3>
     <p>Objects without real imagery fall back to <strong>procedural illustrations</strong> generated in-browser from published parameters (planet class, stellar temperature, accretion physics) — never passed off as observations, and labeled as such.</p>
     <h3>Privacy</h3>
