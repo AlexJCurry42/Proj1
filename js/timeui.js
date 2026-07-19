@@ -81,7 +81,12 @@ export function initTimeControl() {
       fx = document.createElement('div');
       fx.id = 'heaven-fx';
       fx.setAttribute('aria-hidden', 'true');
-      fx.innerHTML = '<div class="hv-rise"></div><div class="hv-ring"></div><div class="hv-ring hv-ring2"></div>';
+      fx.innerHTML =
+        '<div class="hv-warp"></div><div class="hv-warp hv-warp2"></div>' +
+        '<div class="hv-rise"></div>' +
+        '<div class="hv-ring"></div><div class="hv-ring hv-ring2"></div><div class="hv-ring hv-ring3"></div>' +
+        '<span class="hv-comet"></span><span class="hv-comet hv-comet2"></span><span class="hv-comet hv-comet3"></span>' +
+        '<div class="hv-flash"></div>';
       document.body.appendChild(fx);
     } else if (!want && fx) {
       fx.remove();
