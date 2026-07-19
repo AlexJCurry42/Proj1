@@ -456,6 +456,13 @@ await scenario('spectrum: a multi-stop tap is one direct fade, no intermediate s
 
 await scenario('time: playback moves the Moon; Back to now stops and resets', async () => {
   const { ctx, page } = await newPage(browser, baseURL);
+  // WebKit CI renders the sky in software, and fast playback re-projects
+  // the whole view every frame — the saturated main thread starves
+  // Playwright's multi-step click protocol (hit-target checks scheduled
+  // between frames) past its timeout. What this scenario asserts is the
+  // CLOCK LOGIC behind the buttons, not their hit-testing (every other
+  // scenario exercises real clicks), so drive the time controls directly.
+  const tap = (sel) => page.evaluate((s) => document.querySelector(s).click(), sel);
   const moonPos = () => page.evaluate(() => {
     for (const c of window.__cats) if (c.name === 'Moon' && c.sources?.length) return [c.sources[0].ra, c.sources[0].dec];
     return null;
@@ -470,9 +477,9 @@ await scenario('time: playback moves the Moon; Back to now stops and resets', as
   }, null, { timeout: 15000 });
   const centerRa = () => page.evaluate(() => window.__aladin.getRaDec()[0]);
   const ra0 = await centerRa();
-  await page.click('#time-btn');
+  await tap('#time-btn');
   await page.waitForTimeout(300);
-  await page.click('#time-play');
+  await tap('#time-play');
   await page.waitForTimeout(2400); // hr/s → ~2.4 h of sky time
   const m1 = await moonPos();
   const moved = Math.hypot(((m1[0] - m0[0] + 540) % 360) - 180, m1[1] - m0[1]);
@@ -484,7 +491,7 @@ await scenario('time: playback moves the Moon; Back to now stops and resets', as
   assert(drift > 10, `view should stream with the diurnal motion, drifted ${drift.toFixed(1)}°`);
   const chip = await page.evaluate(() => document.getElementById('time-chip'));
   assert(chip !== null, 'chip element missing');
-  await page.click('#time-now');
+  await tap('#time-now');
   await page.waitForTimeout(700);
   const stopped = await page.evaluate(async () => (await import('/js/clock.js')).playSpeed() === 0);
   const chipHidden = await page.evaluate(() => document.getElementById('time-chip').hidden);
@@ -497,21 +504,21 @@ await scenario('time: playback moves the Moon; Back to now stops and resets', as
   // may not be deployed yet (owner-supplied), so the assertions target the
   // TRIGGER logic via its hook — armed at day/s playback, disarmed at stop.
   assert(await page.evaluate(() => !window.__eggWanted), 'egg must be unarmed before day/s playback');
-  await page.click('#time-btn');
+  await tap('#time-btn');
   await page.waitForTimeout(300);
   await page.evaluate(() => { // slide to ∞ — the only position that arms the egg
     const s = document.getElementById('time-speed');
     s.value = '1000';
     s.dispatchEvent(new Event('input', { bubbles: true }));
   });
-  await page.click('#time-play');
+  await tap('#time-play');
   await page.waitForTimeout(400);
   assert(await page.evaluate(() => window.__eggWanted === true), 'egg must arm on day/s playback');
   // Made in Heaven: the armed egg transforms the UI chrome (violet aura
   // theme — sky overlays were deliberately removed as clutter).
   assert(await page.evaluate(() => document.body.classList.contains('heaven')),
     'heaven theme must accompany the armed egg');
-  await page.click('#time-now');
+  await tap('#time-now');
   await page.waitForTimeout(400);
   assert(await page.evaluate(() => window.__eggWanted === false), 'egg must disarm when playback stops');
   assert(await page.evaluate(() => !document.body.classList.contains('heaven')),

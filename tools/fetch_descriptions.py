@@ -15,6 +15,7 @@ Lookup keys mirror js/objnames.js normalizeName(); change one and you must
 change the other.
 """
 
+import collections
 import json
 import os
 import re
@@ -33,6 +34,25 @@ MIN_EXTRACT = 60        # shorter than this is a stub, not a description
 MAX_CHARS = 360         # two sentences, roughly — keeps the file compact
 MIN_ARTICLES = 300      # validation gate: fewer means something broke
 MAX_BYTES = 900_000     # validation gate: the file must stay bundle-sized
+
+# Politeness: shared CI runner IPs get rate-limited fast (a first run at
+# 8 unpaced threads drew ~60% errors). Low concurrency + a global pace of
+# ~7 req/s keeps the whole harvest inside Wikimedia's comfort zone and
+# still finishes 1,000 titles in ~3 minutes.
+CONCURRENCY = 3
+PACE_SECONDS = 0.15
+
+_pace_lock = threading.Lock()
+_pace_last = [0.0]
+
+
+def pace():
+    """Global request pacing across all worker threads."""
+    with _pace_lock:
+        wait = _pace_last[0] + PACE_SECONDS - time.monotonic()
+        if wait > 0:
+            time.sleep(wait)
+        _pace_last[0] = time.monotonic()
 
 # A wrong-topic hit (a common name that is also a place, a band, a ship…)
 # won't read like astronomy; require at least one tell-tale term.
@@ -68,31 +88,46 @@ def two_sentences(text):
 
 
 errors = 0
+error_kinds = collections.Counter()  # HTTP code / exception class → count
 errors_lock = threading.Lock()
 
 
 def fetch_summary(title):
-    """One REST summary, one retry; 404 = no article (normal, not an error)."""
+    """One REST summary with backoff; 404 = no article (normal, not an error).
+
+    429/503 honor Retry-After; other failures back off and retry. Errors are
+    counted BY KIND so a failed run's log says what actually went wrong."""
     global errors
     req = Request(API + quote(title.replace(' ', '_')),
                   headers={'User-Agent': UA, 'Accept': 'application/json'})
-    for attempt in (1, 2):
+    kind = 'unknown'
+    for attempt in range(1, 5):
+        pace()
         try:
             with urlopen(req, timeout=25) as r:
                 return json.load(r)
         except HTTPError as e:
             if e.code == 404:
                 return None
-            if attempt == 1:
-                time.sleep(2)
+            kind = f'http {e.code}'
+            if attempt < 4:
+                if e.code in (429, 503):
+                    try:
+                        time.sleep(min(30, float(e.headers.get('Retry-After') or 5)))
+                    except ValueError:
+                        time.sleep(5)
+                else:
+                    time.sleep(2 * attempt)
                 continue
-        except OSError:
-            if attempt == 1:
-                time.sleep(2)
+        except OSError as e:
+            kind = type(e).__name__
+            if attempt < 4:
+                time.sleep(2 * attempt)
                 continue
-        with errors_lock:
-            errors += 1
-        return None
+    with errors_lock:
+        errors += 1
+        error_kinds[kind] += 1
+    return None
 
 
 def resolve(cand):
@@ -146,10 +181,12 @@ def main():
         add([o[0], o[5]], [o[0], o[5]])
 
     print(f'attempting {len(cands)} candidates')
-    with ThreadPoolExecutor(max_workers=8) as pool:
+    with ThreadPoolExecutor(max_workers=CONCURRENCY) as pool:
         results = list(pool.map(resolve, cands))
 
     hits = [r for r in results if r]
+    if error_kinds:
+        print('error breakdown:', dict(error_kinds))
     assert errors <= len(cands) // 10, f'{errors} network errors out of {len(cands)} — aborting'
     assert len(hits) >= MIN_ARTICLES, f'only {len(hits)} descriptions resolved'
 
