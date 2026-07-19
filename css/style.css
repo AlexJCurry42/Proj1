@@ -918,13 +918,16 @@ body.reduce-motion *, body.reduce-motion *::before, body.reduce-motion *::after{
 }
 #time-panel[hidden]{ display: none; }
 .time-title{ font-size: 13px; font-weight: 600; color: var(--text-secondary); }
-#time-input{
-  height: 40px; padding: 0 10px;
+.time-inputs{ display: flex; gap: 8px; }
+#time-date, #time-time{
+  height: 40px; padding: 0 8px; min-width: 0;
   border-radius: 10px; border: 0.5px solid var(--hairline);
   background: rgba(255, 255, 255, 0.08);
-  color: var(--text-primary); font: 500 14px var(--font);
+  color: var(--text-primary); font: 500 13.5px var(--font);
   color-scheme: dark; /* dark native picker on iOS/Android/desktop */
 }
+#time-date{ flex: 1.35; }
+#time-time{ flex: 1; }
 #time-now{ width: 100%; font-size: 13px; font-weight: 600; }
 
 /* Clock button glows amber while the sky is time-shifted */

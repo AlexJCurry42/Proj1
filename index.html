@@ -162,8 +162,12 @@
 
 <!-- Time scrubber: popover above the clock button; amber chip while shifted -->
 <div id="time-panel" class="glass-panel" role="dialog" aria-label="Show the sky at another time" hidden>
-  <label for="time-input" class="time-title">Show the sky at&hellip;</label>
-  <input id="time-input" type="datetime-local" aria-label="Date and time to show the sky for" />
+  <span class="time-title" id="time-title">Show the sky at&hellip;</span>
+  <!-- Separate fields: nudging the TIME must never open a calendar. -->
+  <div class="time-inputs">
+    <input id="time-date" type="date" aria-label="Date to show the sky for" />
+    <input id="time-time" type="time" aria-label="Time of day to show the sky for" />
+  </div>
   <div id="time-play-row">
     <button id="time-play" class="glass-btn small" aria-pressed="false" aria-label="Play time forward" title="Time-lapse">
       <svg class="icon icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5l11 6.5-11 6.5z"/></svg>

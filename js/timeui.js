@@ -13,17 +13,21 @@ import { appNow, setAppTime, isTimeShifted, onTimeChange, setPlaySpeed, playSpee
 export function initTimeControl() {
   const btn = document.getElementById('time-btn');
   const panel = document.getElementById('time-panel');
-  const input = document.getElementById('time-input');
+  const dateIn = document.getElementById('time-date');
+  const timeIn = document.getElementById('time-time');
   const nowBtn = document.getElementById('time-now');
   const chip = document.getElementById('time-chip');
   const playBtn = document.getElementById('time-play');
   const speedBtns = [...document.querySelectorAll('#time-speeds .speed-btn')];
-  if (!btn || !panel || !input || !nowBtn || !chip) return;
+  if (!btn || !panel || !dateIn || !timeIn || !nowBtn || !chip) return;
 
   const pad = (n) => String(n).padStart(2, '0');
-  // datetime-local speaks LOCAL wall-clock time with no zone suffix.
-  const toLocalInputValue = (d) =>
-    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  // Two separate fields (LOCAL wall-clock): nudging the time of day must
+  // never drag the user through a calendar picker.
+  const toDateValue = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const toTimeValue = (d) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const setInputs = (d) => { dateIn.value = toDateValue(d); timeIn.value = toTimeValue(d); };
+  const editingInputs = () => document.activeElement === dateIn || document.activeElement === timeIn;
 
   let selectedMult = 3600; // an hour per second: the sweet spot for sky motion
 
@@ -90,9 +94,8 @@ export function initTimeControl() {
   onTimeChange(refresh);
 
   function openPanel() {
-    input.value = toLocalInputValue(appNow());
+    setInputs(appNow());
     panel.hidden = false;
-    if (playSpeed() === 0) input.focus({ preventScroll: true });
   }
   btn.addEventListener('click', () => {
     if (panel.hidden) openPanel(); else panel.hidden = true;
@@ -103,10 +106,15 @@ export function initTimeControl() {
       panel.hidden = true;
     }
   });
-  input.addEventListener('change', () => {
-    const d = new Date(input.value);
+  const applyInputs = () => {
+    // Either field alone is enough: the other falls back to the shown value.
+    const dv = dateIn.value || toDateValue(appNow());
+    const tv = timeIn.value || toTimeValue(appNow());
+    const d = new Date(`${dv}T${tv}`);
     if (!Number.isNaN(d.getTime())) setAppTime(d); // also stops playback
-  });
+  };
+  dateIn.addEventListener('change', applyInputs);
+  timeIn.addEventListener('change', applyInputs);
   nowBtn.addEventListener('click', () => {
     setAppTime(null); // stops playback and returns to real time
     panel.hidden = true;
@@ -126,10 +134,10 @@ export function initTimeControl() {
       if (playSpeed() !== 0) setPlaySpeed(selectedMult); // live speed change
     });
   }
-  // While playing, the picker mirrors the moving clock (unless being edited).
+  // While playing, the pickers mirror the moving clock (unless being edited).
   onTimeChange(() => {
-    if (playSpeed() !== 0 && !panel.hidden && document.activeElement !== input) {
-      input.value = toLocalInputValue(appNow());
+    if (playSpeed() !== 0 && !panel.hidden && !editingInputs()) {
+      setInputs(appNow());
     }
   });
 
