@@ -2,10 +2,10 @@
 // a matching audio response, SYNTHESIZED in-code with WebAudio rather than
 // shipped as clip files: no downloads, no licensing questions, zero bytes
 // on the wire, and clips that are exactly as long as the animations they
-// accompany. The palette is deliberately hushed — soft airy noise swells
-// for flights, crystalline sweeps for wavelength changes, watch-like ticks
-// for switches — routed through one low master gain and a limiter so
-// nothing ever startles in a dark room.
+// accompany. The palette is deliberately hushed and TEXTURAL — breaths of
+// filtered air for flights and panels, muted glass taps for arrivals and
+// identifications, keyboard-light taps for switches — routed through one
+// low master gain and a limiter so nothing ever startles in a dark room.
 //
 // Rules: nothing plays before the first user gesture (which also unlocks
 // the AudioContext on iOS), nothing plays while the Sound effects checkbox
@@ -67,120 +67,139 @@ function gate() {
 }
 
 // ---- primitives ----
+// Everything below is TEXTURAL: filtered-noise transients and muted
+// inharmonic partials with natural exponential decays. No raw oscillator
+// beeps, no resonant filter sweeps, no arpeggios — those are what made
+// the first draft sound like a 90s soundboard. Attacks are a few
+// milliseconds of linear ramp (click-free), decays are setTargetAtTime
+// exponentials (how real struck and blown objects actually die away).
 
-function envGain(c, t0, peaks) {
-  // peaks: [[dt, gain], ...] — a piecewise-linear envelope from silence.
+function bus(c, t0, { peak, a = 0.004, decayAt = null, tau }) {
   const g = c.createGain();
   g.gain.setValueAtTime(0.0001, t0);
-  for (const [dt, v] of peaks) g.gain.linearRampToValueAtTime(Math.max(0.0001, v), t0 + dt);
+  g.gain.linearRampToValueAtTime(peak, t0 + a);
+  g.gain.setTargetAtTime(0.0001, decayAt ?? (t0 + a), tau);
   g.connect(master);
   return g;
 }
 
-function tone(c, t0, { f0, f1 = null, type = 'sine', dur, peaks, detune = 0 }) {
-  const o = c.createOscillator();
-  o.type = type;
-  o.frequency.setValueAtTime(f0, t0);
-  if (f1 != null) o.frequency.exponentialRampToValueAtTime(f1, t0 + dur);
-  o.detune.value = detune;
-  o.connect(envGain(c, t0, peaks));
-  o.start(t0);
-  o.stop(t0 + dur + 0.05);
-}
-
-function airy(c, t0, { fFrom, fTo, q = 1.2, dur, peaks }) {
+/** A filtered noise event — the palette's backbone (taps, air, swells). */
+function airNoise(c, t0, { dur, type = 'bandpass', f0, f1 = null, q = 0.8, peak, a = 0.006, decayAt = null, tau }) {
   const src = c.createBufferSource();
   src.buffer = noiseBuf;
   src.loop = true;
-  const bp = c.createBiquadFilter();
-  bp.type = 'bandpass';
-  bp.Q.value = q;
-  bp.frequency.setValueAtTime(fFrom, t0);
-  bp.frequency.exponentialRampToValueAtTime(fTo, t0 + dur);
-  src.connect(bp);
-  bp.connect(envGain(c, t0, peaks));
+  src.playbackRate.value = 0.94 + Math.random() * 0.12; // no two events identical
+  const flt = c.createBiquadFilter();
+  flt.type = type;
+  flt.Q.value = q;
+  flt.frequency.setValueAtTime(f0, t0);
+  if (f1 != null) flt.frequency.exponentialRampToValueAtTime(f1, t0 + dur);
+  src.connect(flt);
+  flt.connect(bus(c, t0, { peak, a, decayAt, tau }));
   src.start(t0);
-  src.stop(t0 + dur + 0.05);
+  src.stop(t0 + dur + tau * 5);
+}
+
+/** A muted struck partial: sine through a lowpass, dying exponentially —
+ *  stacked inharmonically it reads as glass/marimba, never as a beep. */
+function struck(c, t0, { f, peak, tau, lp = 2600, a = 0.003 }) {
+  const o = c.createOscillator();
+  o.frequency.value = f * (0.996 + Math.random() * 0.008);
+  const flt = c.createBiquadFilter();
+  flt.type = 'lowpass';
+  flt.frequency.value = lp;
+  o.connect(flt);
+  flt.connect(bus(c, t0, { peak, a, tau }));
+  o.start(t0);
+  o.stop(t0 + tau * 6 + 0.05);
+}
+
+/** The signature "muted glass tap": a breath of high air + two quiet
+ *  inharmonic partials (1 : 2.756, a struck bar's ratio). */
+function glassTap(c, t0, f = 1180, level = 1) {
+  airNoise(c, t0, { dur: 0.02, type: 'highpass', f0: 3000, q: 0.7, peak: 0.05 * level, a: 0.002, tau: 0.008 });
+  struck(c, t0, { f, peak: 0.12 * level, tau: 0.16, lp: 2400 });
+  struck(c, t0, { f: f * 2.756, peak: 0.035 * level, tau: 0.09, lp: 5200 });
 }
 
 // ---- the sound set ----
 
-/** Flight departure: an airy swell that rises with the arc (capped, and
- *  always finished before landing so the arrival chime stands alone). */
+/** Flight departure: a smooth, non-resonant swell of air that rises with
+ *  the arc and settles before landing. */
 export function flightStart(flightMs = 2500) {
   const c = gate();
   if (!c) return;
-  const dur = Math.min(2.2, Math.max(0.9, flightMs / 1000 * 0.55));
   const t = c.currentTime;
-  airy(c, t, { fFrom: 180, fTo: 1900, q: 0.9, dur, peaks: [[0.12, 0.5], [dur * 0.7, 0.34], [dur, 0.0001]] });
-  tone(c, t, { f0: 98, f1: 196, type: 'sine', dur, peaks: [[0.2, 0.16], [dur, 0.0001]] });
+  const dur = Math.min(1.8, Math.max(0.8, flightMs / 1000 * 0.5));
+  airNoise(c, t, { dur, type: 'lowpass', f0: 260, f1: 1250, q: 0.5, peak: 0.5, a: dur * 0.4, decayAt: t + dur * 0.55, tau: dur * 0.22 });
 }
 
-/** Arrival: a soft two-note airy chime with a shimmer of detune. */
+/** Arrival: a soft low touch-down plus one muted glass tap — no melody. */
 export function flightLand() {
   const c = gate();
   if (!c) return;
   const t = c.currentTime;
-  for (const [dt, f] of [[0, 784], [0.14, 1175]]) {
-    tone(c, t + dt, { f0: f, type: 'sine', dur: 0.7, peaks: [[0.015, 0.32], [0.7, 0.0001]] });
-    tone(c, t + dt, { f0: f, type: 'sine', detune: 7, dur: 0.7, peaks: [[0.015, 0.12], [0.7, 0.0001]] });
-  }
+  struck(c, t, { f: 122, peak: 0.3, tau: 0.09, lp: 320 });
+  glassTap(c, t + 0.02, 840, 1);
 }
 
-/** Wavelength change: a crystalline sweep, up toward gamma, down toward radio. */
+/** Wavelength change: a short, smooth glide of air — up toward gamma,
+ *  down toward radio. Informative, never whooshy. */
 export function spectrumShift(up = true) {
   const c = gate();
   if (!c) return;
   const t = c.currentTime;
-  airy(c, t, {
-    fFrom: up ? 500 : 2600, fTo: up ? 2600 : 500, q: 6, dur: 0.45,
-    peaks: [[0.04, 0.4], [0.32, 0.28], [0.45, 0.0001]]
+  airNoise(c, t, {
+    dur: 0.26, type: 'bandpass', q: 1.0,
+    f0: up ? 700 : 1900, f1: up ? 1900 : 700,
+    peak: 0.26, a: 0.03, decayAt: t + 0.13, tau: 0.06
   });
 }
 
-/** Layer switch: a watch-like micro tick (brighter on, duller off). */
+/** Layer switch: an iOS-keyboard-like tap — noise transient + tiny body. */
 export function layerToggle(on = true) {
   const c = gate();
   if (!c) return;
   const t = c.currentTime;
-  tone(c, t, { f0: on ? 1320 : 880, type: 'sine', dur: 0.07, peaks: [[0.004, 0.5], [0.07, 0.0001]] });
+  airNoise(c, t, { dur: 0.03, type: 'bandpass', f0: on ? 1900 : 1150, q: 1.3, peak: 0.5, a: 0.002, tau: 0.014 });
+  struck(c, t, { f: on ? 235 : 185, peak: 0.05, tau: 0.03, lp: 500 });
 }
 
-/** Detail panel: hushed air, rising open / falling closed. */
+/** Detail panel: a breath of air, rising open, falling closed. */
 export function panelOpen() {
   const c = gate();
   if (!c) return;
-  airy(c, c.currentTime, { fFrom: 300, fTo: 1200, q: 1.4, dur: 0.16, peaks: [[0.03, 0.3], [0.16, 0.0001]] });
+  const t = c.currentTime;
+  airNoise(c, t, { dur: 0.16, type: 'lowpass', f0: 500, f1: 1650, q: 0.6, peak: 0.3, a: 0.018, decayAt: t + 0.07, tau: 0.05 });
 }
 export function panelClose() {
   const c = gate();
   if (!c) return;
-  airy(c, c.currentTime, { fFrom: 1200, fTo: 300, q: 1.4, dur: 0.14, peaks: [[0.03, 0.24], [0.14, 0.0001]] });
+  const t = c.currentTime;
+  airNoise(c, t, { dur: 0.13, type: 'lowpass', f0: 1650, f1: 500, q: 0.6, peak: 0.24, a: 0.014, decayAt: t + 0.05, tau: 0.04 });
 }
 
-/** Crosshair identification: the faintest two-note ping. */
+/** Crosshair identification: one faint, high glass touch. */
 export function cardAppear() {
   const c = gate();
   if (!c) return;
-  const t = c.currentTime;
-  tone(c, t, { f0: 1046, type: 'sine', dur: 0.32, peaks: [[0.01, 0.18], [0.32, 0.0001]] });
-  tone(c, t + 0.09, { f0: 1568, type: 'sine', dur: 0.36, peaks: [[0.01, 0.12], [0.36, 0.0001]] });
+  glassTap(c, c.currentTime, 1320, 0.7);
 }
 
-/** Time-lapse: a tiny wind-up arpeggio to start, wound down to stop. */
+/** Time-lapse: a light mechanical double-tap to engage, a single duller
+ *  tap to disengage — a watch crown, not a jingle. */
 export function playStart() {
   const c = gate();
   if (!c) return;
   const t = c.currentTime;
-  for (const [i, f] of [523, 659, 784].entries()) {
-    tone(c, t + i * 0.07, { f0: f, type: 'triangle', dur: 0.14, peaks: [[0.01, 0.2], [0.14, 0.0001]] });
-  }
+  airNoise(c, t, { dur: 0.03, type: 'bandpass', f0: 1500, q: 1.3, peak: 0.42, a: 0.002, tau: 0.013 });
+  airNoise(c, t + 0.085, { dur: 0.03, type: 'bandpass', f0: 2000, q: 1.3, peak: 0.5, a: 0.002, tau: 0.013 });
+  struck(c, t, { f: 210, peak: 0.05, tau: 0.035, lp: 500 });
 }
 export function playStop() {
   const c = gate();
   if (!c) return;
   const t = c.currentTime;
-  for (const [i, f] of [784, 659, 523].entries()) {
-    tone(c, t + i * 0.07, { f0: f, type: 'triangle', dur: 0.14, peaks: [[0.01, 0.16], [0.14, 0.0001]] });
-  }
+  airNoise(c, t, { dur: 0.035, type: 'bandpass', f0: 1000, q: 1.2, peak: 0.45, a: 0.002, tau: 0.016 });
+  struck(c, t, { f: 165, peak: 0.05, tau: 0.04, lp: 450 });
 }
