@@ -1210,92 +1210,11 @@ body.heaven :is(.glass-panel, .dropdown-list, .toast){
   transition: background 1.4s ease, border-color 1.4s ease;
 }
 
-/* Heaven itself: a slow-turning iridescent sweep plus violet flame light
-   rising from the screen edges. Fixed pseudo-layers above the sky, below
-   every control, transparent to input — each igniting gradually (the
-   one-shot fade hands off exactly where the infinite loop begins). */
-@keyframes heaven-flames-in{ from{ opacity: 0; } to{ opacity: 0.72; } }
-@keyframes heaven-breathe{
-  0%, 100%{ opacity: 0.72; transform: scale(1); }
-  50%     { opacity: 1;    transform: scale(1.035); }
-}
-@keyframes heaven-fade-in{ from{ opacity: 0; } to{ opacity: 1; } }
+/* NOTE: full-screen sky overlays (flame vignette, iridescent sweep, ripple
+   rings, warp spokes, meteors, activation flash) were built and then
+   deliberately REMOVED — they cluttered the sky the app exists to show.
+   The theme lives on the UI chrome only. */
 @keyframes heaven-spin{ to{ transform: rotate(360deg); } }
-@keyframes hv-hue{ to{ filter: hue-rotate(360deg); } }
-body.heaven::after{
-  content: ''; position: fixed; inset: -6%; z-index: 5; pointer-events: none;
-  background:
-    radial-gradient(60% 42% at 8% 100%, rgba(150, 60, 235, 0.38), transparent 70%),
-    radial-gradient(55% 38% at 92% 100%, rgba(224, 77, 255, 0.30), transparent 70%),
-    radial-gradient(70% 30% at 50% 0%, rgba(120, 40, 220, 0.24), transparent 75%),
-    radial-gradient(40% 55% at 0% 40%, rgba(190, 90, 255, 0.17), transparent 70%),
-    radial-gradient(40% 55% at 100% 45%, rgba(140, 50, 230, 0.17), transparent 70%);
-  mix-blend-mode: screen;
-  animation: heaven-flames-in 1.8s ease-out both, heaven-breathe 5.5s ease-in-out 1.8s infinite;
-}
-body.heaven::before{
-  content: ''; position: fixed; left: 50%; top: 50%;
-  width: 150vmax; height: 150vmax; margin: -75vmax; z-index: 4;
-  pointer-events: none; mix-blend-mode: screen;
-  background: conic-gradient(from 0deg,
-    transparent 0deg, rgba(224, 77, 255, 0.07) 30deg, transparent 75deg,
-    rgba(123, 47, 247, 0.08) 140deg, transparent 205deg,
-    rgba(245, 200, 76, 0.055) 265deg, transparent 325deg);
-  /* The hue drift cycles the sweep through the whole Made in Heaven
-     palette — violet, magenta, gold, aqua — one slow revolution. */
-  animation: heaven-fade-in 2.2s ease-out both, heaven-spin 26s linear infinite, hv-hue 16s linear infinite;
-}
-
-/* The ascension overlay (#heaven-fx, created by js/timeui.js at activation
-   so every entrance replays from zero): expanding time-ripple rings from
-   the screen center, and faint glints of light rising past the viewer.
-   All layers are transform/opacity-only — compositor-friendly on phones. */
-#heaven-fx{
-  position: fixed; inset: 0; z-index: 6; pointer-events: none;
-  overflow: hidden; mix-blend-mode: screen;
-  animation: heaven-fade-in 2s ease-out both;
-}
-/* Rising glints: a fixed tile of soft light specks on a layer extended
-   640px (two tiles) below the viewport; translating up by exactly two
-   tiles re-aligns the pattern, so the loop has no visible seam. */
-@keyframes hv-rise{ to{ transform: translateY(-640px); } }
-#heaven-fx .hv-rise{
-  position: absolute; left: 0; right: 0; top: 0; bottom: -640px;
-  background-image:
-    radial-gradient(2px 16px at 12% 40px, rgba(240, 200, 255, 0.55), transparent 70%),
-    radial-gradient(1.5px 12px at 35% 210px, rgba(224, 140, 255, 0.45), transparent 70%),
-    radial-gradient(2px 20px at 58% 110px, rgba(245, 210, 130, 0.40), transparent 70%),
-    radial-gradient(1.5px 10px at 76% 280px, rgba(230, 170, 255, 0.50), transparent 70%),
-    radial-gradient(2px 14px at 92% 60px, rgba(200, 120, 255, 0.45), transparent 70%);
-  background-size: 240px 320px; background-repeat: repeat;
-  animation: hv-rise 6.5s linear infinite;
-}
-/* Time-acceleration ripples: thin rings expanding from the center. */
-@keyframes hv-ring{
-  0%  { transform: scale(0.04); opacity: 0; }
-  12% { opacity: 0.55; }
-  100%{ transform: scale(1); opacity: 0; }
-}
-#heaven-fx .hv-ring{
-  position: absolute; left: 50%; top: 50%;
-  width: 110vmax; height: 110vmax; margin: -55vmax;
-  border-radius: 50%;
-  border: 1.5px solid rgba(232, 160, 255, 0.65);
-  box-shadow: 0 0 24px rgba(180, 90, 250, 0.35), inset 0 0 24px rgba(180, 90, 250, 0.25);
-  animation: hv-ring 5s cubic-bezier(0.16, 0.6, 0.45, 1) infinite;
-}
-#heaven-fx .hv-ring2{
-  border-color: rgba(245, 200, 76, 0.45);
-  box-shadow: 0 0 24px rgba(245, 200, 76, 0.22), inset 0 0 24px rgba(245, 200, 76, 0.16);
-  animation-delay: 2.5s;
-}
-
-/* The crosshair joins the ascension with a gentle magenta pulse. */
-@keyframes hv-cross{
-  0%, 100%{ transform: translate(-50%, -50%) scale(1); }
-  50%     { transform: translate(-50%, -50%) scale(1.22); }
-}
-body.heaven #crosshair{ animation: hv-cross 2.6s ease-in-out infinite; }
 
 /* A golden shimmer sweeps the white-and-gold track chip every few seconds. */
 @keyframes hv-shimmer{
@@ -1308,65 +1227,6 @@ body.heaven #egg-player::before{
   pointer-events: none;
   background: linear-gradient(105deg, transparent, rgba(245, 200, 76, 0.35) 50%, transparent);
   animation: hv-shimmer 3.4s ease-in-out infinite;
-}
-
-/* ---- the acceleration itself (the Part-6 activation, recreated) ---- */
-
-/* The instant of activation: one white-out flash, then it never repeats. */
-@keyframes hv-flash{ 0%{ opacity: 0; } 10%{ opacity: 1; } 100%{ opacity: 0; } }
-#heaven-fx .hv-flash{
-  position: absolute; inset: 0; opacity: 0;
-  background: radial-gradient(85% 65% at 50% 42%,
-    rgba(255, 255, 255, 0.9), rgba(190, 225, 255, 0.4) 45%, transparent 75%);
-  animation: hv-flash 1.6s cubic-bezier(0.05, 0.6, 0.3, 1) both;
-}
-
-/* Time rushing past the viewer: starburst spokes scaling outward from the
-   center, two layers alternating so the outrush never pauses. The mask
-   keeps an open ring — the middle of the sky stays readable. */
-@keyframes hv-warp{
-  0%  { transform: scale(0.25) rotate(0deg); opacity: 0; }
-  25% { opacity: 0.5; }
-  100%{ transform: scale(1.45) rotate(8deg); opacity: 0; }
-}
-#heaven-fx .hv-warp{
-  position: absolute; left: 50%; top: 50%;
-  width: 160vmax; height: 160vmax; margin: -80vmax;
-  background: repeating-conic-gradient(from 0deg,
-    transparent 0deg 7.6deg, rgba(235, 225, 255, 0.16) 7.8deg, transparent 8deg 16deg);
-  -webkit-mask-image: radial-gradient(circle, transparent 0 14%, #000 34%, #000 62%, transparent 78%);
-  mask-image: radial-gradient(circle, transparent 0 14%, #000 34%, #000 62%, transparent 78%);
-  animation: hv-warp 3.6s linear infinite;
-}
-#heaven-fx .hv-warp2{
-  background: repeating-conic-gradient(from 4deg,
-    transparent 0deg 7.6deg, rgba(224, 170, 255, 0.13) 7.8deg, transparent 8deg 16deg);
-  animation-delay: 1.8s;
-}
-
-/* Meteors tearing across the accelerated sky, head-first toward the
-   lower left; the streak is drawn along its own travel axis. */
-@keyframes hv-comet{
-  0%  { transform: rotate(135deg) translateX(0); opacity: 0; }
-  6%  { opacity: 0.85; }
-  46% { transform: rotate(135deg) translateX(120vmax); opacity: 0; }
-  100%{ transform: rotate(135deg) translateX(120vmax); opacity: 0; }
-}
-#heaven-fx .hv-comet{
-  position: absolute; top: -6%; right: -10%;
-  width: 26vmax; height: 2px; border-radius: 2px;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.85) 82%, rgba(195, 232, 255, 1));
-  box-shadow: 0 0 6px rgba(200, 230, 255, 0.5);
-  animation: hv-comet 5.5s linear 0.9s infinite;
-}
-#heaven-fx .hv-comet2{ top: 26%; width: 20vmax; animation-duration: 7s; animation-delay: 3.1s; }
-#heaven-fx .hv-comet3{ top: 55%; width: 16vmax; animation-duration: 6.2s; animation-delay: 5s; }
-
-/* A third ripple in Made in Heaven's aqua-green (the cords). */
-#heaven-fx .hv-ring3{
-  border-color: rgba(150, 240, 200, 0.42);
-  box-shadow: 0 0 24px rgba(120, 230, 180, 0.20), inset 0 0 24px rgba(120, 230, 180, 0.14);
-  animation-delay: 1.25s;
 }
 
 /* The clock button's hands race — time itself is being wound forward. */

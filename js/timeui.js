@@ -71,26 +71,11 @@ export function initTimeControl() {
   function syncEgg() {
     const want = playSpeed() !== 0 && atInfinity() && !eggDismissed;
     window.__eggWanted = want; // test hook: the trigger logic, independent of the audio file
-    // Made in Heaven: while the egg is armed the whole UI ascends — white,
+    // Made in Heaven: while the egg is armed the UI CHROME ascends — white,
     // magenta and gold, every button wrapped in a violet aura (css: .heaven).
-    // The #heaven-fx overlay (time-ripple rings + rising glints) is CREATED
-    // at activation, so its entrance animations replay from zero each time.
+    // Full-screen sky overlays were tried and removed: they cluttered the
+    // view the app exists to show. The theme lives on the controls only.
     document.body.classList.toggle('heaven', want);
-    let fx = document.getElementById('heaven-fx');
-    if (want && !fx) {
-      fx = document.createElement('div');
-      fx.id = 'heaven-fx';
-      fx.setAttribute('aria-hidden', 'true');
-      fx.innerHTML =
-        '<div class="hv-warp"></div><div class="hv-warp hv-warp2"></div>' +
-        '<div class="hv-rise"></div>' +
-        '<div class="hv-ring"></div><div class="hv-ring hv-ring2"></div><div class="hv-ring hv-ring3"></div>' +
-        '<span class="hv-comet"></span><span class="hv-comet hv-comet2"></span><span class="hv-comet hv-comet3"></span>' +
-        '<div class="hv-flash"></div>';
-      document.body.appendChild(fx);
-    } else if (!want && fx) {
-      fx.remove();
-    }
     if (want && !eggAudio) {
       eggAudio = new Audio('assets/egg-crucified.mp3');
       eggAudio.loop = true;

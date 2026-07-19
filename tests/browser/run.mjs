@@ -462,19 +462,15 @@ await scenario('time: playback moves the Moon; Back to now stops and resets', as
   await page.click('#time-play');
   await page.waitForTimeout(400);
   assert(await page.evaluate(() => window.__eggWanted === true), 'egg must arm on day/s playback');
-  // Made in Heaven: the armed egg transforms the whole UI (violet aura theme
-  // + the #heaven-fx ascension overlay, created fresh on each activation).
+  // Made in Heaven: the armed egg transforms the UI chrome (violet aura
+  // theme — sky overlays were deliberately removed as clutter).
   assert(await page.evaluate(() => document.body.classList.contains('heaven')),
     'heaven theme must accompany the armed egg');
-  assert(await page.evaluate(() => !!document.getElementById('heaven-fx')),
-    'ascension overlay must mount with the armed egg');
   await page.click('#time-now');
   await page.waitForTimeout(400);
   assert(await page.evaluate(() => window.__eggWanted === false), 'egg must disarm when playback stops');
   assert(await page.evaluate(() => !document.body.classList.contains('heaven')),
     'heaven theme must lift when playback stops');
-  assert(await page.evaluate(() => !document.getElementById('heaven-fx')),
-    'ascension overlay must unmount when playback stops');
   // The slider→speed mapping across the whole track: minute at the far LEFT
   // (value 0 is a falsy number — a `|| 500` fallback once served hour-speed
   // there), hour exactly at center, the maximum at ∞.
