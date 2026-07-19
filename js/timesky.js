@@ -6,21 +6,27 @@
 //    that then occupies the same direction over their horizon);
 //  · time-lapse playback streams the diurnal motion live, every frame,
 //    stars wheeling across the held line of sight.
-// Anchoring needs the observer's location (the same on-device cache the
-// horizon layer fills); until it is known, time changes move the Solar
-// System markers only — exactly the old behavior.
+// Anchoring uses the observer's location when known (the same on-device
+// cache the horizon layer fills). Without it, an APPROXIMATE observer
+// stands in — longitude from the device's UTC offset (15° per hour), a
+// mid-northern latitude — so the survey still visibly turns for everyone;
+// only the exact tilt of the motion depends on the guess. The horizon
+// overlay itself still requires the real location; this fallback never
+// draws anything, it only steers the camera.
 
 import { onTimeChange, appNow, playSpeed } from './clock.js';
 import { raDecToAltAz, altAzToRaDec } from './astro.js';
 import { cachedObserver } from './observer.js';
+
+const approxObserver = () => ({ lat: 35, lon: -(new Date().getTimezoneOffset() / 60) * 15 });
 
 export function initTimeSky(aladin) {
   let lastT = appNow().getTime();
   let raf = null;
 
   function retarget(newT) {
-    const obs = cachedObserver();
-    if (!obs || Math.abs(newT - lastT) < 250) { lastT = newT; return; }
+    const obs = cachedObserver() || approxObserver();
+    if (Math.abs(newT - lastT) < 250) { lastT = newT; return; }
     let ra0, dec0;
     try { [ra0, dec0] = aladin.getRaDec(); } catch (err) { lastT = newT; return; }
     // The direction the user is looking, in their sky, at the OLD time —

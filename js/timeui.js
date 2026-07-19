@@ -27,6 +27,38 @@ export function initTimeControl() {
 
   let selectedMult = 3600; // an hour per second: the sweet spot for sky motion
 
+  // ---- the Easter egg ----
+  // Play the sky at a DAY per second and the app plays "Crucified" by
+  // Army of Lovers, via YouTube's privacy-enhanced embed (the only honest
+  // way to play a copyrighted song here: their player, their license).
+  // Nothing from YouTube loads until the moment it triggers; ✕ keeps it
+  // away until playback stops. Disclosed in the About panel's privacy note.
+  let eggEl = null;
+  let eggDismissed = false;
+  function syncEgg() {
+    const want = playSpeed() !== 0 && selectedMult === 86400 && !eggDismissed;
+    if (want && !eggEl) {
+      eggEl = document.createElement('div');
+      eggEl.id = 'egg-player';
+      eggEl.className = 'glass-panel';
+      eggEl.innerHTML =
+        '<button id="egg-close" class="glass-btn small" aria-label="Stop the music">' +
+        '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="7" y1="7" x2="17" y2="17"/><line x1="17" y1="7" x2="7" y2="17"/></svg>' +
+        '</button>' +
+        '<iframe width="288" height="162" src="https://www.youtube-nocookie.com/embed/EdooYar_A6g?autoplay=1&playsinline=1" ' +
+        'title="Army of Lovers — Crucified" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>';
+      document.body.appendChild(eggEl);
+      eggEl.querySelector('#egg-close').addEventListener('click', () => {
+        eggDismissed = true;
+        syncEgg();
+      });
+    } else if (!want && eggEl) {
+      eggEl.remove();
+      eggEl = null;
+    }
+    if (playSpeed() === 0) eggDismissed = false; // a fresh play can summon it again
+  }
+
   function refresh() {
     const shifted = isTimeShifted();
     const playing = playSpeed() !== 0;
@@ -41,6 +73,7 @@ export function initTimeControl() {
         hour: '2-digit', minute: '2-digit'
       });
     }
+    syncEgg();
   }
   onTimeChange(refresh);
 
