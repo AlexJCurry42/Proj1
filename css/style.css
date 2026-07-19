@@ -760,6 +760,20 @@ input[type="range"]::-moz-range-thumb{
 }
 .toast.toast-error{ border-color: rgba(255, 69, 58, 0.5); color: var(--text-primary); }
 .toast.toast-info{ border-color: var(--hairline); }
+/* The ✕ sits inline with the text, quiet until touched — iOS-notification
+   style, not a bolted-on button. */
+.toast{ display: flex; align-items: flex-start; gap: 8px; }
+.toast .toast-msg{ flex: 1; min-width: 0; }
+.toast .toast-close{
+  flex: none; width: 20px; height: 20px; margin: -1px -4px 0 0;
+  display: grid; place-items: center;
+  border: 0; border-radius: 50%; padding: 0;
+  background: rgba(255, 255, 255, 0.09);
+  color: var(--text-tertiary); cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.toast .toast-close:hover{ background: rgba(255, 255, 255, 0.18); color: var(--text-primary); }
+.toast .toast-close .icon{ width: 10px; height: 10px; stroke-width: 2.4; }
 @keyframes toast-in{ from{ opacity: 0; transform: translateY(10px) scale(0.97); } to{ opacity: 1; transform: none; } }
 .toast.toast-out{ animation: toast-out 0.28s ease forwards; }
 @keyframes toast-out{ to{ opacity: 0; transform: translateY(8px) scale(0.97); } }

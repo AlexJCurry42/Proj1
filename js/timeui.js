@@ -58,6 +58,7 @@ export function initTimeControl() {
     if (want && !eggAudio) {
       eggAudio = new Audio('assets/egg-crucified.mp3');
       eggAudio.loop = true;
+      eggAudio.volume = 0.5; // the track opens hot: halved by request
       const started = eggAudio.play();
       eggEl = document.createElement('div');
       eggEl.id = 'egg-player';
