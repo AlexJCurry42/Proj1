@@ -798,6 +798,520 @@
         "colorB": "#55684a"
       },
       "blurb": "TESS's first Earth-sized planet in a habitable zone, 100 light-years away."
+    },
+    {
+      "match": [
+        "ring nebula",
+        "m57",
+        "m 57",
+        "ngc 6720"
+      ],
+      "title": "Ring Nebula",
+      "photo": {
+        "file": "Hubble reveals the Ring Nebula’s true shape.jpg",
+        "kind": "photo",
+        "credit": "NASA/ESA Hubble (C.R. O'Dell et al.)"
+      },
+      "blurb": "A dying Sun-like star's cast-off atmosphere glowing as a luminous ring 2,000 light-years away — a preview of our own Sun's fate.",
+      "source": "NASA/ESA Hubble (2013)"
+    },
+    {
+      "match": [
+        "helix nebula",
+        "ngc 7293"
+      ],
+      "title": "Helix Nebula",
+      "photo": {
+        "file": "Helix Nebula.jpg",
+        "kind": "photo",
+        "credit": "NASA/NOAO/ESA, Hubble Helix Nebula Team"
+      },
+      "blurb": "One of the nearest planetary nebulae — the 'Eye of God' — a dying star's shells of gas seen almost pole-on, 650 light-years away.",
+      "source": "NASA/NOAO/ESA Hubble–Kitt Peak composite"
+    },
+    {
+      "match": [
+        "sombrero galaxy",
+        "m104",
+        "m 104",
+        "ngc 4594"
+      ],
+      "title": "Sombrero Galaxy",
+      "photo": {
+        "file": "M104 ngc4594 sombrero galaxy hi-res.jpg",
+        "kind": "photo",
+        "credit": "NASA/ESA Hubble Heritage Team (STScI/AURA)"
+      },
+      "blurb": "A nearly edge-on spiral with a brilliant bulge and a dramatic dust lane brim, home to a billion-solar-mass central black hole.",
+      "source": "NASA/ESA Hubble mosaic (2003)"
+    },
+    {
+      "match": [
+        "pleiades",
+        "m45",
+        "m 45",
+        "seven sisters"
+      ],
+      "title": "Pleiades",
+      "photo": {
+        "file": "Pleiades large.jpg",
+        "kind": "photo",
+        "credit": "NASA/ESA/AURA/Caltech (Palomar Observatory)"
+      },
+      "blurb": "The Seven Sisters: a young star cluster drifting through a chance dust cloud that scatters their blue light into wispy veils.",
+      "source": "Palomar Observatory sky survey plate"
+    },
+    {
+      "match": [
+        "lagoon nebula",
+        "m8",
+        "m 8",
+        "ngc 6523"
+      ],
+      "title": "Lagoon Nebula",
+      "photo": {
+        "file": "Lagoon Nebula.jpg",
+        "kind": "photo",
+        "credit": "ESO (Danish 1.5-m telescope, La Silla)"
+      },
+      "blurb": "A giant stellar nursery in Sagittarius, visible to the naked eye — glowing hydrogen carved by winds from its newborn stars.",
+      "source": "ESO La Silla Observatory"
+    },
+    {
+      "match": [
+        "trifid nebula",
+        "m20",
+        "m 20",
+        "ngc 6514"
+      ],
+      "title": "Trifid Nebula",
+      "photo": {
+        "file": "Trifid Nebula.jpg",
+        "kind": "photo",
+        "credit": "ESO"
+      },
+      "blurb": "Three nebulae in one: pink emission, blue reflection, and the dark dust lanes that split it into three lobes and give it its name.",
+      "source": "ESO La Silla Observatory"
+    },
+    {
+      "match": [
+        "omega / swan nebula",
+        "omega nebula",
+        "swan nebula",
+        "m17",
+        "m 17",
+        "ngc 6618"
+      ],
+      "title": "Omega Nebula",
+      "photo": {
+        "file": "Omega Nebula.jpg",
+        "kind": "photo",
+        "credit": "ESO (3.6-m telescope, La Silla)"
+      },
+      "blurb": "One of the Milky Way's most active star factories, its glowing checkmark of gas lit by a hidden cluster of young massive stars.",
+      "source": "ESO La Silla Observatory"
+    },
+    {
+      "match": [
+        "dumbbell nebula",
+        "m27",
+        "m 27",
+        "ngc 6853"
+      ],
+      "title": "Dumbbell Nebula",
+      "photo": {
+        "file": "Messier27.jpg",
+        "kind": "photo",
+        "credit": "WIYN/NOAO/NSF"
+      },
+      "blurb": "The first planetary nebula ever discovered (1764) — twin lobes of gas shed by a dying star, 1,360 light-years away in Vulpecula.",
+      "source": "WIYN 3.5-m telescope, Kitt Peak"
+    },
+    {
+      "match": [
+        "cat's eye nebula",
+        "ngc 6543"
+      ],
+      "title": "Cat's Eye Nebula",
+      "photo": {
+        "file": "Cat's Eye Nebula - NGC 6543 - NASA ESA Hubble Space Telescope (52479198918).png",
+        "kind": "photo",
+        "credit": "NASA/ESA Hubble"
+      },
+      "blurb": "One of the most intricate planetary nebulae known — eleven concentric shells, jets and knots around a dying star in Draco.",
+      "source": "NASA/ESA Hubble"
+    },
+    {
+      "match": [
+        "eskimo nebula",
+        "clown face nebula",
+        "ngc 2392"
+      ],
+      "title": "Eskimo Nebula",
+      "photo": {
+        "file": "Ngc2392.jpg",
+        "kind": "photo",
+        "credit": "NASA/ESA/STScI (Hubble)"
+      },
+      "blurb": "A dying star wrapped in a 'parka' of comet-shaped filaments — the inner face is gas blown outward in the last 10,000 years.",
+      "source": "NASA/ESA Hubble (2000)"
+    },
+    {
+      "match": [
+        "horsehead nebula region",
+        "horsehead nebula",
+        "ic 434",
+        "ic434",
+        "b33",
+        "barnard 33"
+      ],
+      "title": "Horsehead Nebula",
+      "photo": {
+        "file": "Horsehead-Hubble.jpg",
+        "kind": "photo",
+        "credit": "NASA/ESA Hubble Heritage Team"
+      },
+      "blurb": "The sky's most famous dark nebula: a horse-head pillar of cold dust silhouetted against glowing hydrogen in Orion's Belt.",
+      "source": "NASA/ESA Hubble infrared view (2013)"
+    },
+    {
+      "match": [
+        "carina nebula",
+        "ngc 3372",
+        "eta carinae nebula",
+        "great carina nebula"
+      ],
+      "title": "Carina Nebula",
+      "photo": {
+        "file": "Carina Nebula.jpg",
+        "kind": "photo",
+        "credit": "ESO"
+      },
+      "blurb": "A southern star-forming giant four times larger than Orion, home to the unstable supergiant Eta Carinae — a supernova in waiting.",
+      "source": "ESO La Silla Observatory"
+    },
+    {
+      "match": [
+        "veil nebula",
+        "ngc 6960",
+        "western veil",
+        "witch's broom nebula"
+      ],
+      "title": "Veil Nebula",
+      "photo": {
+        "file": "Veil Nebula - NGC6960.jpg",
+        "kind": "photo",
+        "credit": "Hunter Wilson (Hewholooks), CC BY-SA 3.0"
+      },
+      "blurb": "Delicate glowing filaments — the shredded remains of a star that exploded some 10–20,000 years ago, still expanding across Cygnus.",
+      "source": "Amateur astrophotograph"
+    },
+    {
+      "match": [
+        "rosette nebula",
+        "ngc 2237",
+        "ngc 2244",
+        "rosette cluster"
+      ],
+      "title": "Rosette Nebula",
+      "photo": {
+        "file": "Rosette Nebula (heic2505f).jpg",
+        "kind": "photo",
+        "credit": "NASA/ESA Hubble"
+      },
+      "blurb": "A vast cosmic rose in Monoceros: the young cluster NGC 2244 has hollowed out the heart of the cloud that formed it.",
+      "source": "NASA/ESA Hubble"
+    },
+    {
+      "match": [
+        "north america nebula",
+        "ngc 7000",
+        "pelican nebula",
+        "ic 5070"
+      ],
+      "title": "North America Nebula",
+      "photo": {
+        "file": "NGC 7000- The North America Nebula and the Pelican Nebula (noao-n7000mosblock).jpg",
+        "kind": "photo",
+        "credit": "NOAO/AURA/NSF"
+      },
+      "blurb": "An emission cloud shaped uncannily like a continent, beside its companion the Pelican — both lit by hidden hot young stars in Cygnus.",
+      "source": "NOAO Kitt Peak mosaic"
+    },
+    {
+      "match": [
+        "tarantula nebula",
+        "ngc 2070",
+        "30 doradus",
+        "30 dor"
+      ],
+      "title": "Tarantula Nebula",
+      "photo": {
+        "file": "Tarantula Nebula TRAPPIST.jpg",
+        "kind": "photo",
+        "credit": "TRAPPIST/E. Jehin/ESO"
+      },
+      "blurb": "The most violent star-forming region in the Local Group, in the Large Magellanic Cloud — if it sat where Orion is, it would cast shadows.",
+      "source": "ESO TRAPPIST-South first light (2010)"
+    },
+    {
+      "match": [
+        "triangulum galaxy",
+        "m33",
+        "m 33",
+        "ngc 598"
+      ],
+      "title": "Triangulum Galaxy",
+      "photo": {
+        "file": "Triangulum Galaxy Messier 33 (M33) (2019-01-4305).png",
+        "kind": "photo",
+        "credit": "NASA/ESA Hubble (M. Durbin, J. Dalcanton, B.F. Williams)"
+      },
+      "blurb": "The third-largest galaxy of our Local Group, a floculent spiral seen nearly face-on — Hubble resolved 25 million of its stars.",
+      "source": "NASA/ESA Hubble mosaic (2019)"
+    },
+    {
+      "match": [
+        "pinwheel galaxy",
+        "m101",
+        "m 101",
+        "ngc 5457"
+      ],
+      "title": "Pinwheel Galaxy",
+      "photo": {
+        "file": "M101 hires STScI-PRC2006-10a.jpg",
+        "kind": "photo",
+        "credit": "NASA/ESA Hubble (K. Kuntz et al.)"
+      },
+      "blurb": "A grand face-on spiral nearly twice the Milky Way's diameter — this Hubble portrait was stitched from ten years of exposures.",
+      "source": "NASA/ESA Hubble mosaic (2006)"
+    },
+    {
+      "match": [
+        "butterfly nebula",
+        "bug nebula",
+        "ngc 6302"
+      ],
+      "title": "Butterfly Nebula",
+      "photo": {
+        "file": "NGC 6302 Hubble 2009.full.jpg",
+        "kind": "photo",
+        "credit": "NASA/ESA Hubble SM4 ERO Team"
+      },
+      "blurb": "Wings of gas hotter than 20,000 °C torn from one of the hottest dying stars known — 250,000 °C at the nebula's hidden heart.",
+      "source": "NASA/ESA Hubble WFC3 (2009)"
+    },
+    {
+      "match": [
+        "bubble nebula",
+        "ngc 7635"
+      ],
+      "title": "Bubble Nebula",
+      "photo": {
+        "file": "The Bubble Nebula - NGC 7635 - Heic1608a.jpg",
+        "kind": "photo",
+        "credit": "NASA/ESA Hubble"
+      },
+      "blurb": "A seven-light-year soap bubble blown by the ferocious wind of a star 45 times the Sun's mass — Hubble's 26th anniversary image.",
+      "source": "NASA/ESA Hubble (2016)"
+    },
+    {
+      "match": [
+        "centaurus a",
+        "ngc 5128",
+        "cen a"
+      ],
+      "title": "Centaurus A",
+      "photo": {
+        "file": "ESO Centaurus A LABOCA.jpg",
+        "kind": "photo",
+        "credit": "ESO/WFI; MPIfR/ESO/APEX; NASA/CXC/CfA (composite)"
+      },
+      "blurb": "The nearest active galaxy: an elliptical that swallowed a spiral, its central black hole firing jets seen here in submillimetre and X-ray light.",
+      "source": "ESO multi-wavelength composite"
+    },
+    {
+      "match": [
+        "antennae galaxies",
+        "ngc 4038",
+        "ngc 4039"
+      ],
+      "title": "Antennae Galaxies",
+      "photo": {
+        "file": "Antennae Galaxies reloaded.jpg",
+        "kind": "photo",
+        "credit": "NASA/ESA Hubble"
+      },
+      "blurb": "Two spirals caught mid-collision, igniting billions of new stars — a preview of the Milky Way's eventual merger with Andromeda.",
+      "source": "NASA/ESA Hubble (2013)"
+    },
+    {
+      "match": [
+        "omega centauri",
+        "ngc 5139",
+        "omega cen"
+      ],
+      "title": "Omega Centauri",
+      "photo": {
+        "file": "VST image of the giant globular star cluster Omega Centauri.jpg",
+        "kind": "photo",
+        "credit": "ESO/INAF-VST/OmegaCAM, CC BY 4.0"
+      },
+      "blurb": "The Milky Way's largest globular cluster — ten million stars, possibly the stripped core of a dwarf galaxy we absorbed long ago.",
+      "source": "ESO VLT Survey Telescope"
+    },
+    {
+      "match": [
+        "47 tucanae",
+        "47 tuc",
+        "ngc 104"
+      ],
+      "title": "47 Tucanae",
+      "photo": {
+        "file": "The globular star cluster 47 Tucanae.jpg",
+        "kind": "photo",
+        "credit": "ESO/M.-R. Cioni/VISTA Magellanic Cloud survey, CC BY 4.0"
+      },
+      "blurb": "The southern sky's second-brightest globular cluster: up to a million ancient stars packed into a ball 120 light-years across.",
+      "source": "ESO VISTA infrared survey"
+    },
+    {
+      "match": [
+        "hercules cluster",
+        "great hercules cluster",
+        "m13",
+        "m 13",
+        "ngc 6205"
+      ],
+      "title": "Great Hercules Cluster",
+      "photo": {
+        "file": "Messier 13 - The Hercules Globular Cluster.jpg",
+        "kind": "photo",
+        "credit": "Giuseppe Donatiello (public domain dedication)"
+      },
+      "blurb": "The northern sky's showpiece globular — several hundred thousand stars, target of the 1974 Arecibo message to any listeners there.",
+      "source": "Amateur astrophotograph"
+    },
+    {
+      "match": [
+        "bode's galaxy",
+        "m81",
+        "m 81",
+        "ngc 3031"
+      ],
+      "title": "Bode's Galaxy",
+      "photo": {
+        "file": "M81.jpg",
+        "kind": "photo",
+        "credit": "NASA/ESA Hubble"
+      },
+      "blurb": "A textbook grand-design spiral 12 million light-years away, locked in a gravitational tug-of-war with its neighbor the Cigar Galaxy.",
+      "source": "NASA/ESA Hubble (2007)"
+    },
+    {
+      "match": [
+        "cigar galaxy",
+        "m82",
+        "m 82",
+        "ngc 3034"
+      ],
+      "title": "Cigar Galaxy",
+      "photo": {
+        "file": "M82 HST ACS 2006-14-a-large web.jpg",
+        "kind": "photo",
+        "credit": "NASA/ESA Hubble Heritage Team"
+      },
+      "blurb": "A starburst galaxy forming stars ten times faster than the Milky Way, venting towers of glowing hydrogen from its core.",
+      "source": "NASA/ESA Hubble mosaic (2006)"
+    },
+    {
+      "match": [
+        "southern pinwheel galaxy",
+        "m83",
+        "m 83",
+        "ngc 5236"
+      ],
+      "title": "Southern Pinwheel Galaxy",
+      "photo": {
+        "file": "M83 - Southern Pinwheel.jpg",
+        "kind": "photo",
+        "credit": "ESO, CC BY 4.0"
+      },
+      "blurb": "A barred spiral rich in supernovae — six observed in the last century, more than almost any other galaxy.",
+      "source": "ESO La Silla Observatory"
+    },
+    {
+      "match": [
+        "black eye galaxy",
+        "m64",
+        "m 64",
+        "ngc 4826"
+      ],
+      "title": "Black Eye Galaxy",
+      "photo": {
+        "file": "Black eye galaxy.png",
+        "kind": "photo",
+        "credit": "NASA and the Hubble Heritage Team (AURA/STScI)"
+      },
+      "blurb": "A smouldering dark dust band across a bright core — and gas in its outskirts orbiting backwards, relic of an ancient merger.",
+      "source": "NASA/ESA Hubble (2004)"
+    },
+    {
+      "match": [
+        "sculptor galaxy",
+        "ngc 253",
+        "silver coin galaxy"
+      ],
+      "title": "Sculptor Galaxy",
+      "photo": {
+        "file": "Sculptor Galaxy, NGC 253 (noao-ngc-253).jpg",
+        "kind": "photo",
+        "credit": "NOAO/AURA/NSF"
+      },
+      "blurb": "The dusty 'Silver Coin' — one of the brightest galaxies beyond the Local Group and a furious hidden starburst behind its dust.",
+      "source": "NOAO Kitt Peak"
+    },
+    {
+      "match": [
+        "stephan's quintet",
+        "stephans quintet"
+      ],
+      "title": "Stephan's Quintet",
+      "photo": {
+        "file": "Stephan's Quintet Hubble 2009.full.jpg",
+        "kind": "photo",
+        "credit": "NASA/ESA Hubble"
+      },
+      "blurb": "A visual grouping of five galaxies, four locked in a slow gravitational dance of collisions and tidal tails.",
+      "source": "NASA/ESA Hubble WFC3 (2009)"
+    },
+    {
+      "match": [
+        "cartwheel galaxy",
+        "eso 350-40"
+      ],
+      "title": "Cartwheel Galaxy",
+      "photo": {
+        "file": "Cartwheel Galaxy.jpg",
+        "kind": "photo",
+        "credit": "ESA/Hubble & NASA"
+      },
+      "blurb": "A bullseye 500 million light-years away: a smaller galaxy punched straight through a spiral, sending a ring of starbirth rippling outward.",
+      "source": "NASA/ESA Hubble"
+    },
+    {
+      "match": [
+        "flame nebula",
+        "ngc 2024"
+      ],
+      "title": "Flame Nebula",
+      "photo": {
+        "file": "The hidden fires of the Flame Nebula.jpg",
+        "kind": "photo",
+        "credit": "ESO/J. Emerson/VISTA, CC BY 4.0"
+      },
+      "blurb": "Alnitak's ultraviolet glare sets this Orion cloud alight; in infrared, VISTA sees straight through the dark dust lane that splits it.",
+      "source": "ESO VISTA infrared view"
     }
   ]
 }

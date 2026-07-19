@@ -29,7 +29,15 @@ function normalizeName(s) {
 
 export async function findRenderFor(name, aliases = [], typeLabel = '') {
   const { entries } = await loadRenders();
-  const keys = [name, ...(aliases || [])].map(normalizeName).filter(Boolean);
+  // Layer names arrive compound — "NGC 7293 — Helix Nebula" from the full
+  // NGC catalog, "Ring Nebula (M57)" style elsewhere — so every part is
+  // offered as its own key alongside the whole string.
+  const raw = [name, ...(aliases || [])].flatMap((s) => {
+    const t = String(s || '');
+    const paren = t.match(/\(([^)]+)\)/);
+    return [t, ...t.split('—'), t.replace(/\s*\([^)]*\)/g, ''), ...(paren ? [paren[1]] : [])];
+  });
+  const keys = [...new Set(raw.map(normalizeName).filter(Boolean))];
   for (const e of entries) {
     if (e.match.some(m => keys.includes(m))) return e;
   }
