@@ -125,22 +125,14 @@ function glassTap(c, t0, f = 1180, level = 1) {
 // ---- the sound set ----
 
 /** Flight departure: a smooth, non-resonant swell of air that rises with
- *  the arc and settles before landing. */
+ *  the arc and settles before landing. Arrival is deliberately SILENT —
+ *  a touchdown chime tested as annoying, so the swell simply fades out. */
 export function flightStart(flightMs = 2500) {
   const c = gate();
   if (!c) return;
   const t = c.currentTime;
   const dur = Math.min(1.8, Math.max(0.8, flightMs / 1000 * 0.5));
   airNoise(c, t, { dur, type: 'lowpass', f0: 260, f1: 1250, q: 0.5, peak: 0.5, a: dur * 0.4, decayAt: t + dur * 0.55, tau: dur * 0.22 });
-}
-
-/** Arrival: a soft low touch-down plus one muted glass tap — no melody. */
-export function flightLand() {
-  const c = gate();
-  if (!c) return;
-  const t = c.currentTime;
-  struck(c, t, { f: 122, peak: 0.3, tau: 0.09, lp: 320 });
-  glassTap(c, t + 0.02, 840, 1);
 }
 
 /** Wavelength change: a short, smooth glide of air — up toward gamma,

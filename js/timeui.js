@@ -39,10 +39,16 @@ export function initTimeControl() {
   // rotation — and dragging mid-playback retunes the speed live.
   const MIN_MULT = 60, MID_MULT = 3600, MAX_MULT = 51840;
   const multFromSlider = () => {
-    const v = (Number(speedSlider?.value) || 500) / 1000;
-    return v <= 0.5
+    // NOTE: the leftmost position is value 0 — a FALSY number. An earlier
+    // `|| 500` fallback swallowed it and served the center (hour/s) speed at
+    // the minute end, so the scale ran fast-slow-fast across the track.
+    const raw = Number(speedSlider?.value);
+    const v = (Number.isFinite(raw) ? raw : 500) / 1000;
+    const mult = v <= 0.5
       ? MIN_MULT * Math.pow(MID_MULT / MIN_MULT, v / 0.5)
       : MID_MULT * Math.pow(MAX_MULT / MID_MULT, (v - 0.5) / 0.5);
+    window.__speedMult = mult; // test hook: the slider→speed mapping
+    return mult;
   };
   const atInfinity = () => speedSlider && Number(speedSlider.value) >= 1000;
   let selectedMult = 3600;
@@ -71,7 +77,11 @@ export function initTimeControl() {
     if (want && !eggAudio) {
       eggAudio = new Audio('assets/egg-crucified.mp3');
       eggAudio.loop = true;
-      eggAudio.volume = 0.5; // the track opens hot: halved by request
+      // Loudness and onset live in the FILE, not here: the track carries a
+      // baked-in 4 s fade-in and a −6 dB master trim (iOS ignores element
+      // volume, so JS-side ramps would silently not work there). The
+      // element volume stays where it always was.
+      eggAudio.volume = 0.5;
       const started = eggAudio.play();
       eggEl = document.createElement('div');
       eggEl.id = 'egg-player';

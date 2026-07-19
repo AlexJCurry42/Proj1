@@ -32,7 +32,7 @@ export const SURVEYS = [
 
 export const STOP = 100;
 export const MAX_VALUE = (SURVEYS.length - 1) * STOP;
-export const DEFAULT_VALUE = SURVEYS.findIndex(s => s.name === 'DSS2') * STOP;
+export const DEFAULT_VALUE = SURVEYS.findIndex(s => s.name === '2MASS') * STOP;
 
 const PAD = 15; // px of thumb-travel inset at each end of the track
 const smoothstep = (t) => t * t * (3 - 2 * t);

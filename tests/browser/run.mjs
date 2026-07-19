@@ -266,6 +266,9 @@ await scenario('flight: continuous arc, exact landing, survey settles', async ()
     requestAnimationFrame(rec);
   });
   await page.click('#cool-btn');
+  // The caption is deliberately delayed until touchdown + reveal — wait for
+  // it, then use it to identify which destination the random draw picked.
+  await page.waitForSelector('.toast', { timeout: 20000 });
   const toast = await page.textContent('.toast').catch(() => null);
   const tours = await page.evaluate(async () => (await (await fetch('data/tours.json')).json()).destinations);
   const dest = tours.find((t) => t.name === (toast || '').split(' — ')[0]);
@@ -378,14 +381,23 @@ await scenario('spectrum: a multi-stop tap is one direct fade, no intermediate s
     window.__layerCalls = [];
     for (const m of ['setBaseImageLayer', 'setOverlayImageLayer']) {
       const om = a[m].bind(a);
-      a[m] = (...la) => { window.__layerCalls.push(String(la[0]?.id || la[0])); return om(...la); };
+      a[m] = (...la) => {
+        // Count only calls issued by OUR spectrum logic. The engine itself
+        // re-installs its hardcoded DSS2 default whenever a survey fetch
+        // fails (an offline / sandboxed run flails that way on a loop) —
+        // that resilience noise is not what this scenario asserts about.
+        if (new Error().stack.includes('/js/spectrum.js')) {
+          window.__layerCalls.push(String(la[0]?.id || la[0]));
+        }
+        return om(...la);
+      };
     }
   });
   const track = await page.locator('#spectrum-track').boundingBox();
-  await page.mouse.click(track.x + track.width / 2, track.y + 14); // top stop: Fermi, 3 stops away
+  await page.mouse.click(track.x + track.width / 2, track.y + 14); // top stop: Fermi, 4 stops from the 2MASS boot survey
   await page.waitForTimeout(1600);
   const calls = await page.evaluate(() => window.__layerCalls);
-  assert(!calls.some((c) => /SDSS|PanSTARRS/.test(c)), `intermediate surveys touched: ${calls.join(', ')}`);
+  assert(!calls.some((c) => /SDSS|PanSTARRS|DSS2/.test(c)), `intermediate surveys touched: ${calls.join(', ')}`);
   const survey = await page.evaluate(() => new URLSearchParams(location.hash.slice(1)).get('survey'));
   assert(survey === 'P/Fermi/color', `should settle on Fermi, got ${survey}`);
   assert(page.__errors.length === 0, `page errors: ${page.__errors.join('; ')}`);
@@ -453,6 +465,18 @@ await scenario('time: playback moves the Moon; Back to now stops and resets', as
   assert(await page.evaluate(() => window.__eggWanted === false), 'egg must disarm when playback stops');
   assert(await page.evaluate(() => !document.body.classList.contains('heaven')),
     'heaven theme must lift when playback stops');
+  // The slider→speed mapping across the whole track: minute at the far LEFT
+  // (value 0 is a falsy number — a `|| 500` fallback once served hour-speed
+  // there), hour exactly at center, the maximum at ∞.
+  const multAt = (val) => page.evaluate((v) => {
+    const s = document.getElementById('time-speed');
+    s.value = String(v);
+    s.dispatchEvent(new Event('input', { bubbles: true }));
+    return window.__speedMult;
+  }, val);
+  assert(Math.abs(await multAt(0) - 60) < 0.01, 'far left must map to one minute per second');
+  assert(Math.abs(await multAt(500) - 3600) < 0.01, 'center must map to one hour per second');
+  assert(Math.abs(await multAt(1000) - 51840) < 0.01, '∞ must map to the maximum rate');
   assert(page.__errors.length === 0, `page errors: ${page.__errors.join('; ')}`);
   await ctx.close();
 });

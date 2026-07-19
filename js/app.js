@@ -101,9 +101,16 @@ async function main() {
   const linkedIdx = SURVEYS.findIndex(s => s.id === linkedView?.survey);
   const legacyIdx = SURVEYS.findIndex(s => s.id === readPref('survey', null));
   const prefSpectrum = readPref('spectrum', null);
+  // 2MASS (near-infrared) is the default survey. Existing installs carry a
+  // saved spectrum position from the DSS2-default era, so the new default is
+  // applied ONCE via a migration flag — after that, the user's own choice
+  // persists exactly as before. A shared view link still wins outright.
+  const migrated2mass = readPref('default2mass', false) === true;
+  if (!migrated2mass) writePref('default2mass', true);
   const initialSpectrum = linkedIdx >= 0 ? linkedIdx * STOP
-    : (typeof prefSpectrum === 'number' ? Math.max(0, Math.min(MAX_VALUE, prefSpectrum))
-      : (legacyIdx >= 0 ? legacyIdx * STOP : DEFAULT_VALUE));
+    : !migrated2mass ? DEFAULT_VALUE
+      : typeof prefSpectrum === 'number' ? Math.max(0, Math.min(MAX_VALUE, prefSpectrum))
+        : legacyIdx >= 0 ? legacyIdx * STOP : DEFAULT_VALUE;
   const startSurvey = SURVEYS[Math.round(initialSpectrum / STOP)].id;
 
   // View mode: 'globe' looks AT the celestial sphere (orthographic, ≤180°);

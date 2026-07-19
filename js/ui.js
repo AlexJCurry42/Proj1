@@ -5,7 +5,7 @@ import { fetchJSON } from './net.js';
 import { SHELL_VERSION } from './version.js';
 import { constellationAt } from './constellation.js';
 import { readPref, writePref } from './prefs.js';
-import { flightStart, flightLand, panelOpen, panelClose } from './sound.js';
+import { flightStart, panelOpen, panelClose } from './sound.js';
 import { attachRenderIfFamous } from './render3d.js';
 import { riseSet, raDecToVec, vecToRaDec, angularSepDeg } from './astro.js';
 import { cachedObserver } from './observer.js';
@@ -600,9 +600,15 @@ export async function initTours(aladin, spectrum) {
   btn.addEventListener('click', async () => {
     const t = draw();
     const token = ++flightToken;
-    showToast(`${t.name} — ${t.caption}`, 'info', 12000);
-    // This toast IS the announcement — tell the crosshair card to stand
-    // down for this one arrival, or the landing pops the same text twice.
+    // The caption is withheld until the object is actually on screen: it
+    // appears after touchdown, once the wavelength reveal has settled.
+    // (A canceled or superseded flight never shows its caption at all.)
+    const announce = () => {
+      if (token === flightToken) showToast(`${t.name} — ${t.caption}`, 'info', 12000);
+    };
+    // Arm the crosshair card's stand-down NOW — it identifies the
+    // destination at touchdown, before the delayed caption exists, and the
+    // same text popping twice was the original bug.
     window.dispatchEvent(new CustomEvent('dsa:destination-announced', { detail: { ra: t.ra, dec: t.dec } }));
 
     if (!motionOK()) {
@@ -612,7 +618,7 @@ export async function initTours(aladin, spectrum) {
         if (v != null) spectrum.setValue(v, { settle: true });
       }
       aladin.setFoV(t.fov_deg);
-      flightLand(); // no animation, but the arrival still lands
+      announce(); // no animation to wait out
       return;
     }
 
@@ -642,7 +648,11 @@ export async function initTours(aladin, spectrum) {
       landed = await flyPath(t.ra, t.dec, t.fov_deg, token, (u01, ms) => {
         if (u01 >= 0.55) startFade(ms * (1 - u01));
       });
-      if (landed) { startFade(900); flightLand(); } // arrival chime at touchdown
+      if (landed) {
+        startFade(900);
+        // The reveal fade runs ~1.4 s past touchdown; the caption follows it.
+        setTimeout(announce, 1500);
+      }
     } finally {
       if (token === flightToken) {
         // Canceled before any fade could settle: re-lock the zoom limits
