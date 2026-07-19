@@ -423,6 +423,10 @@ await scenario('spectrum: a multi-stop tap is one direct fade, no intermediate s
       };
     }
   });
+  // The rail starts as its collapsed pill now — expand it first, as a user
+  // would, before aiming at the track.
+  await page.click('#spectrum-collapse');
+  await page.waitForTimeout(500);
   const track = await page.locator('#spectrum-track').boundingBox();
   await page.mouse.click(track.x + track.width / 2, track.y + 14); // top stop: Fermi, 4 stops from the 2MASS boot survey
   await page.waitForTimeout(1600);
