@@ -266,12 +266,17 @@ await scenario('flight: continuous arc, exact landing, survey settles', async ()
     requestAnimationFrame(rec);
   });
   await page.click('#cool-btn');
-  // The caption is deliberately delayed until touchdown + reveal — wait for
-  // it, then use it to identify which destination the random draw picked.
-  await page.waitForSelector('.toast', { timeout: 20000 });
-  const toast = await page.textContent('.toast').catch(() => null);
+  // The caption is deliberately delayed until touchdown + reveal — and other
+  // toasts can precede it (the one-time DSS2 artifact note fires on the same
+  // landing), so find the toast that names a tour destination rather than
+  // trusting whichever toast happens to be first.
   const tours = await page.evaluate(async () => (await (await fetch('data/tours.json')).json()).destinations);
-  const dest = tours.find((t) => t.name === (toast || '').split(' — ')[0]);
+  const prefixes = tours.map((t) => `${t.name} — `);
+  await page.waitForFunction((ps) =>
+    [...document.querySelectorAll('.toast')].some((el) => ps.some((p) => (el.textContent || '').includes(p))),
+  prefixes, { timeout: 20000 });
+  const toastTexts = await page.evaluate(() => [...document.querySelectorAll('.toast')].map((el) => el.textContent || ''));
+  const dest = tours.find((t) => toastTexts.some((x) => x.includes(`${t.name} — `)));
   assert(dest, 'destination not identified from toast');
   // Settle is condition-, not clock-based: the longest flights (4.2 s) plus
   // the survey fade tail and the hash debounce legitimately take ~5 s even
