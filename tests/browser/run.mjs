@@ -445,9 +445,14 @@ await scenario('time: playback moves the Moon; Back to now stops and resets', as
   await page.click('#time-play');
   await page.waitForTimeout(400);
   assert(await page.evaluate(() => window.__eggWanted === true), 'egg must arm on day/s playback');
+  // Made in Heaven: the armed egg transforms the whole UI (violet aura theme).
+  assert(await page.evaluate(() => document.body.classList.contains('heaven')),
+    'heaven theme must accompany the armed egg');
   await page.click('#time-now');
   await page.waitForTimeout(400);
   assert(await page.evaluate(() => window.__eggWanted === false), 'egg must disarm when playback stops');
+  assert(await page.evaluate(() => !document.body.classList.contains('heaven')),
+    'heaven theme must lift when playback stops');
   assert(page.__errors.length === 0, `page errors: ${page.__errors.join('; ')}`);
   await ctx.close();
 });

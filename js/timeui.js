@@ -65,6 +65,9 @@ export function initTimeControl() {
   function syncEgg() {
     const want = playSpeed() !== 0 && atInfinity() && !eggDismissed;
     window.__eggWanted = want; // test hook: the trigger logic, independent of the audio file
+    // Made in Heaven: while the egg is armed the whole UI ascends — white,
+    // magenta and gold, every button wrapped in a violet aura (css: .heaven).
+    document.body.classList.toggle('heaven', want);
     if (want && !eggAudio) {
       eggAudio = new Audio('assets/egg-crucified.mp3');
       eggAudio.loop = true;

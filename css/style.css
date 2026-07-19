@@ -1171,3 +1171,113 @@ body.redlight #crosshair{
   0%, 100%{ opacity: 1; }
   50%{ opacity: 0.35; }
 }
+
+/* ================= Made in Heaven (Easter-egg ascension theme) ================= */
+/* While the egg plays (js/timeui.js puts .heaven on <body>), the whole UI
+   transforms: white-and-silver with vivid magenta glyphs and gold accents,
+   and every control wrapped in a breathing violet aura. Layered as pure CSS
+   over the existing chrome — removing the class restores everything, and the
+   global .reduce-motion kill switch stills all of it. */
+
+body.heaven{
+  --hairline: rgba(216, 131, 255, 0.30);
+  --hairline-strong: rgba(224, 140, 255, 0.42);
+}
+
+/* The aura: a violet flame glow that breathes around every button. */
+@keyframes heaven-aura{
+  0%, 100%{ box-shadow: 0 0 5px rgba(216, 131, 255, 0.50), 0 0 16px rgba(159, 67, 242, 0.38), 0 0 34px rgba(98, 32, 196, 0.28); }
+  50%     { box-shadow: 0 0 9px rgba(236, 178, 255, 0.75), 0 0 26px rgba(183, 99, 255, 0.55), 0 0 50px rgba(122, 45, 224, 0.40); }
+}
+body.heaven :is(.glass-btn, #search-form, #time-chip, #egg-player){
+  border-color: rgba(224, 140, 255, 0.55);
+  animation: heaven-aura 2.4s ease-in-out infinite;
+}
+/* Slight phase offsets so the glow ripples across the chrome instead of
+   pulsing in lockstep. */
+body.heaven .glass-btn:nth-of-type(2n){ animation-delay: -0.8s; }
+body.heaven .glass-btn:nth-of-type(3n){ animation-delay: -1.6s; }
+
+/* Panels: violet-tinted glass. */
+body.heaven :is(.glass-panel, .dropdown-list, .toast){
+  background: linear-gradient(160deg, rgba(64, 28, 96, 0.38), rgba(20, 8, 40, 0.22)), var(--material);
+  border-color: rgba(216, 131, 255, 0.40);
+}
+
+/* Heaven itself: a slow-turning iridescent sweep plus violet flame light
+   rising from the screen edges. Fixed pseudo-layers above the sky, below
+   every control, transparent to input. */
+@keyframes heaven-breathe{
+  0%, 100%{ opacity: 0.72; transform: scale(1); }
+  50%     { opacity: 1;    transform: scale(1.035); }
+}
+@keyframes heaven-spin{ to{ transform: rotate(360deg); } }
+body.heaven::after{
+  content: ''; position: fixed; inset: -6%; z-index: 5; pointer-events: none;
+  background:
+    radial-gradient(60% 42% at 8% 100%, rgba(150, 60, 235, 0.34), transparent 70%),
+    radial-gradient(55% 38% at 92% 100%, rgba(224, 77, 255, 0.26), transparent 70%),
+    radial-gradient(70% 30% at 50% 0%, rgba(120, 40, 220, 0.20), transparent 75%),
+    radial-gradient(40% 55% at 0% 40%, rgba(190, 90, 255, 0.15), transparent 70%),
+    radial-gradient(40% 55% at 100% 45%, rgba(140, 50, 230, 0.15), transparent 70%);
+  mix-blend-mode: screen;
+  animation: heaven-breathe 5.5s ease-in-out infinite;
+}
+body.heaven::before{
+  content: ''; position: fixed; left: 50%; top: 50%;
+  width: 150vmax; height: 150vmax; margin: -75vmax; z-index: 4;
+  pointer-events: none; mix-blend-mode: screen;
+  background: conic-gradient(from 0deg,
+    transparent 0deg, rgba(224, 77, 255, 0.055) 30deg, transparent 75deg,
+    rgba(123, 47, 247, 0.065) 140deg, transparent 205deg,
+    rgba(245, 200, 76, 0.045) 265deg, transparent 325deg);
+  animation: heaven-spin 26s linear infinite;
+}
+
+/* Time controls: the amber time-travel accents ascend to magenta and gold. */
+body.heaven #time-btn.time-active,
+body.heaven #time-play[aria-pressed="true"]{
+  background: rgba(224, 77, 255, 0.24);
+  border-color: rgba(224, 77, 255, 0.55);
+  color: #efb8ff;
+}
+body.heaven #time-chip{
+  background: rgba(44, 16, 66, 0.62);
+  border-color: rgba(224, 140, 255, 0.60);
+  color: #efb8ff;
+}
+body.heaven #time-speed::-webkit-slider-runnable-track{
+  background: linear-gradient(90deg, rgba(245, 243, 250, 0.35), rgba(224, 77, 255, 0.70), rgba(123, 47, 247, 0.90));
+}
+body.heaven #time-speed::-moz-range-track{
+  background: linear-gradient(90deg, rgba(245, 243, 250, 0.35), rgba(224, 77, 255, 0.70), rgba(123, 47, 247, 0.90));
+}
+body.heaven #time-speed::-webkit-slider-thumb{
+  box-shadow: 0 0 10px rgba(224, 120, 255, 0.90), 0 1px 4px rgba(0, 0, 0, 0.45);
+}
+body.heaven #time-speed::-moz-range-thumb{
+  box-shadow: 0 0 10px rgba(224, 120, 255, 0.90), 0 1px 4px rgba(0, 0, 0, 0.45);
+}
+body.heaven .speed-scale{ color: rgba(233, 180, 255, 0.75); }
+body.heaven .speed-scale span:last-child{ color: #f5c84c; text-shadow: 0 0 8px rgba(245, 200, 76, 0.8); }
+
+/* The track chip becomes the centerpiece: Made-in-Heaven white and gold. */
+body.heaven #egg-player{
+  background: linear-gradient(150deg, rgba(250, 247, 255, 0.94), rgba(226, 214, 245, 0.88));
+  border-color: rgba(245, 200, 76, 0.85);
+}
+body.heaven #egg-player .egg-note{ color: #a832d6; }
+body.heaven #egg-player .egg-title{ color: #3c2a56; }
+body.heaven #egg-player .glass-btn{
+  color: #5c3f85;
+  background: rgba(120, 60, 200, 0.12);
+}
+
+/* Crosshair joins the palette. */
+body.heaven #crosshair{
+  background:
+    linear-gradient(rgba(238, 148, 255, 0.60), rgba(238, 148, 255, 0.60)) top center / 1px 7px no-repeat,
+    linear-gradient(rgba(238, 148, 255, 0.60), rgba(238, 148, 255, 0.60)) bottom center / 1px 7px no-repeat,
+    linear-gradient(rgba(238, 148, 255, 0.60), rgba(238, 148, 255, 0.60)) left center / 7px 1px no-repeat,
+    linear-gradient(rgba(238, 148, 255, 0.60), rgba(238, 148, 255, 0.60)) right center / 7px 1px no-repeat;
+}
