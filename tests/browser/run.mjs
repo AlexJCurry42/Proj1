@@ -217,10 +217,13 @@ await scenario('boot: lean fetch budget, no dead chrome, zero errors (granted ge
   assert(!boot.satToggle, 'satellite toggle should not exist');
   assert(boot.horizon === true, 'horizon should default on');
   assert(boot.locCardHidden, 'consent card must not show when permission already granted');
-  // ISS joins the Solar System layer once the observer resolves
+  // Every catalog — Solar System included — starts OFF for a new user; the
+  // count badge still shows what the switch offers (11: Sun, Moon, planets;
+  // the ISS joins the count only when the layer is actually enabled).
   await page.waitForTimeout(1500);
   const solar = await rowState(page, 'Solar System');
-  assert(solar.count === '12', `Solar System count should be 12 with ISS, got "${solar.count}"`);
+  assert(solar.checked === false, 'Solar System must start off for new users');
+  assert(solar.count === '11', `Solar System count should be 11 while off, got "${solar.count}"`);
   // The boot loading screen must have retired itself (removed, not merely
   // faded — a lingering full-screen div would swallow every tap).
   assert(await page.evaluate(() => !document.getElementById('boot-screen')),

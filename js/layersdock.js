@@ -2,9 +2,10 @@
 // dock, section by section, with its lazy loading, consent flows and count
 // badges. Extracted from app.js, which now only boots and wires.
 //
-// Layer philosophy: the sky should feel calm on first load. Only the Solar
-// System (and the horizon guide) start on; everything else lazy-creates the
-// first time its switch is flipped, and the user's choices persist.
+// Layer philosophy: the sky should feel calm on first load. Only the horizon
+// guide starts on (and only where permission already exists); every catalog
+// — Solar System included — lazy-creates or stays hidden until its switch is
+// flipped, and the user's choices persist.
 
 import { showToast } from './ui.js';
 import { initGaiaHips, initGalaxiesLayer, initSimbadBlackHolesLayer, loadMessierNgc, loadNgcFull, loadExoplanets } from './catalogs.js';
@@ -192,9 +193,11 @@ export function initLayersDock(aladin, { onZoom, onPosition, fadeCatalog }) {
   // station's position is observer-dependent (LEO parallax spans tens of
   // degrees), so its marker lights up the moment coordinates arrive from a
   // feature the user chose (horizon consent, Sky Now); it never prompts.
+  // OFF by default like every catalog: a new user's first sky is just the
+  // sky (the guided tour points at the dock where all of this lives).
   const planetsRef = { iss: null, issStarted: false };
   const planetsToggle = addToggle(catalogList, {
-    label: 'Solar System', color: '#7fd6ff', checked: true,
+    label: 'Solar System', color: '#7fd6ff', checked: false,
     onToggle: (v) => {
       setCatalogVisible(planetsRef.catalogs, v);
       if (planetsRef.iss) { if (v) planetsRef.iss.show(); else planetsRef.iss.hide(); }
