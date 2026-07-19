@@ -34,12 +34,28 @@ export function addToggle(listEl, { label, color, checked = true, sub = false, p
   const id = `tgl-${++toggleSeq}`;
   const li = document.createElement('li');
   if (sub) li.className = 'toggle-sub';
-  li.innerHTML =
-    `<span class="legend-dot" style="background:${color};color:${color}"></span>` +
-    `<label class="toggle-label" for="${id}"><span class="toggle-text">${label}</span><span class="toggle-count"></span></label>` +
-    `<input type="checkbox" ${sub ? 'class="sub"' : 'role="switch"'} id="${id}" ${initial ? 'checked' : ''}/>`;
+  // DOM nodes, not innerHTML: every caller passes hardcoded labels and
+  // colors today, but a sink must not depend on its callers staying polite.
+  const dot = document.createElement('span');
+  dot.className = 'legend-dot';
+  dot.style.background = color;
+  dot.style.color = color;
+  const lbl = document.createElement('label');
+  lbl.className = 'toggle-label';
+  lbl.htmlFor = id;
+  const text = document.createElement('span');
+  text.className = 'toggle-text';
+  text.textContent = label;
+  const count = document.createElement('span');
+  count.className = 'toggle-count';
+  lbl.append(text, count);
+  const input = document.createElement('input');
+  input.type = 'checkbox';
+  if (sub) input.className = 'sub'; else input.setAttribute('role', 'switch');
+  input.id = id;
+  input.checked = initial;
+  li.append(dot, lbl, input);
   listEl.appendChild(li);
-  const input = li.querySelector('input');
   input.addEventListener('change', () => {
     if (persist) {
       savedLayers[label] = input.checked;

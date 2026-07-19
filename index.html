@@ -2,6 +2,16 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
+<!-- Content-Security-Policy, meta-delivered (GitHub Pages can't set
+     headers). The XSS-relevant locks are strict: scripts only from this
+     origin and the Aladin CDN ('wasm-unsafe-eval' is required for the
+     engine's WebAssembly), no object/embed, no base hijack, no inline
+     scripts (the boot bar and SW bootstrap are external files for exactly
+     this reason). img/connect stay broad by design — HiPS surveys resolve
+     to many mirrors and Commons photos redirect to upload.wikimedia.org;
+     locking script execution, not data loading, is what defuses XSS.
+     frame-ancestors can't be set from a meta tag, so it is omitted. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://aladin.cds.unistra.fr 'wasm-unsafe-eval'; style-src 'self' https://aladin.cds.unistra.fr 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' data: https:; media-src 'self'; font-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -38,31 +48,9 @@
   <div class="boot-title">Pocket Planetarium</div>
   <div class="boot-bar"><div class="boot-fill" id="boot-fill"></div></div>
 </div>
-<script>
-window.__boot = (() => {
-  const fill = document.getElementById('boot-fill');
-  let target = 12, shown = 0, timer = null;
-  // Ease toward the current stage's cap so the bar keeps breathing while a
-  // slow stage (the wasm engine download + compile) is still in flight —
-  // asymptotic, so it never falsely reaches the cap.
-  timer = setInterval(() => {
-    shown = Math.min(target, shown + Math.max(0.35, (target - shown) * 0.10));
-    fill.style.width = shown + '%';
-  }, 120);
-  return {
-    to(p) { target = Math.max(target, p); },
-    done() {
-      if (!timer) return;
-      clearInterval(timer);
-      timer = null;
-      fill.style.width = '100%';
-      const el = document.getElementById('boot-screen');
-      el.classList.add('boot-out');
-      setTimeout(() => el.remove(), 500);
-    }
-  };
-})();
-</script>
+<!-- Classic blocking script: runs right here, before anything below parses
+     (external rather than inline so the CSP needs no 'unsafe-inline'). -->
+<script src="js/bootbar.js"></script>
 
 <a class="skip-link" href="#aladin-lite-div">Skip to sky view</a>
 
@@ -281,32 +269,10 @@ window.__boot = (() => {
 
 <!-- defer: parse HTML without blocking; executes before the module below. -->
 <script src="https://aladin.cds.unistra.fr/AladinLite/api/v3/latest/aladin.js" charset="utf-8" defer></script>
-<script>
-// Service-worker bootstrap lives INLINE here, not in js/app.js: this page is
-// network-first (always the freshly deployed version) while app.js is
-// cache-first and can be a version behind — and a stale app.js can't be
-// trusted to notice its own staleness. Every load forces a cache-bypassing
-// re-check of sw.js (reg.update() ignores the HTTP cache; GitHub Pages'
-// max-age=600 on sw.js otherwise delays pickup, and iOS PWAs re-check
-// lazily). When a NEW version's worker takes over mid-session, reload once
-// so the page runs matching assets instead of fresh HTML on stale CSS/JS.
-if ('serviceWorker' in navigator && location.protocol === 'https:') {
-  const hadController = !!navigator.serviceWorker.controller;
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    // First-ever install also fires this (clients.claim); only reload on
-    // a genuine version change, and only once per session (loop guard).
-    if (!hadController) return;
-    try {
-      if (sessionStorage.getItem('dsa-swreloaded')) return;
-      sessionStorage.setItem('dsa-swreloaded', '1');
-    } catch (err) { return; }
-    location.reload();
-  });
-  navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' })
-    .then((reg) => reg.update())
-    .catch(() => { /* shell caching is optional */ });
-}
-</script>
+<!-- Service-worker bootstrap: loaded from THIS page (always network-first,
+     always fresh) so update detection never depends on cached JS. External
+     rather than inline for the CSP; see js/swboot.js for the full story. -->
+<script src="js/swboot.js"></script>
 <script type="module" src="js/app.js"></script>
 </body>
 </html>

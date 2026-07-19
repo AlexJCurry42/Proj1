@@ -21,7 +21,7 @@
 // constellations_lines/names/borders) here — they may not exist on a fresh
 // deploy and one 404 fails the entire install. Runtime caching covers them.
 // Bump together with js/version.js (shown in the About panel).
-const VERSION = 'dsa-shell-v82';
+const VERSION = 'dsa-shell-v83';
 
 const SHELL = [
   './',
@@ -49,6 +49,8 @@ const SHELL = [
   'js/render3d.js',
   'js/iss.js',
   'js/loccard.js',
+  'js/bootbar.js',
+  'js/swboot.js',
   'js/centerid.js',
   'js/constellation.js',
   'js/grid.js',

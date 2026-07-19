@@ -60,8 +60,15 @@ async function prepareFixture() {
   // the engine executing before app.js, like the tag they replace.
   const engineSrc = await readFile(enginePath, 'utf8');
   const isEsm = /\bexport\s*(\{|default\b)/.test(engineSrc.slice(-2000));
+  // The ESM shim must be an EXTERNAL same-origin module: the app's
+  // Content-Security-Policy (script-src without 'unsafe-inline') blocks
+  // inline scripts, in the fixture exactly as in production.
+  if (isEsm) {
+    await writeFile(path.join(CACHE, 'engine-esm-wrapper.mjs'),
+      'import A from "./aladin-local.js";\nwindow.A = A;\n');
+  }
   const engineTag = isEsm
-    ? '<script type="module">import A from "/tests/browser/.cache/aladin-local.js"; window.A = A;</script>'
+    ? '<script type="module" src="/tests/browser/.cache/engine-esm-wrapper.mjs"></script>'
     : '<script src="/tests/browser/.cache/aladin-local.js" charset="utf-8" defer></script>';
   const html = (await readFile(path.join(ROOT, 'index.html'), 'utf8')).replace(
     /<script src="https:\/\/aladin\.cds\.unistra\.fr[^"]*" charset="utf-8" defer><\/script>/,
