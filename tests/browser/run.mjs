@@ -399,6 +399,14 @@ await scenario('time: playback moves the Moon; Back to now stops and resets', as
   });
   const m0 = await moonPos();
   assert(m0, 'Moon marker missing');
+  // The camera anchors in the observer's local frame — wait for the
+  // geolocation cache (the horizon layer's boot flow fills it).
+  await page.waitForFunction(async () => {
+    const { cachedObserver } = await import('/js/observer.js');
+    return !!cachedObserver();
+  }, null, { timeout: 15000 });
+  const centerRa = () => page.evaluate(() => window.__aladin.getRaDec()[0]);
+  const ra0 = await centerRa();
   await page.click('#time-btn');
   await page.waitForTimeout(300);
   await page.click('#time-play');
@@ -406,6 +414,11 @@ await scenario('time: playback moves the Moon; Back to now stops and resets', as
   const m1 = await moonPos();
   const moved = Math.hypot(((m1[0] - m0[0] + 540) % 360) - 180, m1[1] - m0[1]);
   assert(moved > 0.4, `Moon should move ≳1° under playback, moved ${moved.toFixed(2)}°`);
+  // Planetarium behavior: the SKY ITSELF turns — the camera holds the
+  // local line of sight, so the view center's RA streams during playback…
+  const raPlay = await centerRa();
+  const drift = Math.abs(((raPlay - ra0 + 540) % 360) - 180);
+  assert(drift > 10, `view should stream with the diurnal motion, drifted ${drift.toFixed(1)}°`);
   const chip = await page.evaluate(() => document.getElementById('time-chip'));
   assert(chip !== null, 'chip element missing');
   await page.click('#time-now');
@@ -413,6 +426,10 @@ await scenario('time: playback moves the Moon; Back to now stops and resets', as
   const stopped = await page.evaluate(async () => (await import('/js/clock.js')).playSpeed() === 0);
   const chipHidden = await page.evaluate(() => document.getElementById('time-chip').hidden);
   assert(stopped && chipHidden, 'Back to now must stop playback and retire the chip');
+  // …and Back to now turns it home again (round-trip through the anchor).
+  const raBack = await centerRa();
+  const home = Math.abs(((raBack - ra0 + 540) % 360) - 180);
+  assert(home < 3, `Back to now should return the view (off by ${home.toFixed(2)}°)`);
   assert(page.__errors.length === 0, `page errors: ${page.__errors.join('; ')}`);
   await ctx.close();
 });

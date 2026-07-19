@@ -42,6 +42,10 @@ button) shows the sky for any date and time — and can PLAY it: time-lapse
 the whole sky at a minute, an hour, or a day per second — Solar System positions,
 the horizon overlay, the ISS and Sky Now all follow one shared app
 clock, with an amber chip marking the shift. Once your location is
+known the scrubber is a true planetarium: the camera holds your line
+of sight in YOUR sky, so setting a date turns the heavens to that
+moment and playback streams the stars wheeling across the view in
+real time. Once your location is
 known, every object's detail panel adds **visible-tonight rows**: is it
 up right now, and when does it rise and set from where you stand. Two
 projections: orbit the celestial sphere from outside, or stand inside

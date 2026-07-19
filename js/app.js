@@ -36,6 +36,7 @@ import { showLocationCard, geoPermissionState } from './loccard.js';
 import { onTimeChange } from './clock.js';
 import { getOverlay } from './overlay.js';
 import { patchEngineContext, initSharpen } from './sharpen.js';
+import { initTimeSky } from './timesky.js';
 
 const SGR_A_STAR = { ra: 266.41683, dec: -29.007811 };
 
@@ -176,6 +177,10 @@ async function main() {
   // Always-on imagery sharpening: WebGL post-process over the engine's
   // rendered frame; CSS-filter fallback where WebGL2 is out of reach.
   initSharpen(aladin, { onPosition, onZoom });
+
+  // Time travel turns the SKY, planetarium-style: the camera holds the
+  // user's line of sight in their local frame while the clock moves.
+  initTimeSky(aladin);
 
 
   // Zoom stops where the data does. Each survey has an honest floor

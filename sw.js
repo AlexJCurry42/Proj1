@@ -21,7 +21,7 @@
 // constellations_lines/names/borders) here — they may not exist on a fresh
 // deploy and one 404 fails the entire install. Runtime caching covers them.
 // Bump together with js/version.js (shown in the About panel).
-const VERSION = 'dsa-shell-v60';
+const VERSION = 'dsa-shell-v61';
 
 const SHELL = [
   './',
@@ -60,6 +60,7 @@ const SHELL = [
   'js/spectrum.js',
   'js/starbloom.js',
   'js/suggest.js',
+  'js/timesky.js',
   'js/timeui.js',
   'js/ui.js',
   'js/vendor/satellite/common-types.js',
