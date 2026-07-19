@@ -28,33 +28,45 @@ export function initTimeControl() {
   let selectedMult = 3600; // an hour per second: the sweet spot for sky motion
 
   // ---- the Easter egg ----
-  // Play the sky at a DAY per second and the app plays "Crucified" by
-  // Army of Lovers, via YouTube's privacy-enhanced embed (the only honest
-  // way to play a copyrighted song here: their player, their license).
-  // Nothing from YouTube loads until the moment it triggers; ✕ keeps it
-  // away until playback stops. Disclosed in the About panel's privacy note.
+  // Play the sky at a DAY per second and the app cues a bundled audio
+  // track (assets/egg-crucified.mp3, supplied by the project owner) —
+  // fully on-origin, no third-party embeds, so the privacy promise stays
+  // absolute. Until the file exists the egg is a silent no-op. A small
+  // chip names the track while it plays; ✕ stops it until the next play.
+  let eggAudio = null;
   let eggEl = null;
   let eggDismissed = false;
+  function stopEgg() {
+    try { eggAudio?.pause(); } catch (err) { /* already gone */ }
+    eggAudio = null;
+    eggEl?.remove();
+    eggEl = null;
+  }
   function syncEgg() {
     const want = playSpeed() !== 0 && selectedMult === 86400 && !eggDismissed;
-    if (want && !eggEl) {
+    window.__eggWanted = want; // test hook: the trigger logic, independent of the audio file
+    if (want && !eggAudio) {
+      eggAudio = new Audio('assets/egg-crucified.mp3');
+      eggAudio.loop = true;
+      const started = eggAudio.play();
       eggEl = document.createElement('div');
       eggEl.id = 'egg-player';
       eggEl.className = 'glass-panel';
       eggEl.innerHTML =
+        '<span class="egg-note" aria-hidden="true">♪</span>' +
+        '<span class="egg-title">Crucified — Army of Lovers</span>' +
         '<button id="egg-close" class="glass-btn small" aria-label="Stop the music">' +
         '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="7" y1="7" x2="17" y2="17"/><line x1="17" y1="7" x2="7" y2="17"/></svg>' +
-        '</button>' +
-        '<iframe width="288" height="162" src="https://www.youtube-nocookie.com/embed/EdooYar_A6g?autoplay=1&playsinline=1" ' +
-        'title="Army of Lovers — Crucified" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>';
+        '</button>';
       document.body.appendChild(eggEl);
       eggEl.querySelector('#egg-close').addEventListener('click', () => {
         eggDismissed = true;
         syncEgg();
       });
-    } else if (!want && eggEl) {
-      eggEl.remove();
-      eggEl = null;
+      // File not deployed yet (or autoplay denied): vanish without a trace.
+      started?.catch(() => stopEgg());
+    } else if (!want && eggAudio) {
+      stopEgg();
     }
     if (playSpeed() === 0) eggDismissed = false; // a fresh play can summon it again
   }

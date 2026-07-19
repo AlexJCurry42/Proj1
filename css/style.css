@@ -1122,16 +1122,17 @@ body.redlight #crosshair{
 /* The coords readout is tappable (it explains RA/Dec) */
 #coords-hud{ pointer-events: auto; cursor: help; }
 
-/* ================= Easter egg mini-player ================= */
+/* ================= Easter egg now-playing chip ================= */
 #egg-player{
   position: fixed; z-index: 46;
   right: calc(12px + var(--safe-right));
   bottom: calc(112px + var(--safe-bottom));
-  padding: 8px;
+  padding: 8px 10px;
+  display: flex; align-items: center; gap: 8px;
   animation: pop-in 0.3s var(--spring);
 }
-#egg-player iframe{ display: block; border: 0; border-radius: 10px; max-width: calc(100vw - 40px); }
-#egg-player #egg-close{ position: absolute; top: -10px; left: -10px; }
+#egg-player .egg-note{ font-size: 14px; color: #ffd60a; }
+#egg-player .egg-title{ font-size: 12px; color: var(--text-secondary); white-space: nowrap; }
 
 /* ================= Dock row loading shimmer ================= */
 /* A lazy layer is fetching after its first flip: the label breathes so the

@@ -430,21 +430,19 @@ await scenario('time: playback moves the Moon; Back to now stops and resets', as
   const raBack = await centerRa();
   const home = Math.abs(((raBack - ra0 + 540) % 360) - 180);
   assert(home < 3, `Back to now should return the view (off by ${home.toFixed(2)}°)`);
-  // The Easter egg: day/s + play summons the mini-player; ✕ dismisses it.
-  assert(await page.evaluate(() => !document.getElementById('egg-player')), 'no egg before day/s playback');
+  // The Easter egg: day/s + play cues the bundled track. The audio file
+  // may not be deployed yet (owner-supplied), so the assertions target the
+  // TRIGGER logic via its hook — armed at day/s playback, disarmed at stop.
+  assert(await page.evaluate(() => !window.__eggWanted), 'egg must be unarmed before day/s playback');
   await page.click('#time-btn');
   await page.waitForTimeout(300);
   await page.click('#time-speeds .speed-btn[data-mult="86400"]');
   await page.click('#time-play');
   await page.waitForTimeout(400);
-  const eggSrc = await page.evaluate(() => document.querySelector('#egg-player iframe')?.src || '');
-  assert(eggSrc.includes('youtube-nocookie.com/embed/EdooYar_A6g'), `egg player should appear (src: ${eggSrc})`);
-  await page.click('#egg-close');
-  assert(await page.evaluate(() => !document.getElementById('egg-player')), 'egg ✕ must remove the player');
-  await page.click('#time-btn'); // the egg's ✕ was an outside click: the panel closed
-  await page.waitForTimeout(250);
+  assert(await page.evaluate(() => window.__eggWanted === true), 'egg must arm on day/s playback');
   await page.click('#time-now');
   await page.waitForTimeout(400);
+  assert(await page.evaluate(() => window.__eggWanted === false), 'egg must disarm when playback stops');
   assert(page.__errors.length === 0, `page errors: ${page.__errors.join('; ')}`);
   await ctx.close();
 });
