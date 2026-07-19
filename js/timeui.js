@@ -80,7 +80,7 @@ export function initTimeControl() {
       eggAudio = new Audio('assets/egg-crucified.mp3');
       eggAudio.loop = true;
       // Loudness and onset live in the FILE, not here: the track carries a
-      // baked-in 1 s fade-in and a −6 dB master trim (iOS ignores element
+      // baked-in 1 s fade-in and a −15 dB master trim (iOS ignores element
       // volume, so JS-side ramps would silently not work there). The
       // element volume stays where it always was.
       eggAudio.volume = 0.5;
