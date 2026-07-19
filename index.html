@@ -159,10 +159,10 @@
       <svg class="icon icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5l11 6.5-11 6.5z"/></svg>
       <svg class="icon icon-pause" viewBox="0 0 24 24" aria-hidden="true"><line x1="9" y1="6" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="18"/></svg>
     </button>
-    <div id="time-speeds" role="group" aria-label="Playback speed">
-      <button class="speed-btn" data-mult="60" aria-label="One minute per second">min/s</button>
-      <button class="speed-btn active" data-mult="3600" aria-label="One hour per second">hr/s</button>
-      <button class="speed-btn" data-mult="51840" aria-label="A day in under two seconds">day/s</button>
+    <div id="time-speeds">
+      <input id="time-speed" type="range" min="0" max="1000" value="500"
+             aria-label="Playback speed, from a minute per second up to the maximum" />
+      <div class="speed-scale" aria-hidden="true"><span>min</span><span>hr</span><span>∞</span></div>
     </div>
   </div>
   <button id="time-now" class="glass-btn small wide">Back to now</button>

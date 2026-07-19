@@ -19,7 +19,7 @@ export function initTimeControl() {
   const nowBtn = document.getElementById('time-now');
   const chip = document.getElementById('time-chip');
   const playBtn = document.getElementById('time-play');
-  const speedBtns = [...document.querySelectorAll('#time-speeds .speed-btn')];
+  const speedSlider = document.getElementById('time-speed');
   if (!btn || !panel || !dateIn || !timeIn || !nowBtn || !chip) return;
 
   const pad = (n) => String(n).padStart(2, '0');
@@ -30,12 +30,22 @@ export function initTimeControl() {
   const setInputs = (d) => { dateIn.value = toDateValue(d); timeIn.value = toTimeValue(d); };
   const editingInputs = () => document.activeElement === dateIn || document.activeElement === timeIn;
 
-  let selectedMult = 3600; // an hour per second: the sweet spot for sky motion
-  // The "day/s" scale runs at 0.6 day per real second (slowed 40% by
-  // request — full-rate diurnal motion spun too fast to read). The clock,
-  // the chip and the sky all share this one multiplier, so what the label
-  // shows and what the heavens do can never drift apart.
-  const DAY_MULT = 51840;
+  // Playback speed is a continuous slider, minutes → hours → ∞, on a
+  // piecewise-log scale so "hr" sits exactly at center: the left half runs
+  // a minute-per-second up to an hour-per-second, the right half runs on
+  // up to the maximum (0.6 day per real second — the rate approved when
+  // the old day/s button was slowed 40%). One shared multiplier drives the
+  // clock, the chip and the sky, so the display can never drift from the
+  // rotation — and dragging mid-playback retunes the speed live.
+  const MIN_MULT = 60, MID_MULT = 3600, MAX_MULT = 51840;
+  const multFromSlider = () => {
+    const v = (Number(speedSlider?.value) || 500) / 1000;
+    return v <= 0.5
+      ? MIN_MULT * Math.pow(MID_MULT / MIN_MULT, v / 0.5)
+      : MID_MULT * Math.pow(MAX_MULT / MID_MULT, (v - 0.5) / 0.5);
+  };
+  const atInfinity = () => speedSlider && Number(speedSlider.value) >= 1000;
+  let selectedMult = 3600;
 
   // ---- the Easter egg ----
   // Play the sky at a DAY per second and the app cues a bundled audio
@@ -53,7 +63,7 @@ export function initTimeControl() {
     eggEl = null;
   }
   function syncEgg() {
-    const want = playSpeed() !== 0 && selectedMult === DAY_MULT && !eggDismissed;
+    const want = playSpeed() !== 0 && atInfinity() && !eggDismissed;
     window.__eggWanted = want; // test hook: the trigger logic, independent of the audio file
     if (want && !eggAudio) {
       eggAudio = new Audio('assets/egg-crucified.mp3');
@@ -133,16 +143,16 @@ export function initTimeControl() {
   // ---- play controls ----
   playBtn?.addEventListener('click', () => {
     const starting = playSpeed() === 0;
+    selectedMult = multFromSlider();
     setPlaySpeed(starting ? selectedMult : 0);
     if (starting) playStart(); else playStop();
   });
-  for (const sb of speedBtns) {
-    sb.addEventListener('click', () => {
-      selectedMult = Number(sb.dataset.mult) || 3600;
-      for (const b of speedBtns) b.classList.toggle('active', b === sb);
-      if (playSpeed() !== 0) setPlaySpeed(selectedMult); // live speed change
-    });
-  }
+  // Seamless: dragging the slider retunes a running playback continuously.
+  speedSlider?.addEventListener('input', () => {
+    selectedMult = multFromSlider();
+    if (playSpeed() !== 0) setPlaySpeed(selectedMult);
+    syncEgg(); // ∞ reached (or left) mid-playback arms or retires the egg
+  });
   // While playing, the pickers mirror the moving clock (unless being edited).
   onTimeChange(() => {
     if (playSpeed() !== 0 && !panel.hidden && !editingInputs()) {

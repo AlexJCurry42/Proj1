@@ -437,7 +437,11 @@ await scenario('time: playback moves the Moon; Back to now stops and resets', as
   assert(await page.evaluate(() => !window.__eggWanted), 'egg must be unarmed before day/s playback');
   await page.click('#time-btn');
   await page.waitForTimeout(300);
-  await page.click('#time-speeds .speed-btn[data-mult="51840"]');
+  await page.evaluate(() => { // slide to ∞ — the only position that arms the egg
+    const s = document.getElementById('time-speed');
+    s.value = '1000';
+    s.dispatchEvent(new Event('input', { bubbles: true }));
+  });
   await page.click('#time-play');
   await page.waitForTimeout(400);
   assert(await page.evaluate(() => window.__eggWanted === true), 'egg must arm on day/s playback');
