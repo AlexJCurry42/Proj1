@@ -62,27 +62,6 @@ export function makeBlackHoleIcon(ringHex = '#ff9f0a', size = 22, ringBoost = 1)
   return c;
 }
 
-/** Diffuse blob for gravitational-wave events (their localization is fuzzy). */
-export function makeDiffuseBlob(hex = '#bf5af2', size = 26) {
-  const s = size * 2;
-  const c = document.createElement('canvas');
-  c.width = c.height = s;
-  const ctx = c.getContext('2d');
-  const [r, g, b] = hexRgb(hex);
-  const x = s / 2;
-  const grad = ctx.createRadialGradient(x, x, 0, x, x, x);
-  grad.addColorStop(0.0, `rgba(${r},${g},${b},0.75)`);
-  grad.addColorStop(0.35, `rgba(${r},${g},${b},0.32)`);
-  grad.addColorStop(1.0, `rgba(${r},${g},${b},0)`);
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, s, s);
-  ctx.fillStyle = 'rgba(255,255,255,0.85)';
-  ctx.beginPath();
-  ctx.arc(x, x, s * 0.05, 0, Math.PI * 2);
-  ctx.fill();
-  return c;
-}
-
 /** Bright planetary disc with a crisp rim — reads as "a world", not a star. */
 export function makePlanetIcon(hex = '#7fd6ff', size = 18) {
   const s = size * 2;

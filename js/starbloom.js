@@ -131,9 +131,19 @@ export async function initStarBloom(aladin) {
       .then((d) => indexFaint(d.stars || []))
       .catch(() => { faintState = 'failed'; }); // bright tier still covers the worst
   }
-  // Fetch during idle time well after boot; a deep zoom forces it sooner.
+  // Prefetch during idle time — but only once the session shows zoom
+  // intent (a field under 40°). The file matters only below a 12° field,
+  // so a sightseeing session that never leaves the wide view no longer
+  // downloads 1.6 MB it will never draw; anyone actually zooming still
+  // gets the data warmed well before their blotches resolve, and a
+  // direct deep zoom forces the load immediately (below).
+  let prefetchArmed = false;
   const idle = window.requestIdleCallback || ((fn) => setTimeout(fn, 4000));
-  idle(() => loadFaint(), { timeout: 15000 });
+  function armPrefetch() {
+    if (prefetchArmed) return;
+    prefetchArmed = true;
+    idle(() => loadFaint(), { timeout: 15000 });
+  }
 
   function* faintNear(ra, dec, radiusDeg) {
     const stretch = 1 / Math.max(0.15, Math.cos(dec * Math.PI / 180)); // RA cells shrink toward the poles
@@ -164,6 +174,7 @@ export async function initStarBloom(aladin) {
 
   function draw(ctx, view, state) {
     const { fov, W, H } = view;
+    if (fov < 40) armPrefetch();
     // Whole-sky views: stars are unresolved points, no artifact to hide.
     if (fov > 110) return;
     const pxPerDeg = Math.max(W, H) / fov;

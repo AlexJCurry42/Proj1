@@ -100,8 +100,15 @@ export function initGridLayer(aladin) {
     const COL = [120, 148, 210];
     const labels = []; // [text, x, y, align, a] — painted last, over the lines
 
+    // Sample density tracks the field: wide views need dense sampling to
+    // follow projection curvature, but a small field's arcs are nearly
+    // straight — half the points draw the identical line, at half the
+    // projection (wasm-crossing) cost per pan frame. Near the poles the
+    // parallels stay strongly curved at any zoom, so density stays full.
+    const dense = nearPole || fov > 20;
+
     // ---- declination parallels ----
-    const raSamples = 56;
+    const raSamples = dense ? 56 : 28;
     const decLines = [[], []]; // [full-alpha batch, fading batch]
     for (let d = Math.ceil(decMin / dec.fine) * dec.fine; d <= decMax + 1e-9; d += dec.fine) {
       if (Math.abs(d) > 89.999) continue;
@@ -121,7 +128,7 @@ export function initGridLayer(aladin) {
     }
 
     // ---- right-ascension meridians ----
-    const decSamples = 40;
+    const decSamples = dense ? 40 : 20;
     const raLines = [[], []];
     const seen = new Set();
     const stepDeg = ra.fine * 15;

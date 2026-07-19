@@ -157,7 +157,17 @@ export async function initIssLayer(aladin, observer) {
       `rgba(190, 240, 255, ${0.9 * alpha})`, `rgba(2, 8, 12, ${0.6 * alpha})`);
   }
 
-  const ctl = getOverlay(aladin).addLayer({ z: 30, everyFrame: true, draw });
+  // Repaint every frame ONLY while the station is actually on screen — a
+  // below-horizon or out-of-view ISS must not keep the whole overlay canvas
+  // repainting at 60 fps (it did: a parked sky never went idle). While the
+  // dot is absent, a 2 s bucket in the dirty signature re-runs draw() just
+  // often enough to catch the station rising or entering the view.
+  const ctl = getOverlay(aladin).addLayer({
+    z: 30,
+    everyFrame: () => hit != null,
+    extraSig: () => (hit ? '' : String((performance.now() / 2000) | 0)),
+    draw
+  });
 
   // Tap the drawn ISS → detail panel (capture phase beats the engine's own
   // canvas handling; only intercepts when the dot is actually hit).

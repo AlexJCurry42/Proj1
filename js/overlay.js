@@ -37,8 +37,10 @@ export function getOverlay(aladin) {
   let dpr = 1, W = 0, H = 0;
   let raf = null;
   let lastSig = '';
+  let lastEngineSig = '';
   let lastT = 0;
   let dirty = true;
+  let quiet = 0; // consecutive frames with an unmoved VIEW (rest detection)
 
   function resize() {
     // Full native resolution, up to 3× (covers every current phone). The
@@ -105,18 +107,31 @@ export function getOverlay(aladin) {
       return;
     }
 
-    let sig = '';
+    // At rest the loop stays alive only to notice engine motion (pan inertia
+    // emits no reliable events), but polling the wasm boundary at 60 Hz for
+    // a parked sky is pure battery drain: after ~1.5 s of stillness the
+    // check runs every 3rd frame instead. First motion is caught within
+    // ~33 ms — below perception — and full rate resumes instantly.
+    if (!fading && !everyFrame && !dirty && quiet > 90 && ++quiet % 3) return;
+
+    let engineSig = '';
     let fov = 60;
     try {
       const [ra, dec] = aladin.getRaDec();
       fov = aladin.getFov()[0];
       const rot = aladin.getRotation?.() ?? 0; // grid/horizon must track two-finger & lock rotations
-      sig = `${ra.toFixed(5)},${dec.toFixed(5)},${fov.toFixed(4)},${rot.toFixed(3)},${W}x${H}`;
+      engineSig = `${ra.toFixed(5)},${dec.toFixed(5)},${fov.toFixed(4)},${rot.toFixed(3)},${W}x${H}`;
     } catch (err) { /* engine mid-init: draw anyway */ }
+    let sig = engineSig;
     for (const L of layers) {
       if (L.extraSig && L.state.alpha > 0.004) sig += '|' + L.extraSig();
     }
 
+    // Rest detection keys on the VIEW alone: a layer's periodic extraSig
+    // heartbeat (e.g. the hidden-ISS 2 s bucket) repaints without disarming
+    // the throttle above.
+    quiet = engineSig === lastEngineSig && !dirty ? quiet + 1 : 0;
+    lastEngineSig = engineSig;
     if (sig === lastSig && !fading && !everyFrame && !dirty) return;
     lastSig = sig;
     dirty = false;
