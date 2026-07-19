@@ -21,7 +21,7 @@
 // constellations_lines/names/borders) here — they may not exist on a fresh
 // deploy and one 404 fails the entire install. Runtime caching covers them.
 // Bump together with js/version.js (shown in the About panel).
-const VERSION = 'dsa-shell-v66';
+const VERSION = 'dsa-shell-v67';
 
 const SHELL = [
   './',
@@ -111,6 +111,11 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET' || url.origin !== location.origin) return; // sky data: always live
+
+  // Media MUST bypass the worker: iOS fetches audio with Range headers and
+  // rejects the full-body 200 a cache respondWith() would produce — the
+  // Easter egg track simply refused to play through the old handler.
+  if (e.request.headers.get('range') !== null || url.pathname.endsWith('.mp3')) return;
 
   // Navigations: network-first so a fresh deploy's index.html is never
   // missed; cache fallback keeps the installed PWA opening offline.

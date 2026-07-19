@@ -44,16 +44,25 @@ function ensureCtx() {
 // iOS/autoplay: the context can only start from a user gesture — and the
 // unlocked flag ALSO enforces our own rule that boot never makes a sound,
 // even in browsers whose autoplay policy would technically allow it.
+// iOS grants the unlock on touchend/click, NOT on touchstart/pointerdown,
+// so all three are listened to (the first one that works wins).
 let unlocked = false;
-document.addEventListener('pointerdown', () => { unlocked = true; ensureCtx(); }, { capture: true, passive: true });
+const unlock = () => { unlocked = true; ensureCtx(); };
+for (const ev of ['pointerdown', 'touchend', 'click']) {
+  document.addEventListener(ev, unlock, { capture: true, passive: true });
+}
 
 export function setSfxEnabled(v) { enabled = !!v; }
 
 function gate() {
   if (!enabled || !unlocked) return null;
   const c = ensureCtx();
-  if (!c || c.state !== 'running') return null;
-  window.__sfx = (window.__sfx || 0) + 1; // test hook: counts actual plays
+  if (!c || c.state === 'closed') return null;
+  // A still-suspended context accepts scheduled nodes and plays them the
+  // moment resume() lands (milliseconds later on iOS) — refusing here is
+  // what used to eat the first sound of every session.
+  if (c.state === 'suspended') c.resume();
+  window.__sfx = (window.__sfx || 0) + 1; // test hook: counts attempted plays
   return c;
 }
 
