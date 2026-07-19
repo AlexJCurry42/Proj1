@@ -74,14 +74,27 @@ function startServer() {
 // ---- tiny harness ----
 let passed = 0;
 const failures = [];
+// Software-rendered WebKit occasionally loses its renderer under heavy
+// canvas/WebGL load — every later protocol call then reports a closed
+// target. That's an environment crash, not a product regression, so ONLY
+// that signature earns one fresh-context retry; assertion failures never do.
+const CRASH_RE = /Target (page|crashed)|context or browser has been closed/i;
 async function scenario(name, fn) {
-  try {
-    await fn();
-    passed++;
-    console.log(`  ok  ${name}`);
-  } catch (err) {
-    failures.push(name);
-    console.error(`FAIL  ${name}\n      ${err.message}`);
+  for (let attempt = 1; ; attempt++) {
+    try {
+      await fn();
+      passed++;
+      console.log(`  ok  ${name}${attempt > 1 ? ' (after renderer-crash retry)' : ''}`);
+      return;
+    } catch (err) {
+      if (attempt === 1 && CRASH_RE.test(err.message)) {
+        console.warn(`  retry ${name} — renderer crashed: ${err.message.slice(0, 100)}`);
+        continue;
+      }
+      failures.push(name);
+      console.error(`FAIL  ${name}\n      ${err.message}`);
+      return;
+    }
   }
 }
 const assert = (cond, msg) => { if (!cond) throw new Error(msg); };
