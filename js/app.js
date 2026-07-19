@@ -18,7 +18,7 @@ import { SURVEYS, STOP, MAX_VALUE, DEFAULT_VALUE, initSpectrumBar } from './spec
 import { readPref, writePref } from './prefs.js';
 import { initMarkerFades } from './markerfade.js';
 import { initMotion } from './motion.js';
-import { initDockCollapse } from './dock.js';
+import { initDockCollapse, collapseDock } from './dock.js';
 import { initTimeControl } from './timeui.js';
 import { initSearchUI } from './searchui.js';
 import { initCenterId } from './centerid.js';
@@ -137,6 +137,11 @@ async function main() {
   aladin.on('positionChanged', (...args) => { for (const fn of positionSubs) fn(...args); });
   const onZoom = (fn) => zoomSubs.add(fn);
   const onPosition = (fn) => positionSubs.add(fn);
+
+  // Moving the sky puts the open layer dock away (its outside-tap dismissal
+  // lives in dock.js; this is the pan/zoom/flight path).
+  onPosition(collapseDock);
+  onZoom(collapseDock);
 
   // Time travel turns the SKY, planetarium-style: the camera holds the
   // user's line of sight in their local frame while the clock moves.

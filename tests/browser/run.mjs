@@ -270,6 +270,23 @@ await scenario('lazy dock: Deep sky fetches its own files on first flip, shimmer
   const done = await rowState(page, 'Deep sky');
   assert(!done.loading, 'shimmer must clear');
   assert(done.count === '12,149', `Deep sky count should be 12,149, got "${done.count}"`);
+  // The open dock behaves like a popover: moving the view or tapping
+  // outside puts it away (taps inside — like the flips above — leave it).
+  await page.click('#dock-collapse');
+  await page.waitForTimeout(700); // past the anti-slam grace window
+  assert(await page.evaluate(() => !document.getElementById('layer-dock').classList.contains('collapsed')),
+    'chevron must expand the dock');
+  await page.evaluate(() => { const a = window.__aladin; const [ra, dec] = a.getRaDec(); a.gotoRaDec(ra + 20, dec); });
+  await page.waitForTimeout(400);
+  assert(await page.evaluate(() => document.getElementById('layer-dock').classList.contains('collapsed')),
+    'moving the view must collapse the dock');
+  await page.click('#dock-collapse');
+  await page.waitForTimeout(700);
+  await page.mouse.click(520, 400); // a tap on the open sky, away from the dock
+  await page.waitForTimeout(300);
+  assert(await page.evaluate(() => document.getElementById('layer-dock').classList.contains('collapsed')),
+    'tapping off the dock must collapse it');
+
   // ngc_full is this layer's own lazy file — the flip must fetch it. The
   // curated messier_ngc file is SHARED (crosshair ID loads it at idle) and
   // fetchJSON dedupes per session, so it must NOT appear a second time here.

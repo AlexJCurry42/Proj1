@@ -95,7 +95,10 @@ export function initDockCollapse() {
   const dock = document.getElementById('layer-dock');
   const btn = document.getElementById('dock-collapse');
   if (!dock || !btn) return; // stale HTML mid-deploy: skip, never crash boot
+  let expandedAt = 0; // grace: residual view motion (horizon-lock settle,
+                      // flight tail) must not slam the dock shut as it opens
   function setCollapsed(c) {
+    if (!c) expandedAt = performance.now();
     dock.classList.toggle('collapsed', c);
     btn.setAttribute('aria-expanded', String(!c));
     btn.setAttribute('aria-label', c ? 'Expand the layers menu' : 'Collapse the layers menu');
@@ -110,4 +113,22 @@ export function initDockCollapse() {
     btn.setAttribute('aria-expanded', 'false');
     btn.setAttribute('aria-label', 'Expand the layers menu');
   }
+  // The open dock behaves like a popover: any tap OUTSIDE it puts it away
+  // (taps inside — flipping switches, scrolling the list — leave it open).
+  document.addEventListener('pointerdown', (e) => {
+    if (!dock.classList.contains('collapsed') && !dock.contains(e.target)) setCollapsed(true);
+  });
+  // …and the view-moved path (pan/zoom/flights) closes it too; app.js wires
+  // collapseDock() to the engine's position and zoom events.
+  autoCollapse = () => {
+    if (dock.classList.contains('collapsed')) return;
+    if (performance.now() - expandedAt < 600) return; // grace window
+    setCollapsed(true);
+  };
 }
+
+// Filled by initDockCollapse; a no-op until then (and with stale HTML).
+let autoCollapse = null;
+
+/** Collapse the layer dock if it is open — the sky was touched or moved. */
+export function collapseDock() { autoCollapse?.(); }
