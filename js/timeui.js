@@ -73,7 +73,19 @@ export function initTimeControl() {
     window.__eggWanted = want; // test hook: the trigger logic, independent of the audio file
     // Made in Heaven: while the egg is armed the whole UI ascends — white,
     // magenta and gold, every button wrapped in a violet aura (css: .heaven).
+    // The #heaven-fx overlay (time-ripple rings + rising glints) is CREATED
+    // at activation, so its entrance animations replay from zero each time.
     document.body.classList.toggle('heaven', want);
+    let fx = document.getElementById('heaven-fx');
+    if (want && !fx) {
+      fx = document.createElement('div');
+      fx.id = 'heaven-fx';
+      fx.setAttribute('aria-hidden', 'true');
+      fx.innerHTML = '<div class="hv-rise"></div><div class="hv-ring"></div><div class="hv-ring hv-ring2"></div>';
+      document.body.appendChild(fx);
+    } else if (!want && fx) {
+      fx.remove();
+    }
     if (want && !eggAudio) {
       eggAudio = new Audio('assets/egg-crucified.mp3');
       eggAudio.loop = true;

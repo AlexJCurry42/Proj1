@@ -1184,54 +1184,127 @@ body.heaven{
   --hairline-strong: rgba(224, 140, 255, 0.42);
 }
 
-/* The aura: a violet flame glow that breathes around every button. */
+/* The aura: a violet flame glow that blooms in over ~1.6 s, then breathes.
+   Different cycle lengths per button group let the pulses drift naturally
+   out of phase instead of thumping in lockstep. */
+@keyframes heaven-aura-in{
+  from{ box-shadow: 0 0 0 rgba(216, 131, 255, 0), 0 0 0 rgba(159, 67, 242, 0), 0 0 0 rgba(98, 32, 196, 0); }
+  to  { box-shadow: 0 0 6px rgba(216, 131, 255, 0.50), 0 0 20px rgba(159, 67, 242, 0.38), 0 0 42px rgba(98, 32, 196, 0.28); }
+}
 @keyframes heaven-aura{
-  0%, 100%{ box-shadow: 0 0 5px rgba(216, 131, 255, 0.50), 0 0 16px rgba(159, 67, 242, 0.38), 0 0 34px rgba(98, 32, 196, 0.28); }
-  50%     { box-shadow: 0 0 9px rgba(236, 178, 255, 0.75), 0 0 26px rgba(183, 99, 255, 0.55), 0 0 50px rgba(122, 45, 224, 0.40); }
+  0%, 100%{ box-shadow: 0 0 6px rgba(216, 131, 255, 0.50), 0 0 20px rgba(159, 67, 242, 0.38), 0 0 42px rgba(98, 32, 196, 0.28); }
+  50%     { box-shadow: 0 0 12px rgba(240, 190, 255, 0.85), 0 0 34px rgba(190, 105, 255, 0.60), 0 0 64px rgba(130, 50, 230, 0.45); }
 }
 body.heaven :is(.glass-btn, #search-form, #time-chip, #egg-player){
   border-color: rgba(224, 140, 255, 0.55);
-  animation: heaven-aura 2.4s ease-in-out infinite;
+  transition: border-color 1.2s ease;
+  animation: heaven-aura-in 1.6s ease-out both, heaven-aura 2.6s ease-in-out 1.6s infinite;
 }
-/* Slight phase offsets so the glow ripples across the chrome instead of
-   pulsing in lockstep. */
-body.heaven .glass-btn:nth-of-type(2n){ animation-delay: -0.8s; }
-body.heaven .glass-btn:nth-of-type(3n){ animation-delay: -1.6s; }
+body.heaven .glass-btn:nth-of-type(2n){ animation-duration: 1.6s, 3.0s; }
+body.heaven .glass-btn:nth-of-type(3n){ animation-duration: 1.6s, 3.5s; }
 
-/* Panels: violet-tinted glass. */
+/* Panels: violet-tinted glass, faded in rather than snapped. */
 body.heaven :is(.glass-panel, .dropdown-list, .toast){
   background: linear-gradient(160deg, rgba(64, 28, 96, 0.38), rgba(20, 8, 40, 0.22)), var(--material);
   border-color: rgba(216, 131, 255, 0.40);
+  transition: background 1.4s ease, border-color 1.4s ease;
 }
 
 /* Heaven itself: a slow-turning iridescent sweep plus violet flame light
    rising from the screen edges. Fixed pseudo-layers above the sky, below
-   every control, transparent to input. */
+   every control, transparent to input — each igniting gradually (the
+   one-shot fade hands off exactly where the infinite loop begins). */
+@keyframes heaven-flames-in{ from{ opacity: 0; } to{ opacity: 0.72; } }
 @keyframes heaven-breathe{
   0%, 100%{ opacity: 0.72; transform: scale(1); }
   50%     { opacity: 1;    transform: scale(1.035); }
 }
+@keyframes heaven-fade-in{ from{ opacity: 0; } to{ opacity: 1; } }
 @keyframes heaven-spin{ to{ transform: rotate(360deg); } }
 body.heaven::after{
   content: ''; position: fixed; inset: -6%; z-index: 5; pointer-events: none;
   background:
-    radial-gradient(60% 42% at 8% 100%, rgba(150, 60, 235, 0.34), transparent 70%),
-    radial-gradient(55% 38% at 92% 100%, rgba(224, 77, 255, 0.26), transparent 70%),
-    radial-gradient(70% 30% at 50% 0%, rgba(120, 40, 220, 0.20), transparent 75%),
-    radial-gradient(40% 55% at 0% 40%, rgba(190, 90, 255, 0.15), transparent 70%),
-    radial-gradient(40% 55% at 100% 45%, rgba(140, 50, 230, 0.15), transparent 70%);
+    radial-gradient(60% 42% at 8% 100%, rgba(150, 60, 235, 0.38), transparent 70%),
+    radial-gradient(55% 38% at 92% 100%, rgba(224, 77, 255, 0.30), transparent 70%),
+    radial-gradient(70% 30% at 50% 0%, rgba(120, 40, 220, 0.24), transparent 75%),
+    radial-gradient(40% 55% at 0% 40%, rgba(190, 90, 255, 0.17), transparent 70%),
+    radial-gradient(40% 55% at 100% 45%, rgba(140, 50, 230, 0.17), transparent 70%);
   mix-blend-mode: screen;
-  animation: heaven-breathe 5.5s ease-in-out infinite;
+  animation: heaven-flames-in 1.8s ease-out both, heaven-breathe 5.5s ease-in-out 1.8s infinite;
 }
 body.heaven::before{
   content: ''; position: fixed; left: 50%; top: 50%;
   width: 150vmax; height: 150vmax; margin: -75vmax; z-index: 4;
   pointer-events: none; mix-blend-mode: screen;
   background: conic-gradient(from 0deg,
-    transparent 0deg, rgba(224, 77, 255, 0.055) 30deg, transparent 75deg,
-    rgba(123, 47, 247, 0.065) 140deg, transparent 205deg,
-    rgba(245, 200, 76, 0.045) 265deg, transparent 325deg);
-  animation: heaven-spin 26s linear infinite;
+    transparent 0deg, rgba(224, 77, 255, 0.07) 30deg, transparent 75deg,
+    rgba(123, 47, 247, 0.08) 140deg, transparent 205deg,
+    rgba(245, 200, 76, 0.055) 265deg, transparent 325deg);
+  animation: heaven-fade-in 2.2s ease-out both, heaven-spin 26s linear infinite;
+}
+
+/* The ascension overlay (#heaven-fx, created by js/timeui.js at activation
+   so every entrance replays from zero): expanding time-ripple rings from
+   the screen center, and faint glints of light rising past the viewer.
+   All layers are transform/opacity-only — compositor-friendly on phones. */
+#heaven-fx{
+  position: fixed; inset: 0; z-index: 6; pointer-events: none;
+  overflow: hidden; mix-blend-mode: screen;
+  animation: heaven-fade-in 2s ease-out both;
+}
+/* Rising glints: a fixed tile of soft light specks on a layer extended
+   640px (two tiles) below the viewport; translating up by exactly two
+   tiles re-aligns the pattern, so the loop has no visible seam. */
+@keyframes hv-rise{ to{ transform: translateY(-640px); } }
+#heaven-fx .hv-rise{
+  position: absolute; left: 0; right: 0; top: 0; bottom: -640px;
+  background-image:
+    radial-gradient(2px 16px at 12% 40px, rgba(240, 200, 255, 0.55), transparent 70%),
+    radial-gradient(1.5px 12px at 35% 210px, rgba(224, 140, 255, 0.45), transparent 70%),
+    radial-gradient(2px 20px at 58% 110px, rgba(245, 210, 130, 0.40), transparent 70%),
+    radial-gradient(1.5px 10px at 76% 280px, rgba(230, 170, 255, 0.50), transparent 70%),
+    radial-gradient(2px 14px at 92% 60px, rgba(200, 120, 255, 0.45), transparent 70%);
+  background-size: 240px 320px; background-repeat: repeat;
+  animation: hv-rise 6.5s linear infinite;
+}
+/* Time-acceleration ripples: thin rings expanding from the center. */
+@keyframes hv-ring{
+  0%  { transform: scale(0.04); opacity: 0; }
+  12% { opacity: 0.55; }
+  100%{ transform: scale(1); opacity: 0; }
+}
+#heaven-fx .hv-ring{
+  position: absolute; left: 50%; top: 50%;
+  width: 110vmax; height: 110vmax; margin: -55vmax;
+  border-radius: 50%;
+  border: 1.5px solid rgba(232, 160, 255, 0.65);
+  box-shadow: 0 0 24px rgba(180, 90, 250, 0.35), inset 0 0 24px rgba(180, 90, 250, 0.25);
+  animation: hv-ring 5s cubic-bezier(0.16, 0.6, 0.45, 1) infinite;
+}
+#heaven-fx .hv-ring2{
+  border-color: rgba(245, 200, 76, 0.45);
+  box-shadow: 0 0 24px rgba(245, 200, 76, 0.22), inset 0 0 24px rgba(245, 200, 76, 0.16);
+  animation-delay: 2.5s;
+}
+
+/* The crosshair joins the ascension with a gentle magenta pulse. */
+@keyframes hv-cross{
+  0%, 100%{ transform: translate(-50%, -50%) scale(1); }
+  50%     { transform: translate(-50%, -50%) scale(1.22); }
+}
+body.heaven #crosshair{ animation: hv-cross 2.6s ease-in-out infinite; }
+
+/* A golden shimmer sweeps the white-and-gold track chip every few seconds. */
+@keyframes hv-shimmer{
+  from{ transform: translateX(-120%) skewX(-18deg); }
+  to  { transform: translateX(350%) skewX(-18deg); }
+}
+body.heaven #egg-player{ position: relative; overflow: hidden; }
+body.heaven #egg-player::before{
+  content: ''; position: absolute; top: 0; bottom: 0; left: 0; width: 40%;
+  pointer-events: none;
+  background: linear-gradient(105deg, transparent, rgba(245, 200, 76, 0.35) 50%, transparent);
+  animation: hv-shimmer 3.4s ease-in-out infinite;
 }
 
 /* Time controls: the amber time-travel accents ascend to magenta and gold. */
