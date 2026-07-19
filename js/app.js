@@ -718,25 +718,10 @@ async function main() {
     console.error('Unhandled promise rejection:', e.reason);
   });
 
-  // PWA: cache the app shell so revisits load instantly (sky data stays live).
-  // The shell is cache-first per VERSION (see sw.js); when a NEW version's
-  // worker takes over mid-session, reload once so the page runs the fresh
-  // code immediately — this is what keeps "deploy, then test on the phone"
-  // honest despite cache-first assets.
-  if ('serviceWorker' in navigator && location.protocol === 'https:') {
-    const hadController = !!navigator.serviceWorker.controller;
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      // First-ever install also fires this (clients.claim); only reload on
-      // a genuine version change, and only once per session (loop guard).
-      if (!hadController) return;
-      try {
-        if (sessionStorage.getItem('dsa-swreloaded')) return;
-        sessionStorage.setItem('dsa-swreloaded', '1');
-      } catch (err) { return; }
-      location.reload();
-    });
-    navigator.serviceWorker.register('sw.js').catch(() => { /* shell caching is optional */ });
-  }
+  // PWA service-worker registration lives inline in index.html: the page is
+  // network-first (always fresh), while THIS file is cache-first and may be
+  // a version behind — registration from here once left phones running new
+  // HTML against stale CSS/JS with no way to converge.
 }
 
 // On-page debug console for devices without dev tools (phones): append
