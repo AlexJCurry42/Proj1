@@ -7,6 +7,11 @@ holes** layer covering stellar-mass X-ray binaries and supermassive black
 holes (28 curated measured entries including the two EHT-imaged flagships,
 plus the full live AGN/quasar population).
 
+*A personal project by a single person, made with Claude (Anthropic's AI
+assistant) — for exploration and education, with no warranty and no
+affiliation with any organization named below. Full disclosure and
+disclaimers in [About this project](#about-this-project).*
+
 Designed for the general public with scientific-tool standards: an
 Apple-native liquid-glass UI floats over a full-bleed sky — search bar
 bottom-center like iOS Safari, a collapsible layers dock on the left, a
@@ -95,6 +100,46 @@ Built with [Aladin Lite v3](https://aladin.cds.unistra.fr/AladinLite/) as the
 sky-rendering engine — **bundled with the app** (pinned v3.9.0-beta, no
 mutable CDN dependency). No build step, no framework, no backend, no API
 keys — plain ES modules, HTML and CSS.
+
+## About this project
+
+Pocket Planetarium is a **personal project, made by a single person** —
+not a team, a company, or an institution — and it was **made with
+Claude**, Anthropic's AI assistant: the large majority of the code,
+tests, and documentation were written by Claude (via Claude Code),
+working under the project owner's direction, requests, and review.
+That fact is worth disclosing plainly, and it comes with the
+disclaimers that honestly follow from it:
+
+- **No warranty of any kind.** The software is provided *as is*, per the
+  MIT license — no guarantee of correctness, fitness for any purpose, or
+  freedom from defects. Use it at your own risk.
+- **For exploration and education only.** This is a hobby planetarium,
+  not a scientific instrument. Do not rely on it for research,
+  publication, telescope pointing, navigation, or anything where
+  precision matters — consult the primary catalogs and professional
+  tools instead. Planet and Moon positions in particular are
+  approximate (geocentric, ±arcminutes; the Moon up to ~1° from
+  parallax).
+- **AI-assisted code can contain mistakes.** The project carries a CI
+  test suite (unit tests plus browser regression scenarios in Chromium
+  and WebKit) and everything is reviewed before shipping, but a
+  single-person hobby project — AI-assisted or not — cannot promise the
+  scrutiny of a production team. If something looks wrong, it might be.
+- **No affiliation or endorsement.** This project is not affiliated
+  with, sponsored by, or endorsed by Anthropic, CDS Strasbourg, NASA,
+  ESA, IPAC/Caltech, CelesTrak, the Wikimedia Foundation, or any other
+  organization named here. Their names appear solely to credit data and
+  services they make publicly available, which remain under their own
+  licenses and terms. All trademarks belong to their respective owners.
+- **Best-effort everything.** Maintenance, bug fixes, and the hosted
+  site's availability run at hobby cadence. The app may break, lag
+  behind upstream changes, or go away; nothing here is a service with
+  any commitment attached.
+
+Found a bug, or something that doesn't look right? Please open an issue
+at [github.com/AlexJCurry42/Proj1](https://github.com/AlexJCurry42/Proj1/issues)
+— reports are genuinely welcome.
 
 ## Running it
 
