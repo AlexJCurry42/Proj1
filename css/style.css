@@ -1352,8 +1352,13 @@ body.cosmos-on #aladin-lite-div, body.cosmos-on #overlay-canvas{ visibility: hid
 #cosmos-exit{
   display: none; position: fixed; z-index: 46;
   top: calc(64px + var(--safe-top)); left: 50%; transform: translateX(-50%);
-  height: 36px; padding: 0 16px; font-size: 13px;
+  /* .glass-btn is a fixed 40px icon circle — this one carries text. */
+  width: auto; height: 36px; padding: 0 16px;
+  font-size: 13px; font-weight: 600; white-space: nowrap;
 }
+/* The base :active scale would REPLACE the centering translate and lurch
+   the button sideways mid-press — compose both transforms instead. */
+#cosmos-exit:active{ transform: translateX(-50%) scale(0.95); }
 #cosmos-legend{
   display: none; position: fixed; z-index: 45;
   left: 50%; transform: translateX(-50%);

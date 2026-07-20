@@ -754,6 +754,12 @@ await scenario('cosmic web: 3-D mode enters and exits, or degrades gracefully wi
       '3-D canvas must take the viewport');
     assert(await page.evaluate(() => /DESI DR1/.test(document.getElementById('cosmos-legend')?.textContent || '')),
       'legend must name and credit DESI');
+    // The exit control is a TEXT button: it must be wide enough for its
+    // label (the .glass-btn base is a 40px icon circle) and sit centered.
+    const exit = await page.locator('#cosmos-exit').boundingBox();
+    assert(exit && exit.width > 90, `exit button must fit its label, width ${exit?.width}`);
+    assert(Math.abs(exit.x + exit.width / 2 - page.viewportSize().width / 2) < 3,
+      'exit button must be horizontally centered');
     // The legend obeys the app-wide notification contract: an ✕ dismisses
     // it while the 3-D mode itself stays up.
     await page.click('#cosmos-legend .legend-close');
