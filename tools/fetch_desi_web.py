@@ -34,27 +34,71 @@ H0 = 67.36             # km/s/Mpc
 OMEGA_M = 0.3153
 C_KMS = 299792.458
 
-# Candidate queries, tried in order. random_id (0–100, uniform) is Data
-# Lab's built-in subsampling column; the MOD fallback covers a schema
-# without it, and the EDR table covers DR1 not being loaded yet.
-BASE = ("SELECT target_ra, target_dec, z, spectype FROM {table} "
-        "WHERE zwarn = 0 AND spectype IN ('GALAXY', 'QSO') "
-        f"AND z BETWEEN {Z_MIN} AND {Z_MAX}")
-QUERIES = [
-    BASE.format(table='desi_dr1.zpix') + ' AND random_id < 2.8',
-    BASE.format(table='desi_dr1.zpix') + ' AND MOD(targetid, 40) = 0',
-    BASE.format(table='desi_edr.zpix') + ' AND random_id < 40',
-]
-
-
-def tap_csv(query):
+def tap_csv(query, maxrec):
+    # FORMAT is TAP 1.0, RESPONSEFORMAT is TAP 1.1 — send both so either
+    # generation of service honors the CSV request.
     params = urlencode({
-        'REQUEST': 'doQuery', 'LANG': 'ADQL', 'FORMAT': 'csv',
-        'MAXREC': str(TARGET_N * 2), 'QUERY': query
+        'REQUEST': 'doQuery', 'LANG': 'ADQL',
+        'FORMAT': 'csv', 'RESPONSEFORMAT': 'csv',
+        'MAXREC': str(maxrec), 'QUERY': query
     })
     req = Request(f'{TAP_SYNC}?{params}', headers={'User-Agent': UA})
     with urlopen(req, timeout=600) as r:
         return r.read().decode('utf-8', 'replace')
+
+
+def tap_error_text(votable):
+    """A TAP service reports query errors as a VOTable regardless of the
+    requested format — surface the actual message, not just 'was XML'."""
+    import re
+    m = re.search(r'<INFO[^>]*QUERY_STATUS[^>]*value="ERROR"[^>]*>(.*?)</INFO>',
+                  votable, re.S | re.I)
+    if m:
+        return ' '.join(m.group(1).split())[:400]
+    m = re.search(r'<INFO[^>]*QUERY_STATUS[^>]*value="([A-Z]+)"', votable, re.I)
+    return f'VOTable QUERY_STATUS={m.group(1) if m else "?"} (head: {votable[:300]!r})'
+
+
+def discover_schema():
+    """Ask TAP_SCHEMA which DESI zpix table exists and what its relevant
+    columns are actually called — guessed names are why blind queries die."""
+    cols_csv = tap_csv(
+        "SELECT table_name, column_name FROM TAP_SCHEMA.columns "
+        "WHERE table_name IN ('desi_dr1.zpix', 'desi_edr.zpix')", 5000)
+    if not cols_csv.lstrip().lower().startswith('table_name'):
+        raise RuntimeError(f'TAP_SCHEMA lookup failed: {tap_error_text(cols_csv)}')
+    by_table = {}
+    for line in cols_csv.splitlines()[1:]:
+        parts = [p.strip().lower() for p in line.split(',')]
+        if len(parts) == 2:
+            by_table.setdefault(parts[0], set()).add(parts[1])
+    for table in ('desi_dr1.zpix', 'desi_edr.zpix'):
+        cols = by_table.get(table)
+        if not cols:
+            continue
+        ra = next((c for c in ('target_ra', 'mean_fiber_ra', 'ra') if c in cols), None)
+        dec = next((c for c in ('target_dec', 'mean_fiber_dec', 'dec') if c in cols), None)
+        if ra and dec and 'z' in cols and 'zwarn' in cols and 'spectype' in cols:
+            return {'table': table, 'ra': ra, 'dec': dec,
+                    'random_id': 'random_id' in cols, 'targetid': 'targetid' in cols}
+    raise RuntimeError(f'no usable zpix table in TAP_SCHEMA (saw: {sorted(by_table)})')
+
+
+def build_queries(s):
+    """Candidate queries, most-selective sampling first. random_id (0–100,
+    uniform) is Data Lab's built-in subsampling column; MOD covers a schema
+    without it; the unsampled MAXREC query is the last resort."""
+    base = (f"SELECT {s['ra']}, {s['dec']}, z, spectype FROM {s['table']} "
+            "WHERE zwarn = 0 AND spectype IN ('GALAXY', 'QSO') "
+            f"AND z BETWEEN {Z_MIN} AND {Z_MAX}")
+    frac = 2.8 if s['table'] == 'desi_dr1.zpix' else 40
+    out = []
+    if s['random_id']:
+        out.append(base + f' AND random_id < {frac}')
+    if s['targetid']:
+        out.append(base + ' AND MOD(targetid, 40) = 0')
+    out.append(base)  # MAXREC alone: not uniform, but better than nothing
+    return out
 
 
 def comoving_interpolator():
@@ -74,16 +118,19 @@ def comoving_interpolator():
 
 
 def main():
+    schema = discover_schema()
+    print(f'schema: {schema}')
     csv_text, last_err = None, None
-    for q in QUERIES:
+    for q in build_queries(schema):
         try:
-            t = tap_csv(q)
-            # A TAP error document is XML/HTML; a result starts with a header row.
-            if t[:200].lstrip().lower().startswith('target_ra'):
+            t = tap_csv(q, TARGET_N * 2)
+            # A CSV result opens with its header row (the ra column leads);
+            # anything XML-shaped is the service explaining a problem.
+            if t[:200].lstrip().lower().startswith(schema['ra']):
                 csv_text = t
-                print(f'query ok ({len(t)} bytes): {q[:80]}…')
+                print(f'query ok ({len(t)} bytes): {q[:100]}…')
                 break
-            last_err = f'unexpected response head: {t[:160]!r}'
+            last_err = tap_error_text(t)
             print(f'query rejected, trying next: {last_err}')
         except (HTTPError, OSError) as e:
             last_err = str(e)
