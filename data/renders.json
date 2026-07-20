@@ -1,1249 +1,1227 @@
 {
-  "_comment": "Media definitions for popular, well-studied objects, displayed in the detail panel by js/render3d.js. Priority: (1) a real photograph where humanity has one (photo.kind='photo'), (2) an official NASA/ESO artist's impression (photo.kind='art'), (3) a procedural WebGL render generated from published parameters ('type') — also the automatic fallback if a photo fails to load. Photos are served from Wikimedia Commons via the stable Special:FilePath endpoint; 'file' is the exact Commons filename (verified via Commons search July 2026). Every media item is credited on screen. Star colors for procedural renders derive from params.tempK; planet palettes are artistic but consistent with true-color spacecraft imagery.",
-  "entries": [
-    {
-      "match": [
-        "mercury"
-      ],
-      "title": "Mercury",
-      "type": "rocky",
-      "params": {
-        "colorA": "#a8a29a",
-        "colorB": "#57514b"
-      },
-      "photo": {
-        "file": "Mercury in true color.jpg",
-        "kind": "photo",
-        "credit": "NASA/JHUAPL/Carnegie Institution (MESSENGER)"
-      },
-      "blurb": "The smallest planet and closest to the Sun — a cratered, airless world scorched to 430 °C by day and frozen at night."
-    },
-    {
-      "match": [
-        "venus"
-      ],
-      "title": "Venus",
-      "type": "cloudy",
-      "params": {
-        "colorA": "#e8d9ab",
-        "colorB": "#c7a96f"
-      },
-      "photo": {
-        "file": "Venus-real color.jpg",
-        "kind": "photo",
-        "credit": "NASA (Mariner 10, processed)"
-      },
-      "blurb": "Earth's hellish twin: a runaway greenhouse world hidden under unbroken sulfuric-acid clouds, hotter at the surface than Mercury."
-    },
-    {
-      "match": [
-        "mars"
-      ],
-      "title": "Mars",
-      "type": "rocky",
-      "params": {
-        "colorA": "#c1683f",
-        "colorB": "#7d452c",
-        "caps": true
-      },
-      "photo": {
-        "file": "OSIRIS Mars true color.jpg",
-        "kind": "photo",
-        "credit": "ESA/MPS (Rosetta, OSIRIS), CC BY-SA 3.0 IGO"
-      },
-      "blurb": "The red planet — iron-oxide deserts, the Solar System's tallest volcano, and polar caps of water and CO₂ ice."
-    },
-    {
-      "match": [
-        "jupiter"
-      ],
-      "title": "Jupiter",
-      "type": "gas_giant",
-      "params": {
-        "colorA": "#ddc0a0",
-        "colorB": "#9c6a48"
-      },
-      "photo": {
-        "file": "Jupiter and its shrunken Great Red Spot.jpg",
-        "kind": "photo",
-        "credit": "NASA/ESA Hubble Space Telescope (A. Simon)"
-      },
-      "blurb": "The largest planet, a gas giant with banded ammonia clouds and a centuries-old storm bigger than Earth."
-    },
-    {
-      "match": [
-        "saturn"
-      ],
-      "title": "Saturn",
-      "type": "gas_giant",
-      "params": {
-        "colorA": "#e3cd9d",
-        "colorB": "#b3946a",
-        "rings": true
-      },
-      "photo": {
-        "file": "Saturn during Equinox (cropped).jpg",
-        "kind": "photo",
-        "credit": "NASA/JPL/Space Science Institute (Cassini)"
-      },
-      "blurb": "The ringed giant: its icy ring system spans 280,000 km yet averages only about 10 meters thick."
-    },
-    {
-      "match": [
-        "uranus"
-      ],
-      "title": "Uranus",
-      "type": "ice_giant",
-      "params": {
-        "colorA": "#a7d8d5",
-        "colorB": "#6fb3bb"
-      },
-      "photo": {
-        "file": "Uranus2-transparent.png",
-        "kind": "photo",
-        "credit": "NASA/JPL (Voyager 2)"
-      },
-      "blurb": "An ice giant tipped on its side — its axis lies almost in its orbital plane, giving 42-year-long polar seasons."
-    },
-    {
-      "match": [
-        "neptune"
-      ],
-      "title": "Neptune",
-      "type": "ice_giant",
-      "params": {
-        "colorA": "#5273d8",
-        "colorB": "#2c439f"
-      },
-      "photo": {
-        "file": "Neptune Full.jpg",
-        "kind": "photo",
-        "credit": "NASA/JPL (Voyager 2)"
-      },
-      "blurb": "The most distant planet, an ice giant with the fastest winds measured in the Solar System — up to ~2,100 km/h."
-    },
-    {
-      "match": [
-        "pluto"
-      ],
-      "title": "Pluto",
-      "type": "rocky",
-      "params": {
-        "colorA": "#cfb69a",
-        "colorB": "#8a7460",
-        "caps": true
-      },
-      "photo": {
-        "file": "Pluto in True Color - High-Res.jpg",
-        "kind": "photo",
-        "credit": "NASA/JHUAPL/SwRI (New Horizons)"
-      },
-      "blurb": "The best-known dwarf planet: New Horizons revealed nitrogen-ice glaciers and the heart-shaped Sputnik Planitia."
-    },
-    {
-      "match": [
-        "sun",
-        "the sun",
-        "sol"
-      ],
-      "title": "The Sun",
-      "type": "star",
-      "params": {
-        "tempK": 5772
-      },
-      "photo": {
-        "file": "The Sun by the Atmospheric Imaging Assembly of NASA's Solar Dynamics Observatory - 20100819.jpg",
-        "kind": "photo",
-        "credit": "NASA/SDO (AIA)"
-      },
-      "blurb": "Our star: a 4.6-billion-year-old G-type dwarf converting 600 million tonnes of hydrogen to helium every second, 150 million km away."
-    },
-    {
-      "match": [
-        "moon",
-        "the moon",
-        "luna"
-      ],
-      "title": "The Moon",
-      "type": "rocky",
-      "params": {
-        "colorA": "#c9c9cc",
-        "colorB": "#6e6e74"
-      },
-      "photo": {
-        "file": "FullMoon2010.jpg",
-        "kind": "photo",
-        "credit": "Gregory H. Revera, CC BY-SA 3.0"
-      },
-      "blurb": "Earth's only natural satellite, 384,400 km away on average — the only world beyond Earth that humans have walked on."
-    },
-    {
-      "match": [
-        "sagittarius a*",
-        "sgr a*",
-        "sagittarius a",
-        "sgr a"
-      ],
-      "title": "Sagittarius A*",
-      "type": "black_hole",
-      "params": {
-        "inclinationDeg": 30,
-        "spin": 0.9,
-        "dim": 0.85
-      },
-      "photo": {
-        "file": "EHT Saggitarius A black hole.tif",
-        "kind": "photo",
-        "credit": "EHT Collaboration, CC BY 4.0"
-      },
-      "blurb": "The first direct image of the Milky Way's own supermassive black hole, released by the Event Horizon Telescope in May 2022."
-    },
-    {
-      "match": [
-        "m87*",
-        "m 87*",
-        "messier 87*"
-      ],
-      "title": "M87*",
-      "type": "black_hole",
-      "params": {
-        "inclinationDeg": 17,
-        "spin": 0.9,
-        "jet": 1
-      },
-      "photo": {
-        "file": "Black hole - Messier 87.jpg",
-        "kind": "photo",
-        "credit": "EHT Collaboration, CC BY 4.0"
-      },
-      "blurb": "The first photograph of a black hole ever taken — the Event Horizon Telescope's 2019 image of the 6.5-billion-solar-mass giant at the heart of M87."
-    },
-    {
-      "match": [
-        "betelgeuse",
-        "alf ori",
-        "alpha orionis",
-        "alpha ori"
-      ],
-      "title": "Betelgeuse",
-      "type": "star",
-      "params": {
-        "tempK": 3600
-      },
-      "photo": {
-        "file": "Betelgeuse captured by ALMA.jpg",
-        "kind": "photo",
-        "credit": "ALMA (ESO/NAOJ/NRAO)/E. O'Gorman/P. Kervella, CC BY 4.0"
-      },
-      "blurb": "A red supergiant near the end of its life, ~550 light-years away — one of very few stars whose surface we can actually resolve. When it explodes as a supernova it will briefly outshine the full Moon."
-    },
-    {
-      "match": [
-        "sirius",
-        "alf cma",
-        "alpha canis majoris",
-        "sirius a",
-        "dog star"
-      ],
-      "title": "Sirius",
-      "type": "star",
-      "params": {
-        "tempK": 9940
-      },
-      "blurb": "The brightest star in the night sky — a hot white A-type star 8.6 light-years away, orbited by a white-dwarf companion."
-    },
-    {
-      "match": [
-        "vega",
-        "alf lyr",
-        "alpha lyrae"
-      ],
-      "title": "Vega",
-      "type": "star",
-      "params": {
-        "tempK": 9602
-      },
-      "blurb": "The historical zero-point of the magnitude scale and a former (and future) pole star, 25 light-years away."
-    },
-    {
-      "match": [
-        "rigel",
-        "bet ori",
-        "beta orionis"
-      ],
-      "title": "Rigel",
-      "type": "star",
-      "params": {
-        "tempK": 12100
-      },
-      "blurb": "A blue supergiant roughly 120,000 times as luminous as the Sun, marking Orion's western foot."
-    },
-    {
-      "match": [
-        "antares",
-        "alf sco",
-        "alpha scorpii"
-      ],
-      "title": "Antares",
-      "type": "star",
-      "params": {
-        "tempK": 3660
-      },
-      "blurb": "The 'rival of Mars' — a red supergiant so large that placed at the Sun's position it would engulf the orbit of Mars."
-    },
-    {
-      "match": [
-        "polaris",
-        "alf umi",
-        "alpha ursae minoris",
-        "north star"
-      ],
-      "title": "Polaris",
-      "type": "star",
-      "params": {
-        "tempK": 6015
-      },
-      "blurb": "The current North Star — actually a Cepheid variable supergiant in a triple system, ~430 light-years away."
-    },
-    {
-      "match": [
-        "proxima centauri",
-        "proxima cen",
-        "alf cen c",
-        "v645 cen"
-      ],
-      "title": "Proxima Centauri",
-      "type": "star",
-      "params": {
-        "tempK": 3042
-      },
-      "blurb": "The nearest star to the Sun at 4.24 light-years — a dim red dwarf prone to violent flares, hosting at least one planet."
-    },
-    {
-      "match": [
-        "crab nebula",
-        "m1",
-        "m 1",
-        "ngc 1952"
-      ],
-      "title": "Crab Nebula",
-      "photo": {
-        "file": "Crab Nebula.jpg",
-        "kind": "photo",
-        "credit": "NASA/ESA, J. Hester & A. Loll (Arizona State University)"
-      },
-      "blurb": "The expanding wreckage of a supernova witnessed worldwide in 1054 CE, powered by a neutron star spinning 30 times a second at its heart."
-    },
-    {
-      "match": [
-        "andromeda galaxy",
-        "m31",
-        "m 31",
-        "ngc 224"
-      ],
-      "title": "Andromeda Galaxy",
-      "photo": {
-        "file": "Andromeda Galaxy (with h-alpha).jpg",
-        "kind": "photo",
-        "credit": "Adam Evans, CC BY 2.0"
-      },
-      "blurb": "Our nearest large galactic neighbor, 2.5 million light-years away and on a slow collision course with the Milky Way."
-    },
-    {
-      "match": [
-        "orion nebula",
-        "m42",
-        "m 42",
-        "ngc 1976"
-      ],
-      "title": "Orion Nebula",
-      "photo": {
-        "file": "Orion Nebula - Hubble 2006 mosaic.jpg",
-        "kind": "photo",
-        "credit": "NASA/ESA, M. Robberto (STScI) & Hubble Orion Treasury Team"
-      },
-      "blurb": "The nearest massive star-forming region to Earth, 1,344 light-years away — a stellar nursery visible to the naked eye."
-    },
-    {
-      "match": [
-        "whirlpool galaxy",
-        "m51",
-        "m 51",
-        "ngc 5194"
-      ],
-      "title": "Whirlpool Galaxy",
-      "photo": {
-        "file": "Messier51 sRGB.jpg",
-        "kind": "photo",
-        "credit": "NASA/ESA, S. Beckwith (STScI) & Hubble Heritage Team"
-      },
-      "blurb": "A textbook grand-design spiral, its arms sharpened by an ongoing encounter with the companion galaxy NGC 5195."
-    },
-    {
-      "match": [
-        "eagle nebula",
-        "m16",
-        "m 16",
-        "pillars of creation"
-      ],
-      "title": "Eagle Nebula — Pillars of Creation",
-      "photo": {
-        "file": "Pillars of creation 2014 HST WFC3-UVIS full-res.jpg",
-        "kind": "photo",
-        "credit": "NASA/ESA/Hubble Heritage Team (STScI/AURA)"
-      },
-      "blurb": "Towering columns of cold gas and dust sculpted by radiation from nearby newborn stars — Hubble's most famous image, re-shot in 2014."
-    },
-    {
-      "match": [
-        "51 pegasi b",
-        "51 peg b"
-      ],
-      "title": "51 Pegasi b",
-      "type": "gas_giant",
-      "params": {
-        "colorA": "#e0b273",
-        "colorB": "#9c6b3a"
-      },
-      "photo": {
-        "file": "Artist impression of the exoplanet 51 Pegasi b.jpg",
-        "kind": "art",
-        "credit": "ESO/M. Kornmesser/Nick Risinger, CC BY 4.0"
-      },
-      "blurb": "The first planet ever found orbiting a Sun-like star (1995) — a 'hot Jupiter' racing around its star every 4.2 days. Its discovery earned the 2019 Nobel Prize in Physics."
-    },
-    {
-      "match": [
-        "hd 189733 b",
-        "hd 189733b"
-      ],
-      "title": "HD 189733 b",
-      "type": "gas_giant",
-      "params": {
-        "colorA": "#2f5fd0",
-        "colorB": "#122a70"
-      },
-      "photo": {
-        "file": "Exoplanet HD 189733 b.jpg",
-        "kind": "art",
-        "credit": "NASA/ESA/M. Kornmesser"
-      },
-      "blurb": "A hot Jupiter whose deep cobalt-blue color was actually measured with Hubble — likely molten silicate glass raining sideways in ~8,700 km/h winds."
-    },
-    {
-      "match": [
-        "hd 209458 b",
-        "hd 209458b",
-        "osiris"
-      ],
-      "title": "HD 209458 b",
-      "type": "gas_giant",
-      "params": {
-        "colorA": "#d8c9a8",
-        "colorB": "#a08554"
-      },
-      "blurb": "'Osiris' — the first exoplanet observed transiting its star and the first with a detected atmosphere, which is slowly evaporating into space."
-    },
-    {
-      "match": [
-        "55 cancri e",
-        "55 cnc e",
-        "janssen"
-      ],
-      "title": "55 Cancri e",
-      "type": "lava",
-      "params": {
-        "colorA": "#20100a",
-        "colorB": "#ff7a30"
-      },
-      "blurb": "A super-Earth so close to its star that its year lasts 18 hours and its dayside is likely an ocean of molten rock."
-    },
-    {
-      "match": [
-        "trappist-1 e",
-        "trappist-1e"
-      ],
-      "title": "TRAPPIST-1 e",
-      "type": "rocky",
-      "params": {
-        "colorA": "#a8b2ae",
-        "colorB": "#5f6d70",
-        "caps": true
-      },
-      "blurb": "One of seven Earth-sized worlds packed around the ultracool dwarf TRAPPIST-1 — and among the most promising temperate rocky planets known."
-    },
-    {
-      "match": [
-        "proxima centauri b",
-        "proxima cen b",
-        "proxima b"
-      ],
-      "title": "Proxima Centauri b",
-      "type": "rocky",
-      "params": {
-        "colorA": "#b98d6f",
-        "colorB": "#74543f"
-      },
-      "photo": {
-        "file": "Artist’s impression of Proxima Centauri b.jpg",
-        "kind": "art",
-        "credit": "ESO/M. Kornmesser, CC BY 4.0"
-      },
-      "blurb": "The closest known exoplanet — a roughly Earth-mass world in the habitable zone of the star nearest to the Sun."
-    },
-    {
-      "match": [
-        "kepler-452 b",
-        "kepler-452b"
-      ],
-      "title": "Kepler-452 b",
-      "type": "rocky",
-      "params": {
-        "colorA": "#a9b48f",
-        "colorB": "#5f6d55"
-      },
-      "photo": {
-        "file": "Kepler-452b artist concept.jpg",
-        "kind": "art",
-        "credit": "NASA Ames/JPL-Caltech/T. Pyle"
-      },
-      "blurb": "Nicknamed 'Earth's older cousin': a super-Earth in the habitable zone of a Sun-like star about 1.5 billion years older than ours."
-    },
-    {
-      "match": [
-        "kepler-186 f",
-        "kepler-186f"
-      ],
-      "title": "Kepler-186 f",
-      "type": "rocky",
-      "params": {
-        "colorA": "#b78a5f",
-        "colorB": "#6a4c33"
-      },
-      "blurb": "The first Earth-sized planet found in another star's habitable zone, orbiting a cool red dwarf 580 light-years away.",
-      "photo": {
-        "file": "Kepler186f-ArtistConcept-20140417.jpg",
-        "kind": "art",
-        "credit": "NASA Ames/SETI Institute/JPL-Caltech"
-      }
-    },
-    {
-      "match": [
-        "gj 1214 b",
-        "gj 1214b",
-        "gliese 1214 b"
-      ],
-      "title": "GJ 1214 b",
-      "type": "cloudy",
-      "params": {
-        "colorA": "#aebfd0",
-        "colorB": "#7f96ad"
-      },
-      "blurb": "A hazy sub-Neptune 'water world' whose featureless, cloud-shrouded spectrum frustrated a decade of atmosphere studies."
-    },
-    {
-      "match": [
-        "wasp-12 b",
-        "wasp-12b"
-      ],
-      "title": "WASP-12 b",
-      "type": "lava",
-      "params": {
-        "colorA": "#160a08",
-        "colorB": "#ff4a26"
-      },
-      "blurb": "An ultra-hot Jupiter darker than fresh asphalt, so close to its star that it is being stretched into an egg shape and devoured."
-    },
-    {
-      "match": [
-        "kepler-16 b",
-        "kepler-16b",
-        "kepler-16 (ab) b"
-      ],
-      "title": "Kepler-16 b",
-      "type": "gas_giant",
-      "params": {
-        "colorA": "#c9c2b4",
-        "colorB": "#8e8a7c"
-      },
-      "blurb": "The 'Tatooine' planet — a cold Saturn-mass world that orbits two suns at once, the first unambiguous circumbinary planet."
-    },
-    {
-      "match": [
-        "trappist-1 e",
-        "trappist-1e"
-      ],
-      "title": "TRAPPIST-1 e",
-      "type": "rocky",
-      "params": {
-        "colorA": "#b5765a",
-        "colorB": "#6b4034"
-      },
-      "blurb": "One of seven Earth-sized worlds packed around an ultracool red dwarf 40 light-years away — the richest known system of rocky, potentially temperate planets.",
-      "photo": {
-        "file": "TRAPPIST-1e artist impression 2018.png",
-        "kind": "art",
-        "credit": "NASA/JPL-Caltech"
-      }
-    },
-    {
-      "match": [
-        "kepler-22 b",
-        "kepler-22b"
-      ],
-      "title": "Kepler-22 b",
-      "type": "rocky",
-      "params": {
-        "colorA": "#5f9fd6",
-        "colorB": "#2d5f8a"
-      },
-      "blurb": "The first confirmed planet found in the habitable zone of a Sun-like star (2011).",
-      "photo": {
-        "file": "Kepler22b-artwork.jpg",
-        "kind": "art",
-        "credit": "NASA/Ames/JPL-Caltech"
-      }
-    },
-    {
-      "match": [
-        "55 cnc e",
-        "55 cancri e",
-        "janssen"
-      ],
-      "title": "55 Cancri e",
-      "type": "rocky",
-      "params": {
-        "colorA": "#ff8a50",
-        "colorB": "#8a2f1a"
-      },
-      "blurb": "A lava world twice Earth's size racing around its star every 18 hours — its dayside is an ocean of molten rock.",
-      "photo": {
-        "file": "Artist’s impression of 55 Cancri e.jpg",
-        "kind": "art",
-        "credit": "ESA/Hubble, M. Kornmesser"
-      }
-    },
-    {
-      "match": [
-        "k2-18 b",
-        "k2-18b"
-      ],
-      "title": "K2-18 b",
-      "type": "rocky",
-      "params": {
-        "colorA": "#6f8fb5",
-        "colorB": "#3a5273"
-      },
-      "blurb": "A temperate sub-Neptune where Hubble found water vapour in the atmosphere (2019) — and JWST later found carbon-bearing molecules.",
-      "_photo_note": "Former Commons artist-impression filename 404s (caught by the daily health check, 2026-07-11); procedural render until a verified filename replaces it."
-    },
-    {
-      "match": [
-        "wasp-12 b",
-        "wasp-12b"
-      ],
-      "title": "WASP-12 b",
-      "type": "gas_giant",
-      "params": {
-        "colorA": "#4a3a4f",
-        "colorB": "#1c1220"
-      },
-      "blurb": "One of the darkest and hottest planets known — pulled egg-shaped by tides and being devoured by its star.",
-      "_photo_note": "Former Commons artist-impression filename 404s (caught by the daily health check, 2026-07-11); procedural render until a verified filename replaces it."
-    },
-    {
-      "match": [
-        "gj 1214 b",
-        "gj 1214b"
-      ],
-      "title": "GJ 1214 b",
-      "type": "rocky",
-      "params": {
-        "colorA": "#7fb5c9",
-        "colorB": "#3f6a80"
-      },
-      "blurb": "The archetypal 'water world' candidate — a steamy sub-Neptune whose deep atmosphere may blanket a global ocean.",
-      "photo": {
-        "file": "Artist’s impression of GJ 1214b.jpg",
-        "kind": "art",
-        "credit": "ESO/L. Calçada"
-      }
-    },
-    {
-      "match": [
-        "hr 8799 b",
-        "hr 8799 c",
-        "hr 8799 d",
-        "hr 8799 e"
-      ],
-      "title": "HR 8799 system",
-      "type": "gas_giant",
-      "params": {
-        "colorA": "#d98a5a",
-        "colorB": "#7a4630"
-      },
-      "blurb": "The first multi-planet system ever directly imaged — four super-Jupiters, photographed often enough that we can watch them actually orbit.",
-      "photo": {
-        "file": "HR 8799 Orbiting Exoplanets.gif",
-        "kind": "photo",
-        "credit": "Jason Wang (Northwestern)/Christian Marois (NRC-HIA), W. M. Keck Observatory"
-      }
-    },
-    {
-      "match": [
-        "2m 1207 b",
-        "2m1207 b",
-        "2m1207b"
-      ],
-      "title": "2M1207 b",
-      "type": "gas_giant",
-      "params": {
-        "colorA": "#c2543a",
-        "colorB": "#5f2618"
-      },
-      "blurb": "The first exoplanet ever photographed (VLT, 2004) — a young, glowing super-Jupiter beside a brown dwarf.",
-      "photo": {
-        "file": "2M1207b - First image of an exoplanet.jpg",
-        "kind": "photo",
-        "credit": "ESO/VLT/NaCo"
-      }
-    },
-    {
-      "match": [
-        "fomalhaut b",
-        "dagon"
-      ],
-      "title": "Fomalhaut b (Dagon)",
-      "type": "rocky",
-      "params": {
-        "colorA": "#cfd6e0",
-        "colorB": "#8791a3"
-      },
-      "blurb": "Imaged by Hubble inside Fomalhaut's great dust ring; later studies suggest it may be an expanding cloud from a colossal planetesimal collision rather than a planet.",
-      "photo": {
-        "file": "Fomalhaut with Disk Ring and extrasolar planet b.jpg",
-        "kind": "photo",
-        "credit": "NASA/ESA/P. Kalas (UC Berkeley)"
-      }
-    },
-    {
-      "match": [
-        "bet pic b",
-        "beta pictoris b"
-      ],
-      "title": "Beta Pictoris b",
-      "type": "gas_giant",
-      "params": {
-        "colorA": "#d9a05f",
-        "colorB": "#7a5230"
-      },
-      "blurb": "A young super-Jupiter directly imaged crossing the famous debris disk of Beta Pictoris."
-    },
-    {
-      "match": [
-        "pds 70 b"
-      ],
-      "title": "PDS 70 b",
-      "type": "gas_giant",
-      "params": {
-        "colorA": "#e08a4a",
-        "colorB": "#8a4a28"
-      },
-      "blurb": "A planet caught in the act of forming — directly imaged still embedded in the disk of gas and dust it is being born from."
-    },
-    {
-      "match": [
-        "toi-700 d",
-        "toi 700 d"
-      ],
-      "title": "TOI-700 d",
-      "type": "rocky",
-      "params": {
-        "colorA": "#9fb58a",
-        "colorB": "#55684a"
-      },
-      "blurb": "TESS's first Earth-sized planet in a habitable zone, 100 light-years away."
-    },
-    {
-      "match": [
-        "ring nebula",
-        "m57",
-        "m 57",
-        "ngc 6720"
-      ],
-      "title": "Ring Nebula",
-      "photo": {
-        "file": "Hubble reveals the Ring Nebula’s true shape.jpg",
-        "kind": "photo",
-        "credit": "NASA/ESA Hubble (C.R. O'Dell et al.)"
-      },
-      "blurb": "A dying Sun-like star's cast-off atmosphere glowing as a luminous ring 2,000 light-years away — a preview of our own Sun's fate."
-    },
-    {
-      "match": [
-        "helix nebula",
-        "ngc 7293"
-      ],
-      "title": "Helix Nebula",
-      "photo": {
-        "file": "Helix Nebula.jpg",
-        "kind": "photo",
-        "credit": "NASA/NOAO/ESA, Hubble Helix Nebula Team"
-      },
-      "blurb": "One of the nearest planetary nebulae — the 'Eye of God' — a dying star's shells of gas seen almost pole-on, 650 light-years away."
-    },
-    {
-      "match": [
-        "sombrero galaxy",
-        "m104",
-        "m 104",
-        "ngc 4594"
-      ],
-      "title": "Sombrero Galaxy",
-      "photo": {
-        "file": "M104 ngc4594 sombrero galaxy hi-res.jpg",
-        "kind": "photo",
-        "credit": "NASA/ESA Hubble Heritage Team (STScI/AURA)"
-      },
-      "blurb": "A nearly edge-on spiral with a brilliant bulge and a dramatic dust lane brim, home to a billion-solar-mass central black hole."
-    },
-    {
-      "match": [
-        "pleiades",
-        "m45",
-        "m 45",
-        "seven sisters"
-      ],
-      "title": "Pleiades",
-      "photo": {
-        "file": "Pleiades large.jpg",
-        "kind": "photo",
-        "credit": "NASA/ESA/AURA/Caltech (Palomar Observatory)"
-      },
-      "blurb": "The Seven Sisters: a young star cluster drifting through a chance dust cloud that scatters their blue light into wispy veils."
-    },
-    {
-      "match": [
-        "lagoon nebula",
-        "m8",
-        "m 8",
-        "ngc 6523"
-      ],
-      "title": "Lagoon Nebula",
-      "photo": {
-        "file": "Lagoon Nebula.jpg",
-        "kind": "photo",
-        "credit": "ESO (Danish 1.5-m telescope, La Silla)"
-      },
-      "blurb": "A giant stellar nursery in Sagittarius, visible to the naked eye — glowing hydrogen carved by winds from its newborn stars."
-    },
-    {
-      "match": [
-        "trifid nebula",
-        "m20",
-        "m 20",
-        "ngc 6514"
-      ],
-      "title": "Trifid Nebula",
-      "photo": {
-        "file": "Trifid Nebula.jpg",
-        "kind": "photo",
-        "credit": "ESO"
-      },
-      "blurb": "Three nebulae in one: pink emission, blue reflection, and the dark dust lanes that split it into three lobes and give it its name."
-    },
-    {
-      "match": [
-        "omega / swan nebula",
-        "omega nebula",
-        "swan nebula",
-        "m17",
-        "m 17",
-        "ngc 6618"
-      ],
-      "title": "Omega Nebula",
-      "photo": {
-        "file": "Omega Nebula.jpg",
-        "kind": "photo",
-        "credit": "ESO (3.6-m telescope, La Silla)"
-      },
-      "blurb": "One of the Milky Way's most active star factories, its glowing checkmark of gas lit by a hidden cluster of young massive stars."
-    },
-    {
-      "match": [
-        "dumbbell nebula",
-        "m27",
-        "m 27",
-        "ngc 6853"
-      ],
-      "title": "Dumbbell Nebula",
-      "photo": {
-        "file": "Messier27.jpg",
-        "kind": "photo",
-        "credit": "WIYN/NOAO/NSF"
-      },
-      "blurb": "The first planetary nebula ever discovered (1764) — twin lobes of gas shed by a dying star, 1,360 light-years away in Vulpecula."
-    },
-    {
-      "match": [
-        "cat's eye nebula",
-        "ngc 6543"
-      ],
-      "title": "Cat's Eye Nebula",
-      "photo": {
-        "file": "Cat's Eye Nebula - NGC 6543 - NASA ESA Hubble Space Telescope (52479198918).png",
-        "kind": "photo",
-        "credit": "NASA/ESA Hubble"
-      },
-      "blurb": "One of the most intricate planetary nebulae known — eleven concentric shells, jets and knots around a dying star in Draco."
-    },
-    {
-      "match": [
-        "eskimo nebula",
-        "clown face nebula",
-        "ngc 2392"
-      ],
-      "title": "Eskimo Nebula",
-      "photo": {
-        "file": "Ngc2392.jpg",
-        "kind": "photo",
-        "credit": "NASA/ESA/STScI (Hubble)"
-      },
-      "blurb": "A dying star wrapped in a 'parka' of comet-shaped filaments — the inner face is gas blown outward in the last 10,000 years."
-    },
-    {
-      "match": [
-        "horsehead nebula region",
-        "horsehead nebula",
-        "ic 434",
-        "ic434",
-        "b33",
-        "barnard 33"
-      ],
-      "title": "Horsehead Nebula",
-      "photo": {
-        "file": "Horsehead-Hubble.jpg",
-        "kind": "photo",
-        "credit": "NASA/ESA Hubble Heritage Team"
-      },
-      "blurb": "The sky's most famous dark nebula: a horse-head pillar of cold dust silhouetted against glowing hydrogen in Orion's Belt."
-    },
-    {
-      "match": [
-        "carina nebula",
-        "ngc 3372",
-        "eta carinae nebula",
-        "great carina nebula"
-      ],
-      "title": "Carina Nebula",
-      "photo": {
-        "file": "Carina Nebula.jpg",
-        "kind": "photo",
-        "credit": "ESO"
-      },
-      "blurb": "A southern star-forming giant four times larger than Orion, home to the unstable supergiant Eta Carinae — a supernova in waiting."
-    },
-    {
-      "match": [
-        "veil nebula",
-        "ngc 6960",
-        "western veil",
-        "witch's broom nebula"
-      ],
-      "title": "Veil Nebula",
-      "photo": {
-        "file": "Veil Nebula - NGC6960.jpg",
-        "kind": "photo",
-        "credit": "Hunter Wilson (Hewholooks), CC BY-SA 3.0"
-      },
-      "blurb": "Delicate glowing filaments — the shredded remains of a star that exploded some 10–20,000 years ago, still expanding across Cygnus."
-    },
-    {
-      "match": [
-        "rosette nebula",
-        "ngc 2237",
-        "ngc 2244",
-        "rosette cluster"
-      ],
-      "title": "Rosette Nebula",
-      "photo": {
-        "file": "Rosette Nebula (heic2505f).jpg",
-        "kind": "photo",
-        "credit": "NASA/ESA Hubble"
-      },
-      "blurb": "A vast cosmic rose in Monoceros: the young cluster NGC 2244 has hollowed out the heart of the cloud that formed it."
-    },
-    {
-      "match": [
-        "north america nebula",
-        "ngc 7000",
-        "pelican nebula",
-        "ic 5070"
-      ],
-      "title": "North America Nebula",
-      "photo": {
-        "file": "NGC 7000- The North America Nebula and the Pelican Nebula (noao-n7000mosblock).jpg",
-        "kind": "photo",
-        "credit": "NOAO/AURA/NSF"
-      },
-      "blurb": "An emission cloud shaped uncannily like a continent, beside its companion the Pelican — both lit by hidden hot young stars in Cygnus."
-    },
-    {
-      "match": [
-        "tarantula nebula",
-        "ngc 2070",
-        "30 doradus",
-        "30 dor"
-      ],
-      "title": "Tarantula Nebula",
-      "photo": {
-        "file": "Tarantula Nebula TRAPPIST.jpg",
-        "kind": "photo",
-        "credit": "TRAPPIST/E. Jehin/ESO"
-      },
-      "blurb": "The most violent star-forming region in the Local Group, in the Large Magellanic Cloud — if it sat where Orion is, it would cast shadows."
-    },
-    {
-      "match": [
-        "triangulum galaxy",
-        "m33",
-        "m 33",
-        "ngc 598"
-      ],
-      "title": "Triangulum Galaxy",
-      "photo": {
-        "file": "Triangulum Galaxy Messier 33 (M33) (2019-01-4305).png",
-        "kind": "photo",
-        "credit": "NASA/ESA Hubble (M. Durbin, J. Dalcanton, B.F. Williams)"
-      },
-      "blurb": "The third-largest galaxy of our Local Group, a floculent spiral seen nearly face-on — Hubble resolved 25 million of its stars."
-    },
-    {
-      "match": [
-        "pinwheel galaxy",
-        "m101",
-        "m 101",
-        "ngc 5457"
-      ],
-      "title": "Pinwheel Galaxy",
-      "photo": {
-        "file": "M101 hires STScI-PRC2006-10a.jpg",
-        "kind": "photo",
-        "credit": "NASA/ESA Hubble (K. Kuntz et al.)"
-      },
-      "blurb": "A grand face-on spiral nearly twice the Milky Way's diameter — this Hubble portrait was stitched from ten years of exposures."
-    },
-    {
-      "match": [
-        "butterfly nebula",
-        "bug nebula",
-        "ngc 6302"
-      ],
-      "title": "Butterfly Nebula",
-      "photo": {
-        "file": "NGC 6302 Hubble 2009.full.jpg",
-        "kind": "photo",
-        "credit": "NASA/ESA Hubble SM4 ERO Team"
-      },
-      "blurb": "Wings of gas hotter than 20,000 °C torn from one of the hottest dying stars known — 250,000 °C at the nebula's hidden heart."
-    },
-    {
-      "match": [
-        "bubble nebula",
-        "ngc 7635"
-      ],
-      "title": "Bubble Nebula",
-      "photo": {
-        "file": "The Bubble Nebula - NGC 7635 - Heic1608a.jpg",
-        "kind": "photo",
-        "credit": "NASA/ESA Hubble"
-      },
-      "blurb": "A seven-light-year soap bubble blown by the ferocious wind of a star 45 times the Sun's mass — Hubble's 26th anniversary image."
-    },
-    {
-      "match": [
-        "centaurus a",
-        "ngc 5128",
-        "cen a"
-      ],
-      "title": "Centaurus A",
-      "photo": {
-        "file": "ESO Centaurus A LABOCA.jpg",
-        "kind": "photo",
-        "credit": "ESO/WFI; MPIfR/ESO/APEX; NASA/CXC/CfA (composite)"
-      },
-      "blurb": "The nearest active galaxy: an elliptical that swallowed a spiral, its central black hole firing jets seen here in submillimetre and X-ray light."
-    },
-    {
-      "match": [
-        "antennae galaxies",
-        "ngc 4038",
-        "ngc 4039"
-      ],
-      "title": "Antennae Galaxies",
-      "photo": {
-        "file": "Antennae Galaxies reloaded.jpg",
-        "kind": "photo",
-        "credit": "NASA/ESA Hubble"
-      },
-      "blurb": "Two spirals caught mid-collision, igniting billions of new stars — a preview of the Milky Way's eventual merger with Andromeda."
-    },
-    {
-      "match": [
-        "omega centauri",
-        "ngc 5139",
-        "omega cen"
-      ],
-      "title": "Omega Centauri",
-      "photo": {
-        "file": "VST image of the giant globular star cluster Omega Centauri.jpg",
-        "kind": "photo",
-        "credit": "ESO/INAF-VST/OmegaCAM, CC BY 4.0"
-      },
-      "blurb": "The Milky Way's largest globular cluster — ten million stars, possibly the stripped core of a dwarf galaxy we absorbed long ago."
-    },
-    {
-      "match": [
-        "47 tucanae",
-        "47 tuc",
-        "ngc 104"
-      ],
-      "title": "47 Tucanae",
-      "photo": {
-        "file": "The globular star cluster 47 Tucanae.jpg",
-        "kind": "photo",
-        "credit": "ESO/M.-R. Cioni/VISTA Magellanic Cloud survey, CC BY 4.0"
-      },
-      "blurb": "The southern sky's second-brightest globular cluster: up to a million ancient stars packed into a ball 120 light-years across."
-    },
-    {
-      "match": [
-        "hercules cluster",
-        "great hercules cluster",
-        "m13",
-        "m 13",
-        "ngc 6205"
-      ],
-      "title": "Great Hercules Cluster",
-      "photo": {
-        "file": "Messier 13 - The Hercules Globular Cluster.jpg",
-        "kind": "photo",
-        "credit": "Giuseppe Donatiello (public domain dedication)"
-      },
-      "blurb": "The northern sky's showpiece globular — several hundred thousand stars, target of the 1974 Arecibo message to any listeners there."
-    },
-    {
-      "match": [
-        "bode's galaxy",
-        "m81",
-        "m 81",
-        "ngc 3031"
-      ],
-      "title": "Bode's Galaxy",
-      "photo": {
-        "file": "M81.jpg",
-        "kind": "photo",
-        "credit": "NASA/ESA Hubble"
-      },
-      "blurb": "A textbook grand-design spiral 12 million light-years away, locked in a gravitational tug-of-war with its neighbor the Cigar Galaxy."
-    },
-    {
-      "match": [
-        "cigar galaxy",
-        "m82",
-        "m 82",
-        "ngc 3034"
-      ],
-      "title": "Cigar Galaxy",
-      "photo": {
-        "file": "M82 HST ACS 2006-14-a-large web.jpg",
-        "kind": "photo",
-        "credit": "NASA/ESA Hubble Heritage Team"
-      },
-      "blurb": "A starburst galaxy forming stars ten times faster than the Milky Way, venting towers of glowing hydrogen from its core."
-    },
-    {
-      "match": [
-        "southern pinwheel galaxy",
-        "m83",
-        "m 83",
-        "ngc 5236"
-      ],
-      "title": "Southern Pinwheel Galaxy",
-      "photo": {
-        "file": "M83 - Southern Pinwheel.jpg",
-        "kind": "photo",
-        "credit": "ESO, CC BY 4.0"
-      },
-      "blurb": "A barred spiral rich in supernovae — six observed in the last century, more than almost any other galaxy."
-    },
-    {
-      "match": [
-        "black eye galaxy",
-        "m64",
-        "m 64",
-        "ngc 4826"
-      ],
-      "title": "Black Eye Galaxy",
-      "photo": {
-        "file": "Black eye galaxy.png",
-        "kind": "photo",
-        "credit": "NASA and the Hubble Heritage Team (AURA/STScI)"
-      },
-      "blurb": "A smouldering dark dust band across a bright core — and gas in its outskirts orbiting backwards, relic of an ancient merger."
-    },
-    {
-      "match": [
-        "sculptor galaxy",
-        "ngc 253",
-        "silver coin galaxy"
-      ],
-      "title": "Sculptor Galaxy",
-      "photo": {
-        "file": "Sculptor Galaxy, NGC 253 (noao-ngc-253).jpg",
-        "kind": "photo",
-        "credit": "NOAO/AURA/NSF"
-      },
-      "blurb": "The dusty 'Silver Coin' — one of the brightest galaxies beyond the Local Group and a furious hidden starburst behind its dust."
-    },
-    {
-      "match": [
-        "stephan's quintet",
-        "stephans quintet"
-      ],
-      "title": "Stephan's Quintet",
-      "photo": {
-        "file": "Stephan's Quintet Hubble 2009.full.jpg",
-        "kind": "photo",
-        "credit": "NASA/ESA Hubble"
-      },
-      "blurb": "A visual grouping of five galaxies, four locked in a slow gravitational dance of collisions and tidal tails."
-    },
-    {
-      "match": [
-        "cartwheel galaxy",
-        "eso 350-40"
-      ],
-      "title": "Cartwheel Galaxy",
-      "photo": {
-        "file": "Cartwheel Galaxy.jpg",
-        "kind": "photo",
-        "credit": "ESA/Hubble & NASA"
-      },
-      "blurb": "A bullseye 500 million light-years away: a smaller galaxy punched straight through a spiral, sending a ring of starbirth rippling outward."
-    },
-    {
-      "match": [
-        "flame nebula",
-        "ngc 2024"
-      ],
-      "title": "Flame Nebula",
-      "photo": {
-        "file": "The hidden fires of the Flame Nebula.jpg",
-        "kind": "photo",
-        "credit": "ESO/J. Emerson/VISTA, CC BY 4.0"
-      },
-      "blurb": "Alnitak's ultraviolet glare sets this Orion cloud alight; in infrared, VISTA sees straight through the dark dust lane that splits it."
-    }
-  ]
+ "_comment": "Media definitions for popular, well-studied objects, displayed in the detail panel by js/render3d.js. Priority: (1) a real photograph where humanity has one (photo.kind='photo'), (2) an official NASA/ESO artist's impression (photo.kind='art'), (3) a procedural WebGL render generated from published parameters ('type') — also the automatic fallback if a photo fails to load. Photos are served from Wikimedia Commons via the stable Special:FilePath endpoint; 'file' is the exact Commons filename (verified via Commons search July 2026). Every media item is credited on screen. Star colors for procedural renders derive from params.tempK; planet palettes are artistic but consistent with true-color spacecraft imagery.",
+ "entries": [
+  {
+   "match": [
+    "mercury"
+   ],
+   "title": "Mercury",
+   "type": "rocky",
+   "params": {
+    "colorA": "#a8a29a",
+    "colorB": "#57514b"
+   },
+   "photo": {
+    "file": "Mercury in true color.jpg",
+    "kind": "photo",
+    "credit": "NASA/JHUAPL/Carnegie Institution (MESSENGER)"
+   },
+   "blurb": "The smallest planet and closest to the Sun — a cratered, airless world scorched to 430 °C by day and frozen at night."
+  },
+  {
+   "match": [
+    "venus"
+   ],
+   "title": "Venus",
+   "type": "cloudy",
+   "params": {
+    "colorA": "#e8d9ab",
+    "colorB": "#c7a96f"
+   },
+   "photo": {
+    "file": "Venus-real color.jpg",
+    "kind": "photo",
+    "credit": "NASA (Mariner 10, processed)"
+   },
+   "blurb": "Earth's hellish twin: a runaway greenhouse world hidden under unbroken sulfuric-acid clouds, hotter at the surface than Mercury."
+  },
+  {
+   "match": [
+    "mars"
+   ],
+   "title": "Mars",
+   "type": "rocky",
+   "params": {
+    "colorA": "#c1683f",
+    "colorB": "#7d452c",
+    "caps": true
+   },
+   "photo": {
+    "file": "OSIRIS Mars true color.jpg",
+    "kind": "photo",
+    "credit": "ESA/MPS (Rosetta, OSIRIS), CC BY-SA 3.0 IGO"
+   },
+   "blurb": "The red planet — iron-oxide deserts, the Solar System's tallest volcano, and polar caps of water and CO₂ ice."
+  },
+  {
+   "match": [
+    "jupiter"
+   ],
+   "title": "Jupiter",
+   "type": "gas_giant",
+   "params": {
+    "colorA": "#ddc0a0",
+    "colorB": "#9c6a48"
+   },
+   "photo": {
+    "file": "Jupiter and its shrunken Great Red Spot.jpg",
+    "kind": "photo",
+    "credit": "NASA/ESA Hubble Space Telescope (A. Simon)"
+   },
+   "blurb": "The largest planet, a gas giant with banded ammonia clouds and a centuries-old storm bigger than Earth."
+  },
+  {
+   "match": [
+    "saturn"
+   ],
+   "title": "Saturn",
+   "type": "gas_giant",
+   "params": {
+    "colorA": "#e3cd9d",
+    "colorB": "#b3946a",
+    "rings": true
+   },
+   "photo": {
+    "file": "Saturn during Equinox (cropped).jpg",
+    "kind": "photo",
+    "credit": "NASA/JPL/Space Science Institute (Cassini)"
+   },
+   "blurb": "The ringed giant: its icy ring system spans 280,000 km yet averages only about 10 meters thick."
+  },
+  {
+   "match": [
+    "uranus"
+   ],
+   "title": "Uranus",
+   "type": "ice_giant",
+   "params": {
+    "colorA": "#a7d8d5",
+    "colorB": "#6fb3bb"
+   },
+   "photo": {
+    "file": "Uranus2-transparent.png",
+    "kind": "photo",
+    "credit": "NASA/JPL (Voyager 2)"
+   },
+   "blurb": "An ice giant tipped on its side — its axis lies almost in its orbital plane, giving 42-year-long polar seasons."
+  },
+  {
+   "match": [
+    "neptune"
+   ],
+   "title": "Neptune",
+   "type": "ice_giant",
+   "params": {
+    "colorA": "#5273d8",
+    "colorB": "#2c439f"
+   },
+   "photo": {
+    "file": "Neptune Full.jpg",
+    "kind": "photo",
+    "credit": "NASA/JPL (Voyager 2)"
+   },
+   "blurb": "The most distant planet, an ice giant with the fastest winds measured in the Solar System — up to ~2,100 km/h."
+  },
+  {
+   "match": [
+    "pluto"
+   ],
+   "title": "Pluto",
+   "type": "rocky",
+   "params": {
+    "colorA": "#cfb69a",
+    "colorB": "#8a7460",
+    "caps": true
+   },
+   "photo": {
+    "file": "Pluto in True Color - High-Res.jpg",
+    "kind": "photo",
+    "credit": "NASA/JHUAPL/SwRI (New Horizons)"
+   },
+   "blurb": "The best-known dwarf planet: New Horizons revealed nitrogen-ice glaciers and the heart-shaped Sputnik Planitia."
+  },
+  {
+   "match": [
+    "sun",
+    "the sun",
+    "sol"
+   ],
+   "title": "The Sun",
+   "type": "star",
+   "params": {
+    "tempK": 5772
+   },
+   "photo": {
+    "file": "The Sun by the Atmospheric Imaging Assembly of NASA's Solar Dynamics Observatory - 20100819.jpg",
+    "kind": "photo",
+    "credit": "NASA/SDO (AIA)"
+   },
+   "blurb": "Our star: a 4.6-billion-year-old G-type dwarf converting 600 million tonnes of hydrogen to helium every second, 150 million km away."
+  },
+  {
+   "match": [
+    "moon",
+    "the moon",
+    "luna"
+   ],
+   "title": "The Moon",
+   "type": "rocky",
+   "params": {
+    "colorA": "#c9c9cc",
+    "colorB": "#6e6e74"
+   },
+   "photo": {
+    "file": "FullMoon2010.jpg",
+    "kind": "photo",
+    "credit": "Gregory H. Revera, CC BY-SA 3.0"
+   },
+   "blurb": "Earth's only natural satellite, 384,400 km away on average — the only world beyond Earth that humans have walked on."
+  },
+  {
+   "match": [
+    "sagittarius a*",
+    "sgr a*",
+    "sagittarius a",
+    "sgr a"
+   ],
+   "title": "Sagittarius A*",
+   "type": "black_hole",
+   "params": {
+    "inclinationDeg": 30,
+    "spin": 0.9,
+    "dim": 0.85
+   },
+   "photo": {
+    "file": "EHT Saggitarius A black hole.tif",
+    "kind": "photo",
+    "credit": "EHT Collaboration, CC BY 4.0"
+   },
+   "blurb": "The first direct image of the Milky Way's own supermassive black hole, released by the Event Horizon Telescope in May 2022."
+  },
+  {
+   "match": [
+    "m87*"
+   ],
+   "title": "M87*",
+   "type": "black_hole",
+   "params": {
+    "inclinationDeg": 17,
+    "spin": 0.9,
+    "jet": 1
+   },
+   "photo": {
+    "file": "Black hole - Messier 87.jpg",
+    "kind": "photo",
+    "credit": "EHT Collaboration, CC BY 4.0"
+   },
+   "blurb": "The first photograph of a black hole ever taken — the Event Horizon Telescope's 2019 image of the 6.5-billion-solar-mass giant at the heart of M87."
+  },
+  {
+   "match": [
+    "betelgeuse",
+    "alf ori",
+    "alpha orionis",
+    "alpha ori"
+   ],
+   "title": "Betelgeuse",
+   "type": "star",
+   "params": {
+    "tempK": 3600
+   },
+   "photo": {
+    "file": "Betelgeuse captured by ALMA.jpg",
+    "kind": "photo",
+    "credit": "ALMA (ESO/NAOJ/NRAO)/E. O'Gorman/P. Kervella, CC BY 4.0"
+   },
+   "blurb": "A red supergiant near the end of its life, ~550 light-years away — one of very few stars whose surface we can actually resolve. When it explodes as a supernova it will briefly outshine the full Moon."
+  },
+  {
+   "match": [
+    "sirius",
+    "alf cma",
+    "alpha canis majoris",
+    "sirius a",
+    "dog star"
+   ],
+   "title": "Sirius",
+   "type": "star",
+   "params": {
+    "tempK": 9940
+   },
+   "blurb": "The brightest star in the night sky — a hot white A-type star 8.6 light-years away, orbited by a white-dwarf companion."
+  },
+  {
+   "match": [
+    "vega",
+    "alf lyr",
+    "alpha lyrae"
+   ],
+   "title": "Vega",
+   "type": "star",
+   "params": {
+    "tempK": 9602
+   },
+   "blurb": "The historical zero-point of the magnitude scale and a former (and future) pole star, 25 light-years away."
+  },
+  {
+   "match": [
+    "rigel",
+    "bet ori",
+    "beta orionis"
+   ],
+   "title": "Rigel",
+   "type": "star",
+   "params": {
+    "tempK": 12100
+   },
+   "blurb": "A blue supergiant roughly 120,000 times as luminous as the Sun, marking Orion's western foot."
+  },
+  {
+   "match": [
+    "antares",
+    "alf sco",
+    "alpha scorpii"
+   ],
+   "title": "Antares",
+   "type": "star",
+   "params": {
+    "tempK": 3660
+   },
+   "blurb": "The 'rival of Mars' — a red supergiant so large that placed at the Sun's position it would engulf the orbit of Mars."
+  },
+  {
+   "match": [
+    "polaris",
+    "alf umi",
+    "alpha ursae minoris",
+    "north star"
+   ],
+   "title": "Polaris",
+   "type": "star",
+   "params": {
+    "tempK": 6015
+   },
+   "blurb": "The current North Star — actually a Cepheid variable supergiant in a triple system, ~430 light-years away."
+  },
+  {
+   "match": [
+    "proxima centauri",
+    "proxima cen",
+    "alf cen c",
+    "v645 cen"
+   ],
+   "title": "Proxima Centauri",
+   "type": "star",
+   "params": {
+    "tempK": 3042
+   },
+   "blurb": "The nearest star to the Sun at 4.24 light-years — a dim red dwarf prone to violent flares, hosting at least one planet."
+  },
+  {
+   "match": [
+    "crab nebula",
+    "m1",
+    "ngc 1952"
+   ],
+   "title": "Crab Nebula",
+   "photo": {
+    "file": "Crab Nebula.jpg",
+    "kind": "photo",
+    "credit": "NASA/ESA, J. Hester & A. Loll (Arizona State University)"
+   },
+   "blurb": "The expanding wreckage of a supernova witnessed worldwide in 1054 CE, powered by a neutron star spinning 30 times a second at its heart."
+  },
+  {
+   "match": [
+    "andromeda galaxy",
+    "m31",
+    "ngc 224"
+   ],
+   "title": "Andromeda Galaxy",
+   "photo": {
+    "file": "Andromeda Galaxy (with h-alpha).jpg",
+    "kind": "photo",
+    "credit": "Adam Evans, CC BY 2.0"
+   },
+   "blurb": "Our nearest large galactic neighbor, 2.5 million light-years away and on a slow collision course with the Milky Way."
+  },
+  {
+   "match": [
+    "orion nebula",
+    "m42",
+    "ngc 1976"
+   ],
+   "title": "Orion Nebula",
+   "photo": {
+    "file": "Orion Nebula - Hubble 2006 mosaic.jpg",
+    "kind": "photo",
+    "credit": "NASA/ESA, M. Robberto (STScI) & Hubble Orion Treasury Team"
+   },
+   "blurb": "The nearest massive star-forming region to Earth, 1,344 light-years away — a stellar nursery visible to the naked eye."
+  },
+  {
+   "match": [
+    "whirlpool galaxy",
+    "m51",
+    "ngc 5194"
+   ],
+   "title": "Whirlpool Galaxy",
+   "photo": {
+    "file": "Messier51 sRGB.jpg",
+    "kind": "photo",
+    "credit": "NASA/ESA, S. Beckwith (STScI) & Hubble Heritage Team"
+   },
+   "blurb": "A textbook grand-design spiral, its arms sharpened by an ongoing encounter with the companion galaxy NGC 5195."
+  },
+  {
+   "match": [
+    "eagle nebula",
+    "m16",
+    "pillars of creation"
+   ],
+   "title": "Eagle Nebula — Pillars of Creation",
+   "photo": {
+    "file": "Pillars of creation 2014 HST WFC3-UVIS full-res.jpg",
+    "kind": "photo",
+    "credit": "NASA/ESA/Hubble Heritage Team (STScI/AURA)"
+   },
+   "blurb": "Towering columns of cold gas and dust sculpted by radiation from nearby newborn stars — Hubble's most famous image, re-shot in 2014."
+  },
+  {
+   "match": [
+    "51 pegasi b",
+    "51 peg b"
+   ],
+   "title": "51 Pegasi b",
+   "type": "gas_giant",
+   "params": {
+    "colorA": "#e0b273",
+    "colorB": "#9c6b3a"
+   },
+   "photo": {
+    "file": "Artist impression of the exoplanet 51 Pegasi b.jpg",
+    "kind": "art",
+    "credit": "ESO/M. Kornmesser/Nick Risinger, CC BY 4.0"
+   },
+   "blurb": "The first planet ever found orbiting a Sun-like star (1995) — a 'hot Jupiter' racing around its star every 4.2 days. Its discovery earned the 2019 Nobel Prize in Physics."
+  },
+  {
+   "match": [
+    "hd 189733 b",
+    "hd 189733b"
+   ],
+   "title": "HD 189733 b",
+   "type": "gas_giant",
+   "params": {
+    "colorA": "#2f5fd0",
+    "colorB": "#122a70"
+   },
+   "photo": {
+    "file": "Exoplanet HD 189733 b.jpg",
+    "kind": "art",
+    "credit": "NASA/ESA/M. Kornmesser"
+   },
+   "blurb": "A hot Jupiter whose deep cobalt-blue color was actually measured with Hubble — likely molten silicate glass raining sideways in ~8,700 km/h winds."
+  },
+  {
+   "match": [
+    "hd 209458 b",
+    "hd 209458b",
+    "osiris"
+   ],
+   "title": "HD 209458 b",
+   "type": "gas_giant",
+   "params": {
+    "colorA": "#d8c9a8",
+    "colorB": "#a08554"
+   },
+   "blurb": "'Osiris' — the first exoplanet observed transiting its star and the first with a detected atmosphere, which is slowly evaporating into space."
+  },
+  {
+   "match": [
+    "55 cancri e",
+    "55 cnc e",
+    "janssen"
+   ],
+   "title": "55 Cancri e",
+   "type": "lava",
+   "params": {
+    "colorA": "#20100a",
+    "colorB": "#ff7a30"
+   },
+   "blurb": "A super-Earth so close to its star that its year lasts 18 hours and its dayside is likely an ocean of molten rock."
+  },
+  {
+   "match": [
+    "trappist-1 e",
+    "trappist-1e"
+   ],
+   "title": "TRAPPIST-1 e",
+   "type": "rocky",
+   "params": {
+    "colorA": "#a8b2ae",
+    "colorB": "#5f6d70",
+    "caps": true
+   },
+   "blurb": "One of seven Earth-sized worlds packed around the ultracool dwarf TRAPPIST-1 — and among the most promising temperate rocky planets known."
+  },
+  {
+   "match": [
+    "proxima centauri b",
+    "proxima cen b",
+    "proxima b"
+   ],
+   "title": "Proxima Centauri b",
+   "type": "rocky",
+   "params": {
+    "colorA": "#b98d6f",
+    "colorB": "#74543f"
+   },
+   "photo": {
+    "file": "Artist’s impression of Proxima Centauri b.jpg",
+    "kind": "art",
+    "credit": "ESO/M. Kornmesser, CC BY 4.0"
+   },
+   "blurb": "The closest known exoplanet — a roughly Earth-mass world in the habitable zone of the star nearest to the Sun."
+  },
+  {
+   "match": [
+    "kepler-452 b",
+    "kepler-452b"
+   ],
+   "title": "Kepler-452 b",
+   "type": "rocky",
+   "params": {
+    "colorA": "#a9b48f",
+    "colorB": "#5f6d55"
+   },
+   "photo": {
+    "file": "Kepler-452b artist concept.jpg",
+    "kind": "art",
+    "credit": "NASA Ames/JPL-Caltech/T. Pyle"
+   },
+   "blurb": "Nicknamed 'Earth's older cousin': a super-Earth in the habitable zone of a Sun-like star about 1.5 billion years older than ours."
+  },
+  {
+   "match": [
+    "kepler-186 f",
+    "kepler-186f"
+   ],
+   "title": "Kepler-186 f",
+   "type": "rocky",
+   "params": {
+    "colorA": "#b78a5f",
+    "colorB": "#6a4c33"
+   },
+   "blurb": "The first Earth-sized planet found in another star's habitable zone, orbiting a cool red dwarf 580 light-years away.",
+   "photo": {
+    "file": "Kepler186f-ArtistConcept-20140417.jpg",
+    "kind": "art",
+    "credit": "NASA Ames/SETI Institute/JPL-Caltech"
+   }
+  },
+  {
+   "match": [
+    "gj 1214 b",
+    "gj 1214b",
+    "gliese 1214 b"
+   ],
+   "title": "GJ 1214 b",
+   "type": "cloudy",
+   "params": {
+    "colorA": "#aebfd0",
+    "colorB": "#7f96ad"
+   },
+   "blurb": "A hazy sub-Neptune 'water world' whose featureless, cloud-shrouded spectrum frustrated a decade of atmosphere studies."
+  },
+  {
+   "match": [
+    "wasp-12 b",
+    "wasp-12b"
+   ],
+   "title": "WASP-12 b",
+   "type": "lava",
+   "params": {
+    "colorA": "#160a08",
+    "colorB": "#ff4a26"
+   },
+   "blurb": "An ultra-hot Jupiter darker than fresh asphalt, so close to its star that it is being stretched into an egg shape and devoured."
+  },
+  {
+   "match": [
+    "kepler-16 b",
+    "kepler-16b",
+    "kepler-16 (ab) b"
+   ],
+   "title": "Kepler-16 b",
+   "type": "gas_giant",
+   "params": {
+    "colorA": "#c9c2b4",
+    "colorB": "#8e8a7c"
+   },
+   "blurb": "The 'Tatooine' planet — a cold Saturn-mass world that orbits two suns at once, the first unambiguous circumbinary planet."
+  },
+  {
+   "match": [
+    "trappist-1 e",
+    "trappist-1e"
+   ],
+   "title": "TRAPPIST-1 e",
+   "type": "rocky",
+   "params": {
+    "colorA": "#b5765a",
+    "colorB": "#6b4034"
+   },
+   "blurb": "One of seven Earth-sized worlds packed around an ultracool red dwarf 40 light-years away — the richest known system of rocky, potentially temperate planets.",
+   "photo": {
+    "file": "TRAPPIST-1e artist impression 2018.png",
+    "kind": "art",
+    "credit": "NASA/JPL-Caltech"
+   }
+  },
+  {
+   "match": [
+    "kepler-22 b",
+    "kepler-22b"
+   ],
+   "title": "Kepler-22 b",
+   "type": "rocky",
+   "params": {
+    "colorA": "#5f9fd6",
+    "colorB": "#2d5f8a"
+   },
+   "blurb": "The first confirmed planet found in the habitable zone of a Sun-like star (2011).",
+   "photo": {
+    "file": "Kepler22b-artwork.jpg",
+    "kind": "art",
+    "credit": "NASA/Ames/JPL-Caltech"
+   }
+  },
+  {
+   "match": [
+    "55 cnc e",
+    "55 cancri e",
+    "janssen"
+   ],
+   "title": "55 Cancri e",
+   "type": "rocky",
+   "params": {
+    "colorA": "#ff8a50",
+    "colorB": "#8a2f1a"
+   },
+   "blurb": "A lava world twice Earth's size racing around its star every 18 hours — its dayside is an ocean of molten rock.",
+   "photo": {
+    "file": "Artist’s impression of 55 Cancri e.jpg",
+    "kind": "art",
+    "credit": "ESA/Hubble, M. Kornmesser"
+   }
+  },
+  {
+   "match": [
+    "k2-18 b",
+    "k2-18b"
+   ],
+   "title": "K2-18 b",
+   "type": "rocky",
+   "params": {
+    "colorA": "#6f8fb5",
+    "colorB": "#3a5273"
+   },
+   "blurb": "A temperate sub-Neptune where Hubble found water vapour in the atmosphere (2019) — and JWST later found carbon-bearing molecules.",
+   "_photo_note": "Former Commons artist-impression filename 404s (caught by the daily health check, 2026-07-11); procedural render until a verified filename replaces it."
+  },
+  {
+   "match": [
+    "wasp-12 b",
+    "wasp-12b"
+   ],
+   "title": "WASP-12 b",
+   "type": "gas_giant",
+   "params": {
+    "colorA": "#4a3a4f",
+    "colorB": "#1c1220"
+   },
+   "blurb": "One of the darkest and hottest planets known — pulled egg-shaped by tides and being devoured by its star.",
+   "_photo_note": "Former Commons artist-impression filename 404s (caught by the daily health check, 2026-07-11); procedural render until a verified filename replaces it."
+  },
+  {
+   "match": [
+    "gj 1214 b",
+    "gj 1214b"
+   ],
+   "title": "GJ 1214 b",
+   "type": "rocky",
+   "params": {
+    "colorA": "#7fb5c9",
+    "colorB": "#3f6a80"
+   },
+   "blurb": "The archetypal 'water world' candidate — a steamy sub-Neptune whose deep atmosphere may blanket a global ocean.",
+   "photo": {
+    "file": "Artist’s impression of GJ 1214b.jpg",
+    "kind": "art",
+    "credit": "ESO/L. Calçada"
+   }
+  },
+  {
+   "match": [
+    "hr 8799 b",
+    "hr 8799 c",
+    "hr 8799 d",
+    "hr 8799 e"
+   ],
+   "title": "HR 8799 system",
+   "type": "gas_giant",
+   "params": {
+    "colorA": "#d98a5a",
+    "colorB": "#7a4630"
+   },
+   "blurb": "The first multi-planet system ever directly imaged — four super-Jupiters, photographed often enough that we can watch them actually orbit.",
+   "photo": {
+    "file": "HR 8799 Orbiting Exoplanets.gif",
+    "kind": "photo",
+    "credit": "Jason Wang (Northwestern)/Christian Marois (NRC-HIA), W. M. Keck Observatory"
+   }
+  },
+  {
+   "match": [
+    "2m 1207 b",
+    "2m1207 b",
+    "2m1207b"
+   ],
+   "title": "2M1207 b",
+   "type": "gas_giant",
+   "params": {
+    "colorA": "#c2543a",
+    "colorB": "#5f2618"
+   },
+   "blurb": "The first exoplanet ever photographed (VLT, 2004) — a young, glowing super-Jupiter beside a brown dwarf.",
+   "photo": {
+    "file": "2M1207b - First image of an exoplanet.jpg",
+    "kind": "photo",
+    "credit": "ESO/VLT/NaCo"
+   }
+  },
+  {
+   "match": [
+    "fomalhaut b",
+    "dagon"
+   ],
+   "title": "Fomalhaut b (Dagon)",
+   "type": "rocky",
+   "params": {
+    "colorA": "#cfd6e0",
+    "colorB": "#8791a3"
+   },
+   "blurb": "Imaged by Hubble inside Fomalhaut's great dust ring; later studies suggest it may be an expanding cloud from a colossal planetesimal collision rather than a planet.",
+   "photo": {
+    "file": "Fomalhaut with Disk Ring and extrasolar planet b.jpg",
+    "kind": "photo",
+    "credit": "NASA/ESA/P. Kalas (UC Berkeley)"
+   }
+  },
+  {
+   "match": [
+    "bet pic b",
+    "beta pictoris b"
+   ],
+   "title": "Beta Pictoris b",
+   "type": "gas_giant",
+   "params": {
+    "colorA": "#d9a05f",
+    "colorB": "#7a5230"
+   },
+   "blurb": "A young super-Jupiter directly imaged crossing the famous debris disk of Beta Pictoris."
+  },
+  {
+   "match": [
+    "pds 70 b"
+   ],
+   "title": "PDS 70 b",
+   "type": "gas_giant",
+   "params": {
+    "colorA": "#e08a4a",
+    "colorB": "#8a4a28"
+   },
+   "blurb": "A planet caught in the act of forming — directly imaged still embedded in the disk of gas and dust it is being born from."
+  },
+  {
+   "match": [
+    "toi-700 d",
+    "toi 700 d"
+   ],
+   "title": "TOI-700 d",
+   "type": "rocky",
+   "params": {
+    "colorA": "#9fb58a",
+    "colorB": "#55684a"
+   },
+   "blurb": "TESS's first Earth-sized planet in a habitable zone, 100 light-years away."
+  },
+  {
+   "match": [
+    "ring nebula",
+    "m57",
+    "ngc 6720"
+   ],
+   "title": "Ring Nebula",
+   "photo": {
+    "file": "Hubble reveals the Ring Nebula’s true shape.jpg",
+    "kind": "photo",
+    "credit": "NASA/ESA Hubble (C.R. O'Dell et al.)"
+   },
+   "blurb": "A dying Sun-like star's cast-off atmosphere glowing as a luminous ring 2,000 light-years away — a preview of our own Sun's fate."
+  },
+  {
+   "match": [
+    "helix nebula",
+    "ngc 7293"
+   ],
+   "title": "Helix Nebula",
+   "photo": {
+    "file": "Helix Nebula.jpg",
+    "kind": "photo",
+    "credit": "NASA/NOAO/ESA, Hubble Helix Nebula Team"
+   },
+   "blurb": "One of the nearest planetary nebulae — the 'Eye of God' — a dying star's shells of gas seen almost pole-on, 650 light-years away."
+  },
+  {
+   "match": [
+    "sombrero galaxy",
+    "m104",
+    "ngc 4594"
+   ],
+   "title": "Sombrero Galaxy",
+   "photo": {
+    "file": "M104 ngc4594 sombrero galaxy hi-res.jpg",
+    "kind": "photo",
+    "credit": "NASA/ESA Hubble Heritage Team (STScI/AURA)"
+   },
+   "blurb": "A nearly edge-on spiral with a brilliant bulge and a dramatic dust lane brim, home to a billion-solar-mass central black hole."
+  },
+  {
+   "match": [
+    "pleiades",
+    "m45",
+    "seven sisters"
+   ],
+   "title": "Pleiades",
+   "photo": {
+    "file": "Pleiades large.jpg",
+    "kind": "photo",
+    "credit": "NASA/ESA/AURA/Caltech (Palomar Observatory)"
+   },
+   "blurb": "The Seven Sisters: a young star cluster drifting through a chance dust cloud that scatters their blue light into wispy veils."
+  },
+  {
+   "match": [
+    "lagoon nebula",
+    "m8",
+    "ngc 6523"
+   ],
+   "title": "Lagoon Nebula",
+   "photo": {
+    "file": "Lagoon Nebula.jpg",
+    "kind": "photo",
+    "credit": "ESO (Danish 1.5-m telescope, La Silla)"
+   },
+   "blurb": "A giant stellar nursery in Sagittarius, visible to the naked eye — glowing hydrogen carved by winds from its newborn stars."
+  },
+  {
+   "match": [
+    "trifid nebula",
+    "m20",
+    "ngc 6514"
+   ],
+   "title": "Trifid Nebula",
+   "photo": {
+    "file": "Trifid Nebula.jpg",
+    "kind": "photo",
+    "credit": "ESO"
+   },
+   "blurb": "Three nebulae in one: pink emission, blue reflection, and the dark dust lanes that split it into three lobes and give it its name."
+  },
+  {
+   "match": [
+    "omega / swan nebula",
+    "omega nebula",
+    "swan nebula",
+    "m17",
+    "ngc 6618"
+   ],
+   "title": "Omega Nebula",
+   "photo": {
+    "file": "Omega Nebula.jpg",
+    "kind": "photo",
+    "credit": "ESO (3.6-m telescope, La Silla)"
+   },
+   "blurb": "One of the Milky Way's most active star factories, its glowing checkmark of gas lit by a hidden cluster of young massive stars."
+  },
+  {
+   "match": [
+    "dumbbell nebula",
+    "m27",
+    "ngc 6853"
+   ],
+   "title": "Dumbbell Nebula",
+   "photo": {
+    "file": "Messier27.jpg",
+    "kind": "photo",
+    "credit": "WIYN/NOAO/NSF"
+   },
+   "blurb": "The first planetary nebula ever discovered (1764) — twin lobes of gas shed by a dying star, 1,360 light-years away in Vulpecula."
+  },
+  {
+   "match": [
+    "cat's eye nebula",
+    "ngc 6543"
+   ],
+   "title": "Cat's Eye Nebula",
+   "photo": {
+    "file": "Cat's Eye Nebula - NGC 6543 - NASA ESA Hubble Space Telescope (52479198918).png",
+    "kind": "photo",
+    "credit": "NASA/ESA Hubble"
+   },
+   "blurb": "One of the most intricate planetary nebulae known — eleven concentric shells, jets and knots around a dying star in Draco."
+  },
+  {
+   "match": [
+    "eskimo nebula",
+    "clown face nebula",
+    "ngc 2392"
+   ],
+   "title": "Eskimo Nebula",
+   "photo": {
+    "file": "Ngc2392.jpg",
+    "kind": "photo",
+    "credit": "NASA/ESA/STScI (Hubble)"
+   },
+   "blurb": "A dying star wrapped in a 'parka' of comet-shaped filaments — the inner face is gas blown outward in the last 10,000 years."
+  },
+  {
+   "match": [
+    "horsehead nebula region",
+    "horsehead nebula",
+    "ic 434",
+    "b33",
+    "barnard 33"
+   ],
+   "title": "Horsehead Nebula",
+   "photo": {
+    "file": "Horsehead-Hubble.jpg",
+    "kind": "photo",
+    "credit": "NASA/ESA Hubble Heritage Team"
+   },
+   "blurb": "The sky's most famous dark nebula: a horse-head pillar of cold dust silhouetted against glowing hydrogen in Orion's Belt."
+  },
+  {
+   "match": [
+    "carina nebula",
+    "ngc 3372",
+    "eta carinae nebula",
+    "great carina nebula"
+   ],
+   "title": "Carina Nebula",
+   "photo": {
+    "file": "Carina Nebula.jpg",
+    "kind": "photo",
+    "credit": "ESO"
+   },
+   "blurb": "A southern star-forming giant four times larger than Orion, home to the unstable supergiant Eta Carinae — a supernova in waiting."
+  },
+  {
+   "match": [
+    "veil nebula",
+    "ngc 6960",
+    "western veil",
+    "witch's broom nebula"
+   ],
+   "title": "Veil Nebula",
+   "photo": {
+    "file": "Veil Nebula - NGC6960.jpg",
+    "kind": "photo",
+    "credit": "Hunter Wilson (Hewholooks), CC BY-SA 3.0"
+   },
+   "blurb": "Delicate glowing filaments — the shredded remains of a star that exploded some 10–20,000 years ago, still expanding across Cygnus."
+  },
+  {
+   "match": [
+    "rosette nebula",
+    "ngc 2237",
+    "ngc 2244",
+    "rosette cluster"
+   ],
+   "title": "Rosette Nebula",
+   "photo": {
+    "file": "Rosette Nebula (heic2505f).jpg",
+    "kind": "photo",
+    "credit": "NASA/ESA Hubble"
+   },
+   "blurb": "A vast cosmic rose in Monoceros: the young cluster NGC 2244 has hollowed out the heart of the cloud that formed it."
+  },
+  {
+   "match": [
+    "north america nebula",
+    "ngc 7000",
+    "pelican nebula",
+    "ic 5070"
+   ],
+   "title": "North America Nebula",
+   "photo": {
+    "file": "NGC 7000- The North America Nebula and the Pelican Nebula (noao-n7000mosblock).jpg",
+    "kind": "photo",
+    "credit": "NOAO/AURA/NSF"
+   },
+   "blurb": "An emission cloud shaped uncannily like a continent, beside its companion the Pelican — both lit by hidden hot young stars in Cygnus."
+  },
+  {
+   "match": [
+    "tarantula nebula",
+    "ngc 2070",
+    "30 doradus",
+    "30 dor"
+   ],
+   "title": "Tarantula Nebula",
+   "photo": {
+    "file": "Tarantula Nebula TRAPPIST.jpg",
+    "kind": "photo",
+    "credit": "TRAPPIST/E. Jehin/ESO"
+   },
+   "blurb": "The most violent star-forming region in the Local Group, in the Large Magellanic Cloud — if it sat where Orion is, it would cast shadows."
+  },
+  {
+   "match": [
+    "triangulum galaxy",
+    "m33",
+    "ngc 598"
+   ],
+   "title": "Triangulum Galaxy",
+   "photo": {
+    "file": "Triangulum Galaxy Messier 33 (M33) (2019-01-4305).png",
+    "kind": "photo",
+    "credit": "NASA/ESA Hubble (M. Durbin, J. Dalcanton, B.F. Williams)"
+   },
+   "blurb": "The third-largest galaxy of our Local Group, a floculent spiral seen nearly face-on — Hubble resolved 25 million of its stars."
+  },
+  {
+   "match": [
+    "pinwheel galaxy",
+    "m101",
+    "ngc 5457"
+   ],
+   "title": "Pinwheel Galaxy",
+   "photo": {
+    "file": "M101 hires STScI-PRC2006-10a.jpg",
+    "kind": "photo",
+    "credit": "NASA/ESA Hubble (K. Kuntz et al.)"
+   },
+   "blurb": "A grand face-on spiral nearly twice the Milky Way's diameter — this Hubble portrait was stitched from ten years of exposures."
+  },
+  {
+   "match": [
+    "butterfly nebula",
+    "bug nebula",
+    "ngc 6302"
+   ],
+   "title": "Butterfly Nebula",
+   "photo": {
+    "file": "NGC 6302 Hubble 2009.full.jpg",
+    "kind": "photo",
+    "credit": "NASA/ESA Hubble SM4 ERO Team"
+   },
+   "blurb": "Wings of gas hotter than 20,000 °C torn from one of the hottest dying stars known — 250,000 °C at the nebula's hidden heart."
+  },
+  {
+   "match": [
+    "bubble nebula",
+    "ngc 7635"
+   ],
+   "title": "Bubble Nebula",
+   "photo": {
+    "file": "The Bubble Nebula - NGC 7635 - Heic1608a.jpg",
+    "kind": "photo",
+    "credit": "NASA/ESA Hubble"
+   },
+   "blurb": "A seven-light-year soap bubble blown by the ferocious wind of a star 45 times the Sun's mass — Hubble's 26th anniversary image."
+  },
+  {
+   "match": [
+    "centaurus a",
+    "ngc 5128",
+    "cen a"
+   ],
+   "title": "Centaurus A",
+   "photo": {
+    "file": "ESO Centaurus A LABOCA.jpg",
+    "kind": "photo",
+    "credit": "ESO/WFI; MPIfR/ESO/APEX; NASA/CXC/CfA (composite)"
+   },
+   "blurb": "The nearest active galaxy: an elliptical that swallowed a spiral, its central black hole firing jets seen here in submillimetre and X-ray light."
+  },
+  {
+   "match": [
+    "antennae galaxies",
+    "ngc 4038",
+    "ngc 4039"
+   ],
+   "title": "Antennae Galaxies",
+   "photo": {
+    "file": "Antennae Galaxies reloaded.jpg",
+    "kind": "photo",
+    "credit": "NASA/ESA Hubble"
+   },
+   "blurb": "Two spirals caught mid-collision, igniting billions of new stars — a preview of the Milky Way's eventual merger with Andromeda."
+  },
+  {
+   "match": [
+    "omega centauri",
+    "ngc 5139",
+    "omega cen"
+   ],
+   "title": "Omega Centauri",
+   "photo": {
+    "file": "VST image of the giant globular star cluster Omega Centauri.jpg",
+    "kind": "photo",
+    "credit": "ESO/INAF-VST/OmegaCAM, CC BY 4.0"
+   },
+   "blurb": "The Milky Way's largest globular cluster — ten million stars, possibly the stripped core of a dwarf galaxy we absorbed long ago."
+  },
+  {
+   "match": [
+    "47 tucanae",
+    "47 tuc",
+    "ngc 104"
+   ],
+   "title": "47 Tucanae",
+   "photo": {
+    "file": "The globular star cluster 47 Tucanae.jpg",
+    "kind": "photo",
+    "credit": "ESO/M.-R. Cioni/VISTA Magellanic Cloud survey, CC BY 4.0"
+   },
+   "blurb": "The southern sky's second-brightest globular cluster: up to a million ancient stars packed into a ball 120 light-years across."
+  },
+  {
+   "match": [
+    "hercules cluster",
+    "great hercules cluster",
+    "m13",
+    "ngc 6205"
+   ],
+   "title": "Great Hercules Cluster",
+   "photo": {
+    "file": "Messier 13 - The Hercules Globular Cluster.jpg",
+    "kind": "photo",
+    "credit": "Giuseppe Donatiello (public domain dedication)"
+   },
+   "blurb": "The northern sky's showpiece globular — several hundred thousand stars, target of the 1974 Arecibo message to any listeners there."
+  },
+  {
+   "match": [
+    "bode's galaxy",
+    "m81",
+    "ngc 3031"
+   ],
+   "title": "Bode's Galaxy",
+   "photo": {
+    "file": "M81.jpg",
+    "kind": "photo",
+    "credit": "NASA/ESA Hubble"
+   },
+   "blurb": "A textbook grand-design spiral 12 million light-years away, locked in a gravitational tug-of-war with its neighbor the Cigar Galaxy."
+  },
+  {
+   "match": [
+    "cigar galaxy",
+    "m82",
+    "ngc 3034"
+   ],
+   "title": "Cigar Galaxy",
+   "photo": {
+    "file": "M82 HST ACS 2006-14-a-large web.jpg",
+    "kind": "photo",
+    "credit": "NASA/ESA Hubble Heritage Team"
+   },
+   "blurb": "A starburst galaxy forming stars ten times faster than the Milky Way, venting towers of glowing hydrogen from its core."
+  },
+  {
+   "match": [
+    "southern pinwheel galaxy",
+    "m83",
+    "ngc 5236"
+   ],
+   "title": "Southern Pinwheel Galaxy",
+   "photo": {
+    "file": "M83 - Southern Pinwheel.jpg",
+    "kind": "photo",
+    "credit": "ESO, CC BY 4.0"
+   },
+   "blurb": "A barred spiral rich in supernovae — six observed in the last century, more than almost any other galaxy."
+  },
+  {
+   "match": [
+    "black eye galaxy",
+    "m64",
+    "ngc 4826"
+   ],
+   "title": "Black Eye Galaxy",
+   "photo": {
+    "file": "Black eye galaxy.png",
+    "kind": "photo",
+    "credit": "NASA and the Hubble Heritage Team (AURA/STScI)"
+   },
+   "blurb": "A smouldering dark dust band across a bright core — and gas in its outskirts orbiting backwards, relic of an ancient merger."
+  },
+  {
+   "match": [
+    "sculptor galaxy",
+    "ngc 253",
+    "silver coin galaxy"
+   ],
+   "title": "Sculptor Galaxy",
+   "photo": {
+    "file": "Sculptor Galaxy, NGC 253 (noao-ngc-253).jpg",
+    "kind": "photo",
+    "credit": "NOAO/AURA/NSF"
+   },
+   "blurb": "The dusty 'Silver Coin' — one of the brightest galaxies beyond the Local Group and a furious hidden starburst behind its dust."
+  },
+  {
+   "match": [
+    "stephan's quintet",
+    "stephans quintet"
+   ],
+   "title": "Stephan's Quintet",
+   "photo": {
+    "file": "Stephan's Quintet Hubble 2009.full.jpg",
+    "kind": "photo",
+    "credit": "NASA/ESA Hubble"
+   },
+   "blurb": "A visual grouping of five galaxies, four locked in a slow gravitational dance of collisions and tidal tails."
+  },
+  {
+   "match": [
+    "cartwheel galaxy",
+    "eso 350-40"
+   ],
+   "title": "Cartwheel Galaxy",
+   "photo": {
+    "file": "Cartwheel Galaxy.jpg",
+    "kind": "photo",
+    "credit": "ESA/Hubble & NASA"
+   },
+   "blurb": "A bullseye 500 million light-years away: a smaller galaxy punched straight through a spiral, sending a ring of starbirth rippling outward."
+  },
+  {
+   "match": [
+    "flame nebula",
+    "ngc 2024"
+   ],
+   "title": "Flame Nebula",
+   "photo": {
+    "file": "The hidden fires of the Flame Nebula.jpg",
+    "kind": "photo",
+    "credit": "ESO/J. Emerson/VISTA, CC BY 4.0"
+   },
+   "blurb": "Alnitak's ultraviolet glare sets this Orion cloud alight; in infrared, VISTA sees straight through the dark dust lane that splits it."
+  }
+ ]
 }

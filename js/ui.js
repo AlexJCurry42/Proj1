@@ -381,9 +381,12 @@ export function renderDetailPanel(obj) {
   `;
   // Famous objects (and every black hole) get a procedural 3-D render,
   // inserted between the type chip and the data rows; notable objects get
-  // their bundled two-sentence description. Both fire-and-forget.
-  attachRenderIfFamous(detailContent(), obj);
-  attachDescription(detailContent().querySelector('.desc-slot'), obj);
+  // their bundled two-sentence description. Both fire-and-forget — the slot
+  // element, recreated by every render, is how a stale call detects that a
+  // newer panel replaced this one while its lookup was in flight.
+  const slot = detailContent().querySelector('.desc-slot');
+  attachRenderIfFamous(detailContent(), obj, slot);
+  attachDescription(slot, obj);
   // Move keyboard focus into the freshly-opened panel (a11y), without
   // yanking it on every re-render while the panel is already open.
   if (wasHidden) document.getElementById('detail-close').focus({ preventScroll: true });

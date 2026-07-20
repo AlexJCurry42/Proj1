@@ -24,7 +24,9 @@ export async function findDescriptionFor(name, aliases = []) {
   const data = await load();
   if (!data) return null;
   for (const key of matchKeysFor(name, aliases)) {
-    const i = data.index[key];
+    // hasOwnProperty, not [key]: alias strings come from external catalogs,
+    // and a name like "constructor" must miss, not walk the prototype.
+    const i = Object.prototype.hasOwnProperty.call(data.index, key) ? data.index[key] : undefined;
     if (i !== undefined) {
       const [title, text] = data.articles[i];
       return { title, text, url: `https://en.wikipedia.org/wiki/${encodeURIComponent(title.replace(/ /g, '_'))}` };

@@ -554,7 +554,6 @@ await scenario('time: playback moves the Moon; Back to now stops and resets', as
 
 await scenario('coordinate grid: draws, rescales with zoom, keeps edge labels', async () => {
   const { ctx, page } = await newPage(browser, baseURL);
-  const row = (label) => `[...document.querySelectorAll('#layer-dock-list li')].find(li => li.textContent.includes('${label}'))`;
   const overlayInk = () => page.evaluate(() => {
     const cv = document.getElementById('overlay-canvas');
     const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
@@ -622,6 +621,35 @@ await scenario('center ID: a known object under the crosshair pops its card', as
   const cross = await page.locator('#crosshair').boundingBox();
   const vp = page.viewportSize();
   assert(cross && Math.abs(cross.x + cross.width / 2 - vp.width / 2) < 2, 'crosshair must mark the view center');
+  // Bundled descriptions: a curated object WITHOUT a tour caption (M2) gets
+  // its Wikipedia extract on the card, with the CC BY-SA attribution link.
+  await page.evaluate(() => { window.__aladin.gotoRaDec(323.3625, -0.8233); window.__aladin.setFoV(2); });
+  // (the description fill runs in the background after the identification
+  // set loads — wait for the text itself, not just the card)
+  await page.waitForFunction(
+    () => !document.getElementById('center-card').hidden &&
+      /M2/.test(document.getElementById('center-name').textContent) &&
+      /globular/i.test(document.getElementById('center-desc')?.textContent || ''),
+    null, { timeout: 10000 });
+  const m2 = await page.evaluate(() => ({
+    desc: document.getElementById('center-desc')?.textContent || '',
+    credit: document.querySelector('#center-desc .obj-desc-credit')?.href || null
+  }));
+  assert(/globular cluster/i.test(m2.desc), `M2 card should describe the cluster, got "${m2.desc.slice(0, 80)}"`);
+  assert(m2.credit && m2.credit.includes('en.wikipedia.org'), 'card description must carry its attribution link');
+  // …and the detail panel fills its description slot the same way.
+  const panel = await page.evaluate(async () => {
+    const { renderDetailPanel } = await import('/js/ui.js');
+    renderDetailPanel({ name: 'M2', typeLabel: 'Globular cluster', ra: 323.3625, dec: -0.8233 });
+    await new Promise((r) => setTimeout(r, 700));
+    const slot = document.querySelector('#detail-content .desc-slot');
+    return {
+      text: slot?.querySelector('.obj-desc')?.textContent || '',
+      credit: slot?.querySelector('.obj-desc-credit')?.textContent || null
+    };
+  });
+  assert(/globular cluster/i.test(panel.text), 'detail panel must show the bundled description');
+  assert(panel.credit === 'Wikipedia · CC BY-SA 4.0', `attribution must be exact, got "${panel.credit}"`);
   assert(page.__errors.length === 0, `page errors: ${page.__errors.join('; ')}`);
   await ctx.close();
 });
@@ -732,7 +760,6 @@ await scenario('phone layout: dock rows never truncate their labels', async () =
 
 await scenario('sound effects: gestures tick, boot is silent, checkbox mutes', async () => {
   const { ctx, page } = await newPage(browser, baseURL);
-  const row = (label) => `[...document.querySelectorAll('#layer-dock-list li')].find(li => li.textContent.includes('${label}'))`;
   const sfx = () => page.evaluate(() => window.__sfx || 0);
   // Boot fires programmatic toggles — none of them may make a sound.
   assert((await sfx()) === 0, 'boot must be silent');

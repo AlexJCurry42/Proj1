@@ -98,14 +98,22 @@ export function initCenterId(aladin, { onPosition, onZoom }) {
       }
     }
     // Curated objects without a hand-written tour caption borrow their
-    // bundled Wikipedia extract (loaded here, in the same idle moment;
-    // shown with the attribution CC BY-SA requires).
-    await Promise.all(out.map(async (e) => {
+    // bundled Wikipedia extract — filled in the BACKGROUND, because
+    // identification must not wait on the descriptions file: on a slow
+    // first visit the card works immediately and gains its text when ready.
+    fillDescriptions(out);
+    return out;
+  }
+
+  async function fillDescriptions(list) {
+    await Promise.all(list.map(async (e) => {
       if (e.desc) return;
       const d = await findDescriptionFor(e.name, e.aliases).catch(() => null);
       if (d) { e.desc = d.text; e.descSrc = d; }
     }));
-    return out;
+    // A card may already be up for an entry that just gained its text —
+    // fill it in place, quietly (no re-appear animation, no sound).
+    if (matched && matched.desc && !card.hidden) setCardDesc(matched);
   }
 
   // ---- the in-sky bubble: a quiet label pinned beside the object ----
@@ -162,15 +170,18 @@ export function initCenterId(aladin, { onPosition, onZoom }) {
     window.__dsaBubble = matched.name;
   }
 
+  function setCardDesc(e) {
+    if (!descEl) return;
+    descEl.textContent = e.desc || '';
+    if (e.desc && e.descSrc) descEl.append(' ', descriptionCredit(e.descSrc));
+    descEl.hidden = !e.desc;
+  }
+
   function showCard(e) {
     nameEl.textContent = e.name;
     subEl.textContent = e.sub;
     subEl.hidden = !e.sub;
-    if (descEl) {
-      descEl.textContent = e.desc || '';
-      if (e.desc && e.descSrc) descEl.append(' ', descriptionCredit(e.descSrc));
-      descEl.hidden = !e.desc;
-    }
+    setCardDesc(e);
     if (dotEl) dotEl.style.background = e.color;
     card.hidden = false;
     cardAppear();

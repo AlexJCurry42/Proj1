@@ -44,10 +44,17 @@ function commonsUrl(file, width = 900) {
  * and the procedural WebGL render as generator-of-last-resort — which is
  * also the live fallback if the photograph fails to load.
  */
-export async function attachRenderIfFamous(containerEl, detailObj) {
+export async function attachRenderIfFamous(containerEl, detailObj, anchorEl = null) {
   try {
+    // The anchor is created fresh by every panel render, so it doubles as
+    // the staleness check: if a NEWER render replaced the panel while the
+    // entry lookup was in flight, this call's anchor is disconnected and
+    // its media must not land in the newer object's panel. (containerEl
+    // itself stays connected across re-renders — it can't tell renders
+    // apart.)
     const entry = detailObj.render || await findRenderFor(detailObj.name, detailObj.aliases, detailObj.typeLabel);
-    if (!entry || !containerEl.isConnected) return;
+    const anchor = anchorEl || containerEl.querySelector('.desc-slot, .drows');
+    if (!entry || !anchor?.isConnected) return;
 
     const wrap = document.createElement('div');
     wrap.className = 'render-wrap';
@@ -79,12 +86,9 @@ export async function attachRenderIfFamous(containerEl, detailObj) {
 
     // Insert into the DOM before mounting: the render loop stops itself when
     // its canvas is disconnected, so a canvas started pre-insertion dies on
-    // its first frame.
-    // Land above the description slot when one exists (media, then text,
-    // then the data rows — a deterministic order even though both attach
-    // calls race), else above the rows directly.
-    const anchor = containerEl.querySelector('.desc-slot, .drows');
-    containerEl.insertBefore(wrap, anchor || null);
+    // its first frame. Above the anchor = media, then description, then the
+    // data rows — a deterministic order even though the attach calls race.
+    containerEl.insertBefore(wrap, anchor);
 
     if (entry.photo) {
       const img = document.createElement('img');
