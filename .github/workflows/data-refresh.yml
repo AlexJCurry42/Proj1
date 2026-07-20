@@ -23,7 +23,7 @@ on:
   workflow_dispatch:
     inputs:
       datasets:
-        description: 'Space-separated: tles exoplanets ngc brightstars constellations zones descriptions, or all'
+        description: 'Space-separated: tles exoplanets ngc brightstars constellations zones descriptions desi, or all'
         default: 'all'
         type: string
 
@@ -51,17 +51,17 @@ jobs:
           case "${{ github.event_name }}:${{ github.event.schedule }}" in
             schedule:'41 4 * * *') SETS='tles' ;;
             schedule:'17 6 * * 1') SETS='exoplanets' ;;
-            schedule:'7 3 3 * *')  SETS='ngc brightstars constellations zones descriptions' ;;
+            schedule:'7 3 3 * *')  SETS='ngc brightstars constellations zones descriptions desi' ;;
             workflow_dispatch:*)   SETS="$RAW_SETS" ;;
             *)                     SETS='all' ;;
           esac
-          [ "$SETS" = 'all' ] && SETS='tles exoplanets ngc brightstars constellations zones descriptions'
+          [ "$SETS" = 'all' ] && SETS='tles exoplanets ngc brightstars constellations zones descriptions desi'
           # Dispatch input is free text: allowlist every token so a typo (or
           # anything stranger) fails loudly instead of silently no-opping —
           # and so SETS can never smuggle shell metacharacters downstream.
           for tok in $SETS; do
             case "$tok" in
-              tles|exoplanets|ngc|brightstars|constellations|zones|descriptions) ;;
+              tles|exoplanets|ngc|brightstars|constellations|zones|descriptions|desi) ;;
               *) echo "::error::unknown dataset '$tok'"; exit 1 ;;
             esac
           done
@@ -342,6 +342,15 @@ jobs:
         if: contains(env.SETS, 'descriptions')
         run: python3 tools/fetch_descriptions.py
 
+      # ------------------------------------------- DESI cosmic web (monthly) ---
+      # A uniform subsample of the DESI DR1 redshift catalog packed into the
+      # compact binary the 3-D mode streams (format: js/desidata.js). Every
+      # point is a real spectroscopic galaxy/quasar; the pipeline turns each
+      # redshift into a comoving position (Planck-2018 flat LCDM).
+      - name: DESI cosmic-web subsample from NOIRLab Astro Data Lab
+        if: contains(env.SETS, 'desi')
+        run: python3 tools/fetch_desi_web.py
+
       # -------------------------------------------------------- Provenance ---
       # Every Action-refreshed file gets a recorded origin: sha256, size,
       # source URL, and the exact run that produced it. Upstreams like
@@ -362,7 +371,8 @@ jobs:
             'constellations_names.json':   'd3-celestial (Stellarium sky culture)',
             'constellations_borders.json': 'd3-celestial (Stellarium sky culture)',
             'constellation_zones.json':    'VizieR VI/42 (Roman 1987)',
-            'descriptions.json':           'English Wikipedia REST lead extracts (CC BY-SA 4.0), tools/fetch_descriptions.py'
+            'descriptions.json':           'English Wikipedia REST lead extracts (CC BY-SA 4.0), tools/fetch_descriptions.py',
+            'desi_web.bin':                'DESI DR1 zpix via NOIRLab Astro Data Lab TAP, tools/fetch_desi_web.py'
           }
           path = 'data/PROVENANCE.json'
           prov = {}

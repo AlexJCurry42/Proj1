@@ -326,6 +326,32 @@ await test('object names: one canonical spelling across every lookup', async () 
   }
 });
 
+await test('DESI cosmic-web binary: parser unpacks and rejects correctly', async () => {
+  const { parseDesiWeb, DESI_HEADER_BYTES, DESI_RECORD_BYTES } = await import('../js/desidata.js');
+  // Build a two-point file exactly as tools/fetch_desi_web.py packs it.
+  const scale = 0.21;
+  const buf = new ArrayBuffer(DESI_HEADER_BYTES + 2 * DESI_RECORD_BYTES);
+  const dv = new DataView(buf);
+  [..."DSW1"].forEach((c, i) => dv.setUint8(i, c.charCodeAt(0)));
+  dv.setUint32(4, 2, true);
+  dv.setFloat32(8, scale, true);
+  dv.setInt16(12, 1000, true); dv.setInt16(14, -2000, true); dv.setInt16(16, 30000, true); dv.setUint8(18, 0);
+  dv.setInt16(20, -1, true); dv.setInt16(22, 0, true); dv.setInt16(24, 1, true); dv.setUint8(26, 1);
+  const d = parseDesiWeb(buf);
+  assert.equal(d.count, 2);
+  near(d.xyz[0], 1000 * scale, 0.01, 'x0');
+  near(d.xyz[1], -2000 * scale, 0.01, 'y0');
+  near(d.xyz[2], 30000 * scale, 0.5, 'z0');
+  assert.equal(d.type[0], 0);
+  assert.equal(d.type[1], 1);
+  // Malformed inputs must throw, never mis-render: wrong magic, wrong length.
+  dv.setUint8(0, 88); // 'X'
+  assert.throws(() => parseDesiWeb(buf), /magic/);
+  dv.setUint8(0, 'D'.charCodeAt(0));
+  dv.setUint32(4, 3, true); // claims more points than the buffer holds
+  assert.throws(() => parseDesiWeb(buf), /length/);
+});
+
 await test('version consistency: sw.js VERSION and js/version.js SHELL_VERSION match', async () => {
   // The two constants are hand-synced (a worker script can't import an ES
   // module); this test is the drift guard — CI fails any commit that bumps

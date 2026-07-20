@@ -25,11 +25,12 @@ const CELESTRAK = 'https://celestrak.org/NORAD/elements/gp.php';
 const MOCSERVER = 'https://alasky.cds.unistra.fr/MocServer/query';
 const COMMONS_FILEPATH = 'https://commons.wikimedia.org/wiki/Special:FilePath/';
 
-// The seven HiPS imagery surveys on the spectrum rail (js/spectrum.js).
+// The eight HiPS imagery surveys on the spectrum rail (js/spectrum.js).
 const HIPS_SURVEYS = [
   'P/Fermi/color',
   'P/SDSS9/color',
   'P/PanSTARRS/DR1/color-z-zg-g',
+  'P/DESI-Legacy-Surveys/DR10/color',
   'P/DSS2/color',
   'P/2MASS/color',
   'P/allWISE/color',

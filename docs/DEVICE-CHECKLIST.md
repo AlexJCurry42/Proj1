@@ -61,12 +61,15 @@ Items are ordered by how often their area has actually bitten.
       shell (tiles may be missing; no crash, a clear offline message on
       searches).
 
-## 7. Content spot checks (30 s)
+## 7. Content spot checks (45 s)
 
 - [ ] Tap a mid-catalog object (e.g. search "NGC 6946"): the panel shows a
       two-sentence description with a "Wikipedia · CC BY-SA 4.0" link.
 - [ ] A famous object (M31) shows its photo; the crosshair card describes
       it when centered.
+- [ ] Cosmic web 3-D (layer dock → Universe): the point cloud appears,
+      one-finger orbit and pinch fly-through feel smooth (not slideshow),
+      and "Back to the sky" returns cleanly with the switch off.
 
 ## If something fails
 

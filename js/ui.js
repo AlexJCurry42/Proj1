@@ -698,7 +698,7 @@ export function initAboutModal() {
     <ul>
       <li><strong>Aladin Lite v3.9.0-beta</strong> &mdash; CDS, Observatoire de Strasbourg &amp; CNRS. Bundled with this app; LGPL-3.0-or-later, <a href="https://github.com/cds-astro/aladin-lite" target="_blank" rel="noopener">source</a></li>
       <li><strong>satellite.js</strong> (SGP4 propagation) &mdash; MIT license, bundled</li>
-      <li>DSS2, SDSS9, 2MASS, AllWISE/unWISE, Pan-STARRS DR1, Fermi and radio HiPS surveys, distributed via the CDS HiPS service</li>
+      <li>DSS2, SDSS9, 2MASS, AllWISE/unWISE, Pan-STARRS DR1, DESI Legacy Surveys DR10, Fermi and radio HiPS surveys, distributed via the CDS HiPS service</li>
     </ul>
     <p class="hint">Why do bright stars look blotchy up close? The DSS2 optical imagery comes from photographic sky-survey plates: a bright star saturated the emulsion, and the red and blue exposures were taken years apart, so their images don't quite align — the orange/blue/black cores are plate artifacts, not real structure. Other bands (2MASS, Pan-STARRS) have their own, different bright-star artifacts. The <strong>Clean bright stars</strong> checkbox (layer dock → Display) covers those cores with a synthetic glow — positioned, sized and colored from the Yale Bright Star Catalogue — and can be switched off any time to see the raw observations.</p>
     <p class="hint">Want the sharpest possible view of a region? Slide the spectrum rail to <strong>Pan-STARRS</strong> — a modern CCD survey, far deeper and cleaner than the classic photographic DSS2 (it covers the sky north of declination −30°). Every stop on the rail is real observational data, displayed exactly as the archives serve it — no post-processing — so image quality is set by each survey's telescope and era, not by your screen.</p>
@@ -710,6 +710,7 @@ export function initAboutModal() {
       <li><strong>NASA Exoplanet Archive</strong> &mdash; NASA/IPAC, operated by Caltech</li>
       <li>Messier &amp; NGC/IC positions curated from standard published (SEDS/OpenNGC-derived) coordinates</li>
       <li>Constellation figures, names and IAU boundaries from the <strong>d3-celestial</strong> project (Olaf Frohn, BSD-3-Clause), based on Stellarium sky-culture data</li>
+      <li><strong>DESI DR1</strong> redshifts power the Cosmic web 3-D mode &mdash; DESI Collaboration, obtained via the NOIRLab Astro Data Lab TAP service. Every point is a real spectroscopic measurement (a uniform 400,000-object subsample of 18.7 million); the only modeling is redshift &rarr; distance, computed with flat Planck-2018 &Lambda;CDM</li>
     </ul>
     <h3>Black holes &amp; gravitational waves</h3>
     <ul>

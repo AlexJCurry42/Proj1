@@ -23,6 +23,12 @@ maps the moving parts and the boundaries between them.
   shader draws planet/star/black-hole illustrations in the detail panel;
   real photographs (Wikimedia Commons) take precedence when curated in
   `data/renders.json`.
+- **Cosmic web 3-D mode** (`js/cosmos3d.js` + `js/desidata.js`): a
+  full-viewport WebGL point cloud of ~400k real DESI DR1 redshifts
+  (comoving positions, Earth at origin) with orbit/dolly controls —
+  a separate MODE, since a 3-D volume cannot live on Aladin's sphere.
+  Dependency-free (own 4×4 matrix math); module and its ~3 MB dataset
+  load lazily on the first dock flip, never at boot.
 
 ## Coordinate systems
 
@@ -71,6 +77,7 @@ Two kinds of data, deliberately separated:
 | Wikimedia Commons | photographs | detail panel of famous objects |
 | NASA Exoplanet Archive, CelesTrak, OpenNGC, VizieR | dataset snapshots | **GitHub Actions only** — never from users' browsers |
 | Wikipedia (REST API) | two-sentence object descriptions (CC BY-SA 4.0, attributed in-app) | **GitHub Actions only** — bundled as `data/descriptions.json` |
+| NOIRLab Astro Data Lab | DESI DR1 redshift subsample for the 3-D mode | **GitHub Actions only** — bundled as `data/desi_web.bin` |
 
 The user's precise location never crosses any boundary: alt-az math is
 entirely on-device.

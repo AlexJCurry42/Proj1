@@ -329,6 +329,28 @@ export function initLayersDock(aladin, { onZoom, onPosition, fadeCatalog }) {
     }
   });
 
+  // -------------------------------------------------------------- Universe ---
+  addDockSection(catalogList, 'Universe');
+  // The DESI cosmic web: a full 3-D MODE, not a sky overlay — flipping it
+  // hands the viewport to js/cosmos3d.js (lazy: module + ~3 MB dataset load
+  // on first flip only). persist:false on purpose: a takeover view must
+  // never auto-start a session.
+  const cosmosToggle = addToggle(catalogList, {
+    label: 'Cosmic web 3-D', color: '#5e5ce6', checked: false, persist: false,
+    onToggle: async (v) => {
+      cosmosToggle.setLoading(true);
+      try {
+        const { setCosmicWeb } = await import('./cosmos3d.js');
+        const ok = await setCosmicWeb(v, { onExit: () => cosmosToggle.setChecked(false) });
+        if (v && !ok) cosmosToggle.setChecked(false);
+      } catch (err) {
+        cosmosToggle.setChecked(false);
+      } finally {
+        cosmosToggle.setLoading(false);
+      }
+    }
+  });
+
   // -------------------------------------------------------------- Display ---
   addDockSection(catalogList, 'Display');
   // Animations: ON by default for everybody (see js/motion.js for why the

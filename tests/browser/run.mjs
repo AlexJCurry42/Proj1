@@ -737,6 +737,40 @@ await scenario('onboarding: guided tour steps through, persists; ? and / work', 
   await ctx.close();
 });
 
+await scenario('cosmic web: 3-D mode enters and exits, or degrades gracefully without data', async () => {
+  const { ctx, page } = await newPage(browser, baseURL);
+  await page.click('#dock-collapse');
+  await page.waitForTimeout(700);
+  // The dataset is Action-generated: this scenario proves BOTH sides of
+  // that fact — full mode when the file is deployed, honest degradation
+  // (toast + reverted switch, no errors) when it isn't.
+  const hasData = await page.evaluate(async () => {
+    try { return (await fetch('data/desi_web.bin')).ok; } catch (e) { return false; }
+  });
+  await flipRow(page, 'Cosmic web 3-D');
+  await page.waitForTimeout(3000);
+  if (hasData) {
+    assert(await page.evaluate(() => document.getElementById('cosmos-canvas')?.style.display === 'block'),
+      '3-D canvas must take the viewport');
+    assert(await page.evaluate(() => /DESI DR1/.test(document.getElementById('cosmos-legend')?.textContent || '')),
+      'legend must name and credit DESI');
+    // Escape leaves the mode AND flips the dock switch back off.
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(400);
+    assert(await page.evaluate(() => document.getElementById('cosmos-canvas').style.display === 'none'),
+      'Escape must return to the sky');
+    const st = await rowState(page, 'Cosmic web 3-D');
+    assert(st.checked === false, 'the dock switch must follow the exit');
+  } else {
+    const st = await rowState(page, 'Cosmic web 3-D');
+    assert(st.checked === false, 'the switch must revert when the dataset is absent');
+    assert(await page.evaluate(() => [...document.querySelectorAll('.toast')].some((t) => /DESI 3-D/.test(t.textContent || ''))),
+      'a toast must explain the missing dataset');
+  }
+  assert(page.__errors.length === 0, `page errors: ${page.__errors.join('; ')}`);
+  await ctx.close();
+});
+
 await scenario('phone layout: dock rows never truncate their labels', async () => {
   // iPhone-class viewport: the dock narrows via the max-width media query,
   // and "Horizon & compass" once ellipsized there — the first thing a

@@ -65,6 +65,16 @@ moving with the sky. Identification is a property of the view itself: it
 works even when that object's layer is switched off (and it stands down
 politely when a tour's toast has already announced the destination).
 
+And beyond the sphere entirely: **Cosmic web 3-D** (layer dock →
+Universe) hands the viewport to a WebGL point cloud of **400,000 real
+galaxies and quasars from DESI Data Release 1** — the largest 3-D map of
+the universe — drawn at their comoving positions with Earth at the
+center. Drag to orbit, pinch or scroll to fly through the filaments;
+every point is a real measured redshift (distances via flat Planck-2018
+ΛCDM, disclosed and credited in-app), subsampled uniformly from 18.7
+million spectra by the data pipeline. DESI's imaging half (the Legacy
+Surveys DR10) joins the spectrum rail as the deepest optical stop.
+
 Object detail panels carry the full record: type, coordinates, magnitude,
 spectral type, distance, **constellation** (the official IAU
 determination — Roman 1987 zones after precessing to B1875, not a
@@ -248,6 +258,7 @@ app's code.
 | **CelesTrak** | ISS + bright satellite orbital elements (TLEs) | Dr. T.S. Kelso, `celestrak.org` (daily snapshot); propagated on-device with SGP4 (`satellite.js`, MIT) |
 | **Yale Bright Star Catalogue (V/50) + Tycho-2 (I/259)** | "Clean bright stars" bloom overlay (positions, V magnitudes, B−V colors); bright tier loads with the app, the faint Tycho-2 tier lazy-loads on idle | Hoffleit & Warren 1991; Høg et al. 2000 — via VizieR TAP (monthly snapshot; curated seed until first fetch) |
 | **Wikipedia (English)** | Bundled two-sentence descriptions for the ~1,000 most notable deep-sky objects (`data/descriptions.json`) | Wikipedia contributors, CC BY-SA 4.0 — monthly snapshot via the REST API (`tools/fetch_descriptions.py`); every description links to its source article in-app |
+| **DESI DR1** | Cosmic web 3-D mode: a 400,000-point uniform subsample of 18.7M measured galaxy/quasar redshifts (`data/desi_web.bin`) | DESI Collaboration, via NOIRLab Astro Data Lab TAP (monthly snapshot, `tools/fetch_desi_web.py`); redshift → comoving distance via flat Planck-2018 ΛCDM, disclosed in-app |
 
 Every curated JSON file carries a `source` field per entry, and an
 `approx: true` flag wherever the literature disagrees or a value (especially
