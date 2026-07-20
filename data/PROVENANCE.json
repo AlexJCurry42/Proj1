@@ -50,6 +50,13 @@
    "sha256": "5e12eebb47fbb9e0b8d9d042d59ebd9f8af8e4b4ee2d72f0da16e7ba4c26d09e",
    "source": "English Wikipedia REST lead extracts (CC BY-SA 4.0), tools/fetch_descriptions.py"
   },
+  "desi_web.bin": {
+   "bytes": 3200012,
+   "refreshed": "2026-07-20T19:15:01+00:00",
+   "run": "29771177026",
+   "sha256": "93bfd4e3f53a7d4b5132a5b378d0903c2c4066f1b6c6166ddbe848e7b0576882",
+   "source": "DESI DR1 zpix via NOIRLab Astro Data Lab TAP, tools/fetch_desi_web.py"
+  },
   "exoplanets_snapshot.csv": {
    "bytes": 504241,
    "refreshed": "2026-07-19T21:56:58+00:00",
