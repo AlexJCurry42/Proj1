@@ -11,7 +11,7 @@
 // nothing loads until the first flip of the dock switch.
 
 import { parseDesiWeb } from './desidata.js';
-import { showToast } from './ui.js';
+import { showToast, makeDismissable } from './ui.js';
 import { motionOK } from './motion.js';
 
 const VERT = `
@@ -97,6 +97,25 @@ let onUserExit = null;    // flips the dock switch back off
 const cam = { yaw: 0.6, pitch: 0.35, dist: 4200 };
 const vel = { yaw: 0, pitch: 0 };
 let lastInteract = 0;
+
+// The legend behaves like every notification in the app: an ✕, a swipe,
+// and an auto-hide — never a permanent squatter over the view. A manual
+// dismissal is remembered for the session; re-entries stay quiet.
+let legendTimer = null;
+let legendDismissed = false;
+
+function hideLegend(manual) {
+  clearTimeout(legendTimer);
+  legendTimer = null;
+  if (legend) legend.style.display = 'none';
+  if (manual) legendDismissed = true;
+}
+function showLegend() {
+  if (legendDismissed) return;
+  legend.style.display = 'block';
+  clearTimeout(legendTimer);
+  legendTimer = setTimeout(() => hideLegend(false), 12000);
+}
 
 function buildDom() {
   canvas = document.createElement('canvas');
@@ -228,7 +247,7 @@ function enterMode() {
   active = true;
   document.body.classList.add('cosmos-on');
   canvas.style.display = 'block';
-  legend.style.display = 'block';
+  showLegend();
   exitBtn.style.display = 'flex';
   document.addEventListener('keydown', onKey);
   window.addEventListener('resize', onResize);
@@ -246,7 +265,7 @@ function exitMode(byUser) {
   window.removeEventListener('resize', onResize);
   document.body.classList.remove('cosmos-on');
   canvas.style.display = 'none';
-  legend.style.display = 'none';
+  hideLegend(false);
   exitBtn.style.display = 'none';
   if (byUser) onUserExit?.();
 }
@@ -290,7 +309,13 @@ export async function setCosmicWeb(on, { onExit } = {}) {
     const credit = document.createElement('p');
     credit.className = 'cosmos-credit';
     credit.textContent = 'Data: DESI Collaboration DR1, via NOIRLab Astro Data Lab.';
-    legend.append(strong, p, credit);
+    const close = document.createElement('button');
+    close.className = 'legend-close';
+    close.setAttribute('aria-label', 'Dismiss the legend');
+    close.innerHTML = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="7" y1="7" x2="17" y2="17"/><line x1="17" y1="7" x2="7" y2="17"/></svg>';
+    close.addEventListener('click', () => hideLegend(true));
+    legend.append(strong, p, credit, close);
+    makeDismissable(legend, () => hideLegend(true), 'translateX(-50%)');
     built = true;
   }
   enterMode();

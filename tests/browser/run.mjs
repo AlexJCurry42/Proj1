@@ -754,6 +754,14 @@ await scenario('cosmic web: 3-D mode enters and exits, or degrades gracefully wi
       '3-D canvas must take the viewport');
     assert(await page.evaluate(() => /DESI DR1/.test(document.getElementById('cosmos-legend')?.textContent || '')),
       'legend must name and credit DESI');
+    // The legend obeys the app-wide notification contract: an ✕ dismisses
+    // it while the 3-D mode itself stays up.
+    await page.click('#cosmos-legend .legend-close');
+    await page.waitForTimeout(250);
+    assert(await page.evaluate(() => document.getElementById('cosmos-legend').style.display === 'none'),
+      'the legend ✕ must dismiss it');
+    assert(await page.evaluate(() => document.getElementById('cosmos-canvas').style.display === 'block'),
+      'dismissing the legend must not exit the mode');
     // Escape leaves the mode AND flips the dock switch back off.
     await page.keyboard.press('Escape');
     await page.waitForTimeout(400);
