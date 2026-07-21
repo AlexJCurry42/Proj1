@@ -326,9 +326,12 @@ await scenario('flight: continuous arc, exact landing, survey settles', async ()
   // trusting whichever toast happens to be first.
   const tours = await page.evaluate(async () => (await (await fetch('data/tours.json')).json()).destinations);
   const prefixes = tours.map((t) => `${t.name} — `);
+  // Generous timeout: the caption sits downstream of a ~4 s flight, the
+  // reveal fade, AND live CDS survey-metadata fetches — on a loaded
+  // software-rendered runner 20 s proved flaky (WebKit CI, 2026-07-21).
   await page.waitForFunction((ps) =>
     [...document.querySelectorAll('.toast')].some((el) => ps.some((p) => (el.textContent || '').includes(p))),
-  prefixes, { timeout: 20000 });
+  prefixes, { timeout: 40000 });
   const toastTexts = await page.evaluate(() => [...document.querySelectorAll('.toast')].map((el) => el.textContent || ''));
   const dest = tours.find((t) => toastTexts.some((x) => x.includes(`${t.name} — `)));
   assert(dest, 'destination not identified from toast');
@@ -345,7 +348,7 @@ await scenario('flight: continuous arc, exact landing, survey settles', async ()
       const dra = ((+p.get('ra') - ra + 540) % 360) - 180;
       return Math.hypot(dra, +p.get('dec') - dec) < 0.01;
     },
-    { sv: dest.survey, ra: dest.ra, dec: dest.dec }, { timeout: 15000 }
+    { sv: dest.survey, ra: dest.ra, dec: dest.dec }, { timeout: 25000 }
   ).catch(() => { /* asserted below with a readable message */ });
   const r = await page.evaluate(() => {
     window.__tracing = false;
