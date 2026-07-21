@@ -4,9 +4,10 @@
 // layer subscribes there, so this file only drives the shared clock.
 //
 // Play: time-lapse the whole sky. One press runs the app clock at the
-// selected speed (a minute, an hour, or a day per second) — the stars wheel,
-// the Moon races, planets creep along the ecliptic — with the same chip
-// marking the shift, and "Back to now" as the one-tap exit.
+// selected speed — from exactly real time (watch the true sky turn) up to
+// most of a day per second — the stars wheel, the Moon races, planets
+// creep along the ecliptic — with the same chip marking the shift, and
+// "Back to now" as the one-tap exit.
 
 import { appNow, setAppTime, isTimeShifted, onTimeChange, setPlaySpeed, playSpeed } from './clock.js';
 import { playStart, playStop } from './sound.js';
@@ -30,14 +31,16 @@ export function initTimeControl() {
   const setInputs = (d) => { dateIn.value = toDateValue(d); timeIn.value = toTimeValue(d); };
   const editingInputs = () => document.activeElement === dateIn || document.activeElement === timeIn;
 
-  // Playback speed is a continuous slider, minutes → hours → ∞, on a
+  // Playback speed is a continuous slider, real time → hours → ∞, on a
   // piecewise-log scale so "hr" sits exactly at center: the left half runs
-  // a minute-per-second up to an hour-per-second, the right half runs on
-  // up to the maximum (0.6 day per real second — the rate approved when
-  // the old day/s button was slowed 40%). One shared multiplier drives the
-  // clock, the chip and the sky, so the display can never drift from the
-  // rotation — and dragging mid-playback retunes the speed live.
-  const MIN_MULT = 60, MID_MULT = 3600, MAX_MULT = 51840;
+  // from EXACTLY real time (1× — the true sky, moving as it actually
+  // moves; at that rate the clock offset is frozen, so the motion is
+  // accurate by construction) up to an hour-per-second, the right half
+  // runs on up to the maximum (0.6 day per real second — the rate approved
+  // when the old day/s button was slowed 40%). One shared multiplier
+  // drives the clock, the chip and the sky, so the display can never drift
+  // from the rotation — and dragging mid-playback retunes the speed live.
+  const MIN_MULT = 1, MID_MULT = 3600, MAX_MULT = 51840;
   const multFromSlider = () => {
     // NOTE: the leftmost position is value 0 — a FALSY number. An earlier
     // `|| 500` fallback swallowed it and served the center (hour/s) speed at

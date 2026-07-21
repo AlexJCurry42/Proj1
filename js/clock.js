@@ -7,7 +7,11 @@
 // ticking: "tonight at 23:00" set five real minutes ago reads 23:05.
 
 let offsetMs = 0;
-let extraRate = 0;   // play speed minus 1 (0 = not playing); offset accrues at this rate
+let extraRate = 0;   // play speed minus 1; the offset accrues at this rate.
+                     // At exactly 1× it is 0: real-time playback needs NO
+                     // accrual at all — the clock advances because real time
+                     // does, which is what makes 1× motion exact.
+let nominalMult = 0; // 0 = stopped; ≥ 1 = playing at that × real time
 let rateAnchor = 0;
 let ticker = null;
 const subs = new Set();
@@ -49,7 +53,7 @@ export function isTimeShifted() {
  */
 export function setAppTime(dateOrNull) {
   accrue();
-  const wasPlaying = extraRate !== 0;
+  const wasPlaying = nominalMult !== 0;
   if (wasPlaying) setPlaySpeed(0);
   const next = dateOrNull ? dateOrNull.getTime() - Date.now() : 0;
   if (next === offsetMs && !wasPlaying) return;
@@ -58,23 +62,25 @@ export function setAppTime(dateOrNull) {
 }
 
 /**
- * Time-lapse playback: run the app clock at `mult`× real time (e.g. 3600 =
- * one hour per second). 0 or 1 stops playback and freezes the offset where
- * it is. While playing, subscribers are ticked twice a second so layers
- * follow along.
+ * Time-lapse playback: run the app clock at `mult`× real time (3600 = one
+ * hour per second; 1 = exactly real time — a real playing state, with the
+ * offset frozen so accuracy is by construction, not by arithmetic).
+ * Anything below 1 stops playback and freezes the offset where it is.
+ * While playing, subscribers are ticked twice a second so layers follow.
  */
 export function setPlaySpeed(mult) {
   accrue();
+  nominalMult = mult >= 1 ? mult : 0;
   extraRate = mult > 1 ? mult - 1 : 0;
   rateAnchor = Date.now();
   clearInterval(ticker);
   ticker = null;
-  if (extraRate !== 0) ticker = setInterval(notify, 500);
+  if (nominalMult !== 0) ticker = setInterval(notify, 500);
   notify();
 }
 
 export function playSpeed() {
-  return extraRate === 0 ? 0 : extraRate + 1;
+  return nominalMult;
 }
 
 /** Subscribe to clock scrubs; returns an unsubscribe function. */

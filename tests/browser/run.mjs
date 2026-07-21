@@ -536,18 +536,41 @@ await scenario('time: playback moves the Moon; Back to now stops and resets', as
   assert(await page.evaluate(() => window.__eggWanted === false), 'egg must disarm when playback stops');
   assert(await page.evaluate(() => !document.body.classList.contains('heaven')),
     'heaven theme must lift when playback stops');
-  // The slider→speed mapping across the whole track: minute at the far LEFT
-  // (value 0 is a falsy number — a `|| 500` fallback once served hour-speed
-  // there), hour exactly at center, the maximum at ∞.
+  // The slider→speed mapping across the whole track: EXACT real time at
+  // the far left (value 0 is a falsy number — a `|| 500` fallback once
+  // served hour-speed there), hour exactly at center, the maximum at ∞.
   const multAt = (val) => page.evaluate((v) => {
     const s = document.getElementById('time-speed');
     s.value = String(v);
     s.dispatchEvent(new Event('input', { bubbles: true }));
     return window.__speedMult;
   }, val);
-  assert(Math.abs(await multAt(0) - 60) < 0.01, 'far left must map to one minute per second');
+  assert(Math.abs(await multAt(0) - 1) < 1e-9, 'far left must map to exactly real time (1×)');
   assert(Math.abs(await multAt(500) - 3600) < 0.01, 'center must map to one hour per second');
   assert(Math.abs(await multAt(1000) - 51840) < 0.01, '∞ must map to the maximum rate');
+  // Real-time playback is a real STATE: play at 1× reads as playing, keeps
+  // the clock honest (unshifted — the offset is frozen, not accrued), and
+  // never arms the egg.
+  await multAt(0);
+  await tap('#time-play');
+  await page.waitForTimeout(600);
+  const rt = await page.evaluate(async () => {
+    const { playSpeed, isTimeShifted, timeOffsetMs } = await import('/js/clock.js');
+    return {
+      speed: playSpeed(), shifted: isTimeShifted(), offset: timeOffsetMs(),
+      egg: window.__eggWanted,
+      playing: document.getElementById('time-play').getAttribute('aria-pressed')
+    };
+  });
+  assert(rt.speed === 1, `1× must register as playing at speed 1 (got ${rt.speed})`);
+  assert(rt.offset === 0 && rt.shifted === false,
+    'real-time playback from now must not shift the clock by even a millisecond');
+  assert(!rt.egg, '1× must never arm the egg');
+  assert(rt.playing === 'true', 'the play button must show playing at 1×');
+  await tap('#time-now');
+  await page.waitForTimeout(300);
+  assert(await page.evaluate(async () => (await import('/js/clock.js')).playSpeed() === 0),
+    'Back to now must stop real-time playback too');
   assert(page.__errors.length === 0, `page errors: ${page.__errors.join('; ')}`);
   await ctx.close();
 });
