@@ -94,6 +94,12 @@ async function main() {
   ]);
 
   const aladin = A.aladin('#aladin-lite-div', {
+    // The engine's default log:true fires a startup usage beacon to
+    // alasky.unistra.fr/AladinLiteLogger carrying pageUrl + referrer.
+    // The app promises "no tracking, ever", so it stays OFF. (Belt and
+    // suspenders: the logger URL is also neutered in the vendored bundle,
+    // since that host serves real tiles and can't be blocked by CSP.)
+    log: false,
     survey: startSurvey,
     fov: viewMode === 'inside' ? 240 : 180,
     projection: viewMode === 'inside' ? 'STG' : 'SIN',

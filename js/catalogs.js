@@ -185,7 +185,7 @@ export async function loadNgcFull(aladin, onZoom = (fn) => aladin.on('zoomChange
     const src = A.source(ra, dec, {
       _detail: {
         name: common ? `${name} — ${common}` : name,
-        typeLabel: NGC_TYPE_LABEL[type] || type,
+        typeLabel: (Object.prototype.hasOwnProperty.call(NGC_TYPE_LABEL, type) ? NGC_TYPE_LABEL[type] : type),
         ra, dec,
         mag: mag ?? undefined,
         source: 'OpenNGC (CC-BY-SA-4.0) — the complete NGC/IC catalogs'
@@ -240,7 +240,7 @@ export async function loadMessierNgc(aladin, onZoom = (fn) => aladin.on('zoomCha
   }
 
   const all = [...data.messier, ...data.ngc_ic].map(obj => {
-    const style = TYPE_STYLE[obj.type] || TYPE_STYLE.galaxy;
+    const style = (Object.prototype.hasOwnProperty.call(TYPE_STYLE, obj.type) ? TYPE_STYLE[obj.type] : TYPE_STYLE.galaxy);
     // Tier 0: famous showpiece; tier 1: has a proper name; tier 2: the rest.
     const tier = WIDE_FOV_IDS.has(obj.id) ? 0 : (obj.name !== obj.id ? 1 : 2);
     return { obj, style, tier, src: null }; // src: A.source built once, reused across tier rebuilds

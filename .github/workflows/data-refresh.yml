@@ -14,6 +14,7 @@ name: Refresh data snapshots
 
 on:
   push:
+    branches: [claude/deep-sky-atlas-81s2ak]
     paths:
       - '.github/workflows/data-refresh.yml'
       - 'tools/**'
@@ -76,7 +77,7 @@ jobs:
       - name: ISS orbital elements from CelesTrak
         if: contains(env.SETS, 'tles')
         run: |
-          curl -fsS --retry 3 --retry-delay 20 \
+          curl -fsS --retry 3 --retry-delay 20 --max-time 120 --max-filesize 2000000 \
             'https://celestrak.org/NORAD/elements/gp.php?GROUP=stations&FORMAT=tle' -o /tmp/stations.tle
           python3 - <<'EOF'
           import re
@@ -112,11 +113,11 @@ jobs:
       - name: OpenNGC catalog, compacted
         if: contains(env.SETS, 'ngc')
         run: |
-          curl -fsS --retry 3 --retry-delay 15 \
+          curl -fsS --retry 3 --retry-delay 15 --max-time 180 --max-filesize 30000000 \
             'https://raw.githubusercontent.com/mattiaverga/OpenNGC/master/database_files/NGC.csv' \
             -o /tmp/NGC.csv
           python3 - <<'EOF'
-          import csv, json, re
+          import csv, json, os, re
 
           # Object types worth plotting; duplicates/non-existent entries are
           # dropped, bare stars kept out to avoid noise.
@@ -139,31 +140,43 @@ jobs:
                   if t not in KEEP or not row['RA'] or not row['Dec']:
                       continue
                   m = re.match(r'^(NGC|IC)(\d+)(.*)$', row['Name'])
-                  name = f"{m.group(1)} {int(m.group(2))}{m.group(3)}" if m else row['Name']
+                  name = (f"{m.group(1)} {int(m.group(2))}{m.group(3)}" if m else row['Name'])[:64]
                   mag = None
                   for col in ('V-Mag', 'B-Mag'):
                       if row.get(col):
-                          try: mag = round(float(row[col]), 1); break
+                          # float() accepts 'nan'/'inf' WITHOUT raising, so a
+                          # poisoned upstream cell would sail through — reject
+                          # non-finite explicitly (else json.dump emits bare
+                          # NaN tokens that the browser's JSON.parse rejects,
+                          # bricking the layer).
+                          try:
+                              v = round(float(row[col]), 1)
+                              if math.isfinite(v): mag = v; break
                           except ValueError: pass
-                  common = (row.get('Common names') or '').split(',')[0].strip() or None
-                  objects.append([
-                      name, t,
-                      round(hms_to_deg(row['RA']), 5),
-                      round(dms_to_deg(row['Dec']), 5),
-                      mag, common
-                  ])
+                  ra = round(hms_to_deg(row['RA']), 5)
+                  dec = round(dms_to_deg(row['Dec']), 5)
+                  if not (math.isfinite(ra) and math.isfinite(dec)):
+                      continue  # a NaN in any coordinate field: drop the row, don't ship it
+                  common = ((row.get('Common names') or '').split(',')[0].strip() or None)
+                  if common: common = common[:80]
+                  objects.append([name, t, ra, dec, mag, common])
 
           assert len(objects) > 11000, f'only {len(objects)} objects parsed'
           assert any(o[0] == 'NGC 224' for o in objects), 'M31/NGC 224 missing'
           for o in objects[:2000]:
               assert 0 <= o[2] < 360 and -90 <= o[3] <= 90, f'bad coords: {o}'
 
+          # allow_nan=False: fail the run loudly rather than commit a file
+          # with bare NaN/Infinity tokens (the isfinite filters above should
+          # already have caught every case; this is the last backstop).
           json.dump(
               {'_comment': 'Compact OpenNGC snapshot: [name, type, ra_deg, dec_deg, mag(V|B|null), common_name]. CC-BY-SA-4.0, github.com/mattiaverga/OpenNGC',
                'objects': objects},
               open('data/ngc_full.json', 'w'), ensure_ascii=False,
-              separators=(',', ':'))
-          print(f'wrote {len(objects)} objects')
+              separators=(',', ':'), allow_nan=False)
+          size = os.path.getsize('data/ngc_full.json')
+          assert size < 3_000_000, f'ngc_full.json {size} bytes — implausibly large'
+          print(f'wrote {len(objects)} objects, {size} bytes')
           EOF
 
       # --------------------------------------------- Bright stars (monthly) ---
@@ -173,14 +186,14 @@ jobs:
       - name: Bright stars from VizieR (BSC + Tycho-2)
         if: contains(env.SETS, 'brightstars')
         run: |
-          curl -fsS --retry 3 --retry-delay 15 -G \
+          curl -fsS --retry 3 --retry-delay 15 --max-time 300 --max-filesize 20000000 -G \
             'https://tapvizier.cds.unistra.fr/TAPVizieR/tap/sync' \
             --data-urlencode 'request=doQuery' \
             --data-urlencode 'lang=adql' \
             --data-urlencode 'format=csv' \
             --data-urlencode 'query=SELECT _RAJ2000, _DEJ2000, Vmag, "B-V" FROM "V/50/catalog" WHERE Vmag <= 6.5' \
             -o /tmp/bsc.csv || \
-          curl -fsS --retry 3 --retry-delay 15 -G \
+          curl -fsS --retry 3 --retry-delay 15 --max-time 300 --max-filesize 20000000 -G \
             'https://tapvizier.cds.unistra.fr/TAPVizieR/tap/sync' \
             --data-urlencode 'request=doQuery' \
             --data-urlencode 'lang=adql' \
@@ -195,7 +208,14 @@ jobs:
             --data-urlencode 'query=SELECT RAmdeg, DEmdeg, VTmag, BTmag FROM "I/259/tyc2" WHERE VTmag <= 8.4' \
             -o /tmp/tyc2.csv || true
           python3 - <<'EOF'
-          import csv, json, re
+          import csv, json, math, re
+
+          # float('nan')/'inf' don't raise, so a poisoned upstream cell would
+          # slip past every try/except ValueError and land a bare NaN token
+          # in the committed JSON — which throws in the browser's JSON.parse,
+          # and brightstars.json is on the BOOT path. Reject non-finite.
+          def fin(x):
+              return x if math.isfinite(x) else None
 
           def parse_pos(ra_s, de_s):
               try:
@@ -220,8 +240,10 @@ jobs:
                       v = float(row[keys['vmag']])
                   except (TypeError, ValueError, KeyError, IndexError):
                       continue
+                  if None in (fin(ra), fin(de), fin(v)):
+                      continue  # non-finite position/magnitude: drop the row
                   try:
-                      bv = round(float(row[keys['b-v']]), 2)
+                      bv = fin(round(float(row[keys['b-v']]), 2))
                   except (TypeError, ValueError, KeyError):
                       bv = None
                   stars.append([round(ra, 4), round(de, 4), round(v, 2), bv])
@@ -240,12 +262,16 @@ jobs:
                           vt = float(row[keys['vtmag']])
                       except (TypeError, ValueError, KeyError):
                           continue
+                      if None in (fin(ra), fin(de), fin(vt)):
+                          continue  # non-finite: drop the row
                       try:
                           btvt = float(row[keys['btmag']]) - vt
                           v = round(vt - 0.090 * btvt, 2)
-                          bv = round(0.850 * btvt, 2)
+                          bv = fin(round(0.850 * btvt, 2))
                       except (TypeError, ValueError, KeyError):
                           v, bv = round(vt, 2), None
+                      if not math.isfinite(v):
+                          continue
                       if v <= 6.5:
                           continue  # the BSC tier already covers it
                       stars.append([round(ra, 4), round(de, 4), v, bv])
@@ -260,7 +286,7 @@ jobs:
           faint = [s for s in stars if s[2] > 6.5]
           with open('data/brightstars.json', 'w') as f:
               json.dump({'source': 'Yale Bright Star Catalogue (V/50) via VizieR TAP, V <= 6.5',
-                         'stars': bright}, f, separators=(',', ':'))
+                         'stars': bright}, f, separators=(',', ':'), allow_nan=False)
           # FAIL CLOSED: the faint tier comes entirely from Tycho-2 (the BSC
           # query caps at 6.5), so a total tyc2 outage means faint == [] —
           # writing that would silently destroy the committed 55k-star file.
@@ -268,7 +294,7 @@ jobs:
           if tyc:
               with open('data/brightstars_faint.json', 'w') as f:
                   json.dump({'source': 'Tycho-2 (I/259) via VizieR TAP, 6.5 < V <= ~8.4 (VT/BT converted to V, B-V)',
-                             'stars': faint}, f, separators=(',', ':'))
+                             'stars': faint}, f, separators=(',', ':'), allow_nan=False)
           else:
               print('Tycho-2 unavailable this run: keeping the existing faint tier untouched')
           print(f'wrote {len(bright)} bright + {len(faint)} faint stars ({tyc} from Tycho-2)')
@@ -279,9 +305,9 @@ jobs:
         if: contains(env.SETS, 'constellations')
         run: |
           BASE='https://raw.githubusercontent.com/ofrohn/d3-celestial/master/data'
-          curl -fsS --retry 3 --retry-delay 15 "$BASE/constellations.lines.json"   -o data/constellations_lines.json
-          curl -fsS --retry 3 --retry-delay 15 "$BASE/constellations.json"         -o data/constellations_names.json
-          curl -fsS --retry 3 --retry-delay 15 "$BASE/constellations.borders.json" -o data/constellations_borders.json
+          curl -fsS --retry 3 --retry-delay 15 --max-time 120 --max-filesize 20000000 "$BASE/constellations.lines.json"   -o data/constellations_lines.json
+          curl -fsS --retry 3 --retry-delay 15 --max-time 120 --max-filesize 20000000 "$BASE/constellations.json"         -o data/constellations_names.json
+          curl -fsS --retry 3 --retry-delay 15 --max-time 120 --max-filesize 20000000 "$BASE/constellations.borders.json" -o data/constellations_borders.json
           python3 - <<'EOF'
           import json
 
@@ -314,7 +340,7 @@ jobs:
       - name: IAU constellation zone table (VI/42)
         if: contains(env.SETS, 'zones')
         run: |
-          curl -fsS --retry 3 --retry-delay 15 \
+          curl -fsS --retry 3 --retry-delay 15 --max-time 120 --max-filesize 5000000 \
             'https://cdsarc.cds.unistra.fr/ftp/VI/42/data.dat' -o /tmp/zones.dat
           python3 - <<'EOF'
           import json

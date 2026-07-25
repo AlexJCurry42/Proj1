@@ -105,7 +105,13 @@ def fetch_summary(title):
         pace()
         try:
             with urlopen(req, timeout=25) as r:
-                return json.load(r)
+                # Bound the read: a compromised/misbehaving endpoint must not
+                # stream unbounded bytes into the runner's memory. A REST
+                # summary is a few KB; 4 MB is a generous ceiling.
+                body = r.read(4_000_000 + 1)
+                if len(body) > 4_000_000:
+                    raise ValueError('summary response too large')
+                return json.loads(body)
         except HTTPError as e:
             if e.code == 404:
                 return None
@@ -140,7 +146,9 @@ def resolve(cand):
         extract = (s.get('extract') or '').strip()
         if len(extract) < MIN_EXTRACT or not ASTRO_RE.search(extract):
             continue
-        return keys, s.get('title') or t, two_sentences(extract)
+        # Bound the title too — two_sentences already bounds the extract, but
+        # a compromised upstream could bloat a single title unboundedly.
+        return keys, (s.get('title') or t)[:120], two_sentences(extract)
     return None
 
 

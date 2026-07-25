@@ -69,7 +69,7 @@ export function initCenterId(aladin, { onPosition, onZoom }) {
     const out = [];
     if (curated) {
       for (const o of [...(curated.messier || []), ...(curated.ngc_ic || [])]) {
-        const style = TYPE_STYLE[o.type];
+        const style = Object.prototype.hasOwnProperty.call(TYPE_STYLE, o.type) ? TYPE_STYLE[o.type] : undefined;
         out.push({
           name: o.name || o.id,
           aliases: [o.id],

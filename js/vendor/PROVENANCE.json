@@ -1,0 +1,88 @@
+{
+ "_comment": "Integrity record for vendored third-party code. sha256+bytes computed locally at commit time; UPSTREAM COMMIT is unverified here and should be filled by the maintainer against the real release. aladin: Aladin Lite v3.9.0-beta (LGPL-3.0-or-later), github.com/cds-astro/aladin-lite. satellite: satellite.js (MIT), github.com/shashwatak/satellite-js.",
+ "_local_modifications": "js/vendor/aladin/aladin.js: the AladinLiteLogger startup-beacon URL was neutered to about:blank (privacy \u2014 see js/app.js log:false). This is an INTENTIONAL local edit, so this file's sha256 will not match upstream.",
+ "aladin_upstream_commit": "TODO: fill from the real v3.9.0-beta release",
+ "files": {
+  "aladin/LICENSE": {
+   "bytes": 7651,
+   "sha256": "a5681bf9b05db14d86776930017c647ad9e6e56ff6bbcfdf21e5848288dfaf1b"
+  },
+  "aladin/aladin.js": {
+   "bytes": 2391663,
+   "sha256": "a9d09697935c86aeaaed4c4ad321b81543a17bb62a521d725ea28c1612a069a1"
+  },
+  "aladin/loader.js": {
+   "bytes": 625,
+   "sha256": "04d16efce73e3151cb4b63855bc89b9902e4d90785b66adfd128a7de4e178314"
+  },
+  "satellite/LICENSE": {
+   "bytes": 1093,
+   "sha256": "a9eb1e87324137a37b783f3bbdda5d3de1fdd7ba8d63fb0814b6c399e708c845"
+  },
+  "satellite/common-types.js": {
+   "bytes": 11,
+   "sha256": "8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881"
+  },
+  "satellite/constants.js": {
+   "bytes": 645,
+   "sha256": "39efed0e8259640b7132afefd116197a6eee4171479143b363829e4f04237df1"
+  },
+  "satellite/ext.js": {
+   "bytes": 5456,
+   "sha256": "33c45c14ce6cff31cdfabd353973c9aa6472e80b5afa9dd5ff35f04cee83d5ba"
+  },
+  "satellite/io.js": {
+   "bytes": 9703,
+   "sha256": "2110afa4a17f0fc1bd6bac09263ddb25b3cceb150d0e56704d37b12642cd1700"
+  },
+  "satellite/propagation.js": {
+   "bytes": 152,
+   "sha256": "63af900ca73eff39ddb3749946828b09e4206d91ba7947b146e1b8dc2b82209c"
+  },
+  "satellite/propagation/SatRec.js": {
+   "bytes": 1045,
+   "sha256": "edcffa5f13d8960b4480ff844286ca76ca9d2952e989d9f32fad82c14aa6fd7b"
+  },
+  "satellite/propagation/dpper.js": {
+   "bytes": 6622,
+   "sha256": "ece3f6a8902a98dacdd3c18451e80f8b68b6f1f274e7bf1a029641b05a15bec7"
+  },
+  "satellite/propagation/dscom.js": {
+   "bytes": 10222,
+   "sha256": "6a830f90d5d2428884e8e5794a583fd8423a91eebf4dc78ddb1aa75b4b1ece15"
+  },
+  "satellite/propagation/dsinit.js": {
+   "bytes": 11777,
+   "sha256": "c458909c2913a1188969334a6dd486f9b654ced702b35706a413f41a30c9435a"
+  },
+  "satellite/propagation/dspace.js": {
+   "bytes": 7684,
+   "sha256": "7930673fa41b68269244dc4d7c59cc3f43ade2bce1b99b574a211bd425c7f701"
+  },
+  "satellite/propagation/gstime.js": {
+   "bytes": 1721,
+   "sha256": "ccea2fafa2f388b22127e043833db8cf4b4fdbd4494c122cb6cc4fa323b6bb6b"
+  },
+  "satellite/propagation/initl.js": {
+   "bytes": 4272,
+   "sha256": "1bbcd47a484fd6ad5381fdee881d5599e2bc0babb865a952a30d2fa411b14bb6"
+  },
+  "satellite/propagation/propagate.js": {
+   "bytes": 356,
+   "sha256": "f87f2965e74fdc5c6db90c40af56818ec86cf22f6d763bef122aea4956114b3d"
+  },
+  "satellite/propagation/sgp4.js": {
+   "bytes": 13041,
+   "sha256": "a221b011fdec91bc77a6476912fe0e739ca3ea5a4334fd7bd49762a9c971509d"
+  },
+  "satellite/propagation/sgp4init.js": {
+   "bytes": 20732,
+   "sha256": "b17806ed42cd9efed34a4834de8e9253221509e2cba57161c0a1262afcac2975"
+  },
+  "satellite/transforms.js": {
+   "bytes": 5023,
+   "sha256": "c1cd003067c5796ff97c8fc9e10b23206f0855e37d1a4b6db216743ec915ca48"
+  }
+ },
+ "satellite_upstream_version": "TODO: fill from the real satellite.js release"
+}

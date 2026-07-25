@@ -84,7 +84,7 @@ async function loadObjectTypesDict() {
 export async function humanObjectType(code) {
   if (!code) return 'Unknown type';
   const dict = await loadObjectTypesDict();
-  return dict[code] || code;
+  return Object.prototype.hasOwnProperty.call(dict, code) ? dict[code] : code;
 }
 
 // ----------------------------------------------------------- Coord format ---

@@ -70,7 +70,11 @@ function startServer() {
         let p = decodeURIComponent(new URL(req.url, 'http://x').pathname);
         if (p === '/' || p === '/engine-test.html') p = '/tests/browser/.cache/engine-test.html';
         const file = path.join(ROOT, p);
-        if (!file.startsWith(ROOT)) throw new Error('traversal');
+        // Boundary-safe containment: a bare startsWith(ROOT) also matches a
+        // sibling like ROOT + '-secret'. path.relative rejects '..' escapes
+        // and absolute re-roots (loopback test tool, but do it right).
+        const rel = path.relative(ROOT, file);
+        if (rel.startsWith('..') || path.isAbsolute(rel)) throw new Error('traversal');
         const body = await readFile(file);
         res.writeHead(200, { 'content-type': MIME[path.extname(file)] || 'application/octet-stream' });
         res.end(body);

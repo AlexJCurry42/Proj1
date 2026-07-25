@@ -4,6 +4,16 @@
 // Content-Security-Policy arrived: external same-origin scripts keep the
 // policy free of 'unsafe-inline'). app.js reports milestones via
 // window.__boot.to(percent) and retires the screen with .done().
+
+// Frame-buster: a meta-delivered CSP cannot set frame-ancestors, so this is
+// the only way to stop a hostile page from framing the app and redressing
+// the geolocation-consent tap. Runs before the app paints; a no-op at top
+// level (top === self).
+if (window.top !== window.self) {
+  try { window.top.location = window.self.location.href; }
+  catch (e) { document.documentElement.style.display = 'none'; } // cross-origin: at least don't render
+}
+
 window.__boot = (() => {
   const fill = document.getElementById('boot-fill');
   let target = 12, shown = 0, timer = null;

@@ -21,7 +21,7 @@
 // constellations_lines/names/borders) here — they may not exist on a fresh
 // deploy and one 404 fails the entire install. Runtime caching covers them.
 // Bump together with js/version.js (shown in the About panel).
-const VERSION = 'dsa-shell-v98';
+const VERSION = 'dsa-shell-v99';
 
 const SHELL = [
   './',
@@ -141,7 +141,11 @@ self.addEventListener('fetch', (e) => {
     e.respondWith(
       fetch(e.request.url, { cache: 'no-cache' })
         .then((res) => {
-          if (res.ok) {
+          // Cache as the offline shell ONLY a real HTML document: a
+          // top-level navigation to a non-HTML in-scope asset (…/data/
+          // tours.json, css/style.css) must not overwrite './' and make
+          // the installed PWA open to raw JSON offline.
+          if (res.ok && (res.headers.get('content-type') || '').includes('text/html')) {
             const copy = res.clone();
             caches.open(VERSION).then((c) => c.put('./', copy));
           }

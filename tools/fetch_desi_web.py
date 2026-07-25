@@ -44,7 +44,13 @@ def tap_csv(query, maxrec):
     })
     req = Request(f'{TAP_SYNC}?{params}', headers={'User-Agent': UA})
     with urlopen(req, timeout=600) as r:
-        return r.read().decode('utf-8', 'replace')
+        # Bound the read against a compromised TAP endpoint. TARGET_N*2 rows
+        # of ~40 chars is ~32 MB at the largest; 120 MB is a hard ceiling
+        # that still fails closed (nothing is committed on abort).
+        body = r.read(120_000_000 + 1)
+        if len(body) > 120_000_000:
+            raise OSError('TAP response exceeded the size ceiling')
+        return body.decode('utf-8', 'replace')
 
 
 def tap_error_text(votable):
