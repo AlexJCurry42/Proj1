@@ -75,9 +75,12 @@ export function initMarkerFades(aladin) {
         }
       }
       ctx.globalAlpha = 1;
+      if (!jobs.size) ctl.hide(); // last fade done: let the engine idle again
     }
   });
-  ctl.show(); // the layer is "always on"; jobs decide whether it draws
+  // Shown only WHILE jobs exist: pinning this layer visible at init held
+  // the whole unified overlay engine out of its idle stop for the entire
+  // session (permanent 60 Hz wakeups with every layer off).
 
   function jobAlpha(job) {
     const u = Math.min(1, (performance.now() - job.t0) / FADE_MS);
@@ -119,6 +122,7 @@ export function initMarkerFades(aladin) {
     };
     state.job = job;
     jobs.add(job);
+    ctl.show(); // wake the engine for the duration of the fade
     ctl.dirty();
   };
 }

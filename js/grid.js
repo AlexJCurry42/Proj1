@@ -190,6 +190,6 @@ export function initGridLayer(aladin) {
     }
   }
 
-  const ctl = getOverlay(aladin).addLayer({ z: 8, draw });
+  const ctl = getOverlay(aladin).addLayer({ z: 9, draw }); // above the bloom (z 8) — deterministic, not toggle-order luck
   return { show: () => ctl.show(), hide: () => ctl.hide() };
 }

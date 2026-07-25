@@ -4,10 +4,10 @@
 <meta charset="UTF-8" />
 <!-- Content-Security-Policy, meta-delivered (GitHub Pages can't set
      headers). The XSS-relevant locks are strict: scripts only from this
-     origin and the Aladin CDN ('wasm-unsafe-eval' is required for the
-     engine's WebAssembly), no object/embed, no base hijack, no inline
-     scripts (the boot bar and SW bootstrap are external files for exactly
-     this reason). img/connect stay broad by design — HiPS surveys resolve
+     origin — the sky engine is BUNDLED, so no CDN appears in script-src
+     ('wasm-unsafe-eval' is required for its WebAssembly) — no
+     object/embed, no base hijack, no inline scripts (the boot bar and SW
+     bootstrap are external files for exactly this reason). img/connect stay broad by design — HiPS surveys resolve
      to many mirrors and Commons photos redirect to upload.wikimedia.org;
      locking script execution, not data loading, is what defuses XSS.
      frame-ancestors can't be set from a meta tag, so it is omitted. -->
@@ -25,14 +25,15 @@
 <title>Project Planetarium</title>
 <meta name="description" content="Project Planetarium — stars, galaxies, nebulae, exoplanets and black holes across the whole sky, powered by Aladin Lite and CDS/NASA data." />
 
-<!-- Warm up the critical origins: the engine CDN and the HiPS tile server
-     get full preconnects; everything queried later gets cheap DNS prefetch. -->
+<!-- Warm up the critical origins: the HiPS tile server gets a full
+     preconnect; services queried later get cheap DNS prefetch. (The
+     exoplanet archive is deliberately absent — its TAP has no CORS, so
+     the browser never contacts it; only the Action does.) -->
 <link rel="preconnect" href="https://alasky.cds.unistra.fr" crossorigin />
 <link rel="dns-prefetch" href="https://axel.u-strasbg.fr" />
 <link rel="dns-prefetch" href="https://simbad.cds.unistra.fr" />
 <link rel="dns-prefetch" href="https://cds.unistra.fr" />
 <link rel="dns-prefetch" href="https://tapvizier.cds.unistra.fr" />
-<link rel="dns-prefetch" href="https://exoplanetarchive.ipac.caltech.edu" />
 <link rel="dns-prefetch" href="https://commons.wikimedia.org" />
 <link rel="dns-prefetch" href="https://upload.wikimedia.org" />
 

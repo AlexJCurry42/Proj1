@@ -290,10 +290,13 @@ export async function loadMessierNgc(aladin, onZoom = (fn) => aladin.on('zoomCha
   onZoom(debounce(applyDensity, 250));
   applyDensity();
 
-  // ids let the full-NGC layer skip objects the curated set already shows
-  // (the showpieces are a subset of OpenNGC — without this, M31 would get
-  // both its curated marker and a plain 'NGC 224' dot on top).
-  const ids = new Set(all.map(e => String(e.obj.id).replace(/\s+/g, '').toUpperCase()));
+  // ids let the full-NGC layer skip objects the curated set already shows.
+  // Messier ids can never match OpenNGC's 'NGC 224'-style names by string
+  // alone, so each curated Messier entry carries its standard NGC/IC
+  // cross-id — without it, all ~106 shared objects rendered TWICE (the
+  // curated M31 marker plus a plain 'NGC 224' dot dead-stacked on top).
+  const ids = new Set(all.flatMap(e =>
+    [e.obj.id, e.obj.ngc].filter(Boolean).map(s => String(s).replace(/\s+/g, '').toUpperCase())));
   return { catalogs: Object.values(catalogs), count: all.length, ids };
 }
 
@@ -341,6 +344,9 @@ const EXO_SNAPSHOT_URL = 'data/exoplanets_snapshot.csv';
  * data-refresh Action regenerates weekly.
  */
 export async function loadExoplanets(aladin) {
+  // The famous-planet names come from renders.json — start that fetch NOW
+  // so it rides alongside the big CSV instead of queueing behind it.
+  const rendersEarly = fetchJSON('data/renders.json').catch(() => null);
   if (!exoplanetCache) {
     try {
       exoplanetCache = parseExoCsv(await fetchText(EXO_SNAPSHOT_URL, { timeoutMs: 15000 }));
@@ -357,7 +363,7 @@ export async function loadExoplanets(aladin) {
   // name, so they read as landmarks among the six thousand dots.
   let famousNames = new Set();
   try {
-    const renders = await fetchJSON('data/renders.json');
+    const renders = await rendersEarly;
     for (const e of renders.entries || []) {
       for (const m of e.match || []) famousNames.add(m);
     }

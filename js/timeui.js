@@ -110,6 +110,12 @@ export function initTimeControl() {
     if (playSpeed() === 0) eggDismissed = false; // a fresh play can summon it again
   }
 
+  // One cached formatter: constructing Intl.DateTimeFormat per tick was
+  // ~100× the cost of formatting with a kept instance (same output).
+  const chipFmt = new Intl.DateTimeFormat(undefined, {
+    weekday: 'short', month: 'short', day: 'numeric',
+    hour: '2-digit', minute: '2-digit'
+  });
   function refresh() {
     const shifted = isTimeShifted();
     const playing = playSpeed() !== 0;
@@ -119,10 +125,7 @@ export function initTimeControl() {
     playBtn?.classList.toggle('playing', playing);
     chip.hidden = !shifted;
     if (shifted) {
-      chip.textContent = (playing ? '▶ ' : '') + appNow().toLocaleString(undefined, {
-        weekday: 'short', month: 'short', day: 'numeric',
-        hour: '2-digit', minute: '2-digit'
-      });
+      chip.textContent = (playing ? '▶ ' : '') + chipFmt.format(appNow());
     }
     syncEgg();
   }
@@ -144,7 +147,11 @@ export function initTimeControl() {
   btn.addEventListener('click', () => {
     if (panel.hidden) openPanel(); else panel.hidden = true;
   });
-  chip.addEventListener('click', openPanel); // the amber chip reopens the scrubber
+  // The amber chip reopens the scrubber — but never re-runs openPanel on a
+  // panel that's already up: its unconditional setInputs would clobber a
+  // date the user is halfway through typing (Safari doesn't blur inputs on
+  // button mousedown, so the in-progress value is still uncommitted).
+  chip.addEventListener('click', () => { if (panel.hidden) openPanel(); });
   document.addEventListener('pointerdown', (e) => {
     if (!panel.hidden && !panel.contains(e.target) && !btn.contains(e.target) && !chip.contains(e.target)) {
       panel.hidden = true;

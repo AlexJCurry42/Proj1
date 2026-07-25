@@ -74,6 +74,10 @@ export async function attachRenderIfFamous(containerEl, detailObj, anchorEl = nu
     wrap.appendChild(cap);
 
     function mountProcedural() {
+      // Late async callers (a photo's error event long after the panel was
+      // replaced) must not re-parent the shared canvas into a detached
+      // wrap — that would silently stop the LIVE panel's render loop.
+      if (!media.isConnected) return;
       if (!entry.type) { wrap.remove(); return; }
       const shared = getSharedRenderer();
       if (!shared) { wrap.remove(); return; } // no WebGL on this device
@@ -368,6 +372,14 @@ function getSharedRenderer() {
   canvas.width = canvas.height = 640; // 2x for retina crispness
   canvas.className = 'render-canvas';
   canvas.setAttribute('role', 'img');
+  // Context eviction (backgrounded mobile tab) would leave every LATER
+  // detail panel blank for the session: discard the shared renderer so
+  // the next mount builds a fresh canvas + context from scratch.
+  canvas.addEventListener('webglcontextlost', (e) => {
+    e.preventDefault();
+    sharedRenderer = null;
+    canvas.remove();
+  });
   const gl = canvas.getContext('webgl', { alpha: true, premultipliedAlpha: true, antialias: true });
   if (!gl) return null;
 

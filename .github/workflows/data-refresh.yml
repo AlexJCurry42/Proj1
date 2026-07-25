@@ -16,6 +16,7 @@ on:
   push:
     paths:
       - '.github/workflows/data-refresh.yml'
+      - 'tools/**'
   schedule:
     - cron: '41 4 * * *'  # daily → tles
     - cron: '17 6 * * 1'  # Mondays → exoplanets
@@ -65,6 +66,7 @@ jobs:
               *) echo "::error::unknown dataset '$tok'"; exit 1 ;;
             esac
           done
+          [ -n "${SETS// /}" ] || { echo "::error::datasets input resolved to nothing"; exit 1; }
           echo "SETS=$SETS" >> "$GITHUB_ENV"
           echo "refreshing: $SETS"
 
@@ -259,9 +261,16 @@ jobs:
           with open('data/brightstars.json', 'w') as f:
               json.dump({'source': 'Yale Bright Star Catalogue (V/50) via VizieR TAP, V <= 6.5',
                          'stars': bright}, f, separators=(',', ':'))
-          with open('data/brightstars_faint.json', 'w') as f:
-              json.dump({'source': 'Tycho-2 (I/259) via VizieR TAP, 6.5 < V <= ~8.4 (VT/BT converted to V, B-V)',
-                         'stars': faint}, f, separators=(',', ':'))
+          # FAIL CLOSED: the faint tier comes entirely from Tycho-2 (the BSC
+          # query caps at 6.5), so a total tyc2 outage means faint == [] —
+          # writing that would silently destroy the committed 55k-star file.
+          # Skip the write and keep the previous snapshot instead.
+          if tyc:
+              with open('data/brightstars_faint.json', 'w') as f:
+                  json.dump({'source': 'Tycho-2 (I/259) via VizieR TAP, 6.5 < V <= ~8.4 (VT/BT converted to V, B-V)',
+                             'stars': faint}, f, separators=(',', ':'))
+          else:
+              print('Tycho-2 unavailable this run: keeping the existing faint tier untouched')
           print(f'wrote {len(bright)} bright + {len(faint)} faint stars ({tyc} from Tycho-2)')
           EOF
 
@@ -402,6 +411,12 @@ jobs:
           git config user.email 'github-actions[bot]@users.noreply.github.com'
           git add data/
           git diff --cached --quiet || git commit -m "Refresh data snapshots ($SETS) [skip ci]"
-          # A human push can still land while this ran: rebase, then push.
-          git pull --rebase origin "$GITHUB_REF_NAME"
-          git push
+          # A human push can land while this ran — or between our rebase and
+          # push. Retry the pair; -X theirs auto-resolves content conflicts
+          # in favor of the fresh data (delete/rename conflicts abort loudly).
+          for i in 1 2 3; do
+            git pull --rebase -X theirs origin "$GITHUB_REF_NAME" || { git rebase --abort; exit 1; }
+            git push && exit 0
+            [ "$i" = 3 ] && exit 1
+            sleep $((i * 15))
+          done

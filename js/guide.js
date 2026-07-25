@@ -123,8 +123,11 @@ export function initUiGuide() {
     document.body.append(ring, card);
     window.addEventListener('resize', place);
     show(0);
-    // First boot: nothing owns focus yet, so give it to Next — the whole
-    // tour becomes Enter, Enter, … for keyboard users.
-    next.focus({ preventScroll: true });
+    // First boot: give focus to Next so the whole tour is Enter, Enter, … —
+    // unless the user already reached an input (search, time pickers) in
+    // the 1.8 s delay; yanking focus mid-word would close their keyboard.
+    const ae = document.activeElement;
+    const typing = ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable);
+    if (!typing) next.focus({ preventScroll: true });
   }, 1800);
 }

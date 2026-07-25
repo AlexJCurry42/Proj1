@@ -69,7 +69,10 @@ export function makeConeLayer(aladin, onZoom, onPosition, opts) {
   // Lets the layer toggle stop live queries entirely while hidden.
   cat.dsaSetEnabled = (v) => {
     enabled = v;
-    if (v) { lastKey = ''; refresh(); }
+    // A transient error (even our own 10 s timeout mid-pan) latches
+    // `failed`; a deliberate re-toggle is the user asking for one more
+    // try — grant it without giving up the anti-hammer property.
+    if (v) { failed = false; lastKey = ''; refresh(); }
   };
   return cat;
 }

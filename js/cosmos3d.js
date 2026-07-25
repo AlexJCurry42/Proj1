@@ -18,15 +18,18 @@ const VERT = `
 attribute vec3 aPos;
 attribute float aType;
 uniform mat4 uMvp;
-uniform float uPx;      // viewport height in px (for size attenuation)
+uniform float uPx;      // viewport height in DEVICE px (size attenuation)
+uniform float uDpr;     // device-pixel ratio: keeps sprite size in CSS px
 varying float vType;
 varying float vFade;
 void main() {
   gl_Position = uMvp * vec4(aPos, 1.0);
   float w = max(gl_Position.w, 1.0);
-  gl_PointSize = clamp(uPx * 900.0 / w, 1.0, 4.5);
+  // Clamp bounds scale with DPR so a phone shows the same CSS-px sprites
+  // as a laptop (raw device-px clamps halved them at dpr 2).
+  gl_PointSize = clamp(uPx * 900.0 / w, uDpr, 4.5 * uDpr);
   // Distant points thin out gently instead of shimmering as 1px noise.
-  vFade = clamp(2200.0 * uPx / w, 0.25, 1.0);
+  vFade = clamp(2200.0 * (uPx / uDpr) / w, 0.25, 1.0);
   vType = aType;
 }`;
 
@@ -86,10 +89,11 @@ function mul4(a, b) { // a * b
 // ---- module state (one instance ever) ----
 let built = false;        // DOM + GL created
 let active = false;       // mode currently on screen
+let reqSeq = 0;           // newest setCosmicWeb call wins across its awaits
 let loading = null;       // in-flight dataset promise
 let gl = null, prog = null, canvas = null, legend = null, exitBtn = null;
 let pointCount = 0;
-let uMvp = null, uPx = null;
+let uMvp = null, uPx = null, uDpr = null;
 let raf = null;
 let onUserExit = null;    // flips the dock switch back off
 
@@ -130,6 +134,21 @@ function buildDom() {
   exitBtn.textContent = 'Back to the sky';
   exitBtn.addEventListener('click', () => exitMode(true));
   document.body.append(canvas, legend, exitBtn);
+  // A browser can evict the GL context (backgrounded mobile tab). Without
+  // this, the loop kept drawing into a dead context and the takeover view
+  // stayed permanently black. Recovery = full teardown; the next flip
+  // rebuilds from the SW-cached dataset in well under a second.
+  canvas.addEventListener('webglcontextlost', (e) => {
+    e.preventDefault();
+    const wasActive = active;
+    exitMode(false);
+    canvas.remove(); legend.remove(); exitBtn.remove();
+    built = false; gl = null; loading = null; lastFrameSig = '';
+    if (wasActive) {
+      onUserExit?.();
+      showToast('The 3-D view lost its graphics context — flip the switch to re-enter.', 'info', 7000);
+    }
+  });
   attachControls();
 }
 
@@ -166,6 +185,7 @@ function initGL(data) {
 
   uMvp = gl.getUniformLocation(prog, 'uMvp');
   uPx = gl.getUniformLocation(prog, 'uPx');
+  uDpr = gl.getUniformLocation(prog, 'uDpr');
   gl.enable(gl.BLEND);
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE); // additive: dense filaments glow
   pointCount = data.count;
@@ -176,8 +196,10 @@ function resize() {
   canvas.width = Math.round(canvas.clientWidth * dpr);
   canvas.height = Math.round(canvas.clientHeight * dpr);
   gl.viewport(0, 0, canvas.width, canvas.height);
+  lastFrameSig = ''; // force a redraw at the new size
 }
 
+let lastFrameSig = '';
 function frame() {
   raf = requestAnimationFrame(frame);
   // Inertia + idle drift (drift only when animations are allowed).
@@ -187,6 +209,13 @@ function frame() {
   vel.pitch *= 0.92;
   if (motionOK() && performance.now() - lastInteract > 5000) cam.yaw += 0.0006;
 
+  // At rest (Animations off, inertia decayed) the camera is bit-identical
+  // frame to frame — redrawing 400k points anyway was the app's largest
+  // steady battery drain. Skip until something actually moves.
+  const sig = `${cam.yaw.toFixed(5)},${cam.pitch.toFixed(5)},${cam.dist.toFixed(2)},${canvas.width}x${canvas.height}`;
+  if (sig === lastFrameSig) return;
+  lastFrameSig = sig;
+
   const cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
   const eye = [cam.dist * cp * Math.cos(cam.yaw), cam.dist * cp * Math.sin(cam.yaw), cam.dist * sp];
   const aspect = canvas.width / Math.max(1, canvas.height);
@@ -195,6 +224,7 @@ function frame() {
   gl.clear(gl.COLOR_BUFFER_BIT);
   gl.uniformMatrix4fv(uMvp, false, mvp);
   gl.uniform1f(uPx, canvas.height / 900);
+  gl.uniform1f(uDpr, Math.min(window.devicePixelRatio || 1, 2));
   gl.drawArrays(gl.POINTS, 0, pointCount);
 }
 
@@ -244,6 +274,7 @@ const onKey = (e) => { if (e.key === 'Escape' && active) exitMode(true); };
 const onResize = () => { if (active) resize(); };
 
 function enterMode() {
+  if (active) return; // a double-enter would orphan a second rAF loop
   active = true;
   document.body.classList.add('cosmos-on');
   canvas.style.display = 'block';
@@ -277,6 +308,11 @@ function exitMode(byUser) {
  */
 export async function setCosmicWeb(on, { onExit } = {}) {
   onUserExit = onExit || onUserExit;
+  // The dataset load takes seconds; the user can flip the switch again in
+  // that window. Only the NEWEST request may act after an await — without
+  // this, on→off during the load still took over the viewport, and
+  // on→off→on could stack a second entry.
+  const token = ++reqSeq;
   if (!on) { exitMode(false); return true; }
   if (!built) {
     loading ??= (async () => {
@@ -289,9 +325,11 @@ export async function setCosmicWeb(on, { onExit } = {}) {
       data = await loading;
     } catch (err) {
       loading = null; // a later flip may retry (deploy may have landed)
+      if (token !== reqSeq) return true; // superseded: the newer call speaks
       showToast('The DESI 3-D dataset isn\'t available yet — it is published by the data pipeline shortly after each release.', 'error', 8000);
       return false;
     }
+    if (token !== reqSeq) return true; // superseded while loading
     buildDom();
     try {
       initGL(data);
@@ -317,7 +355,12 @@ export async function setCosmicWeb(on, { onExit } = {}) {
     legend.append(strong, p, credit, close);
     makeDismissable(legend, () => hideLegend(true), 'translateX(-50%)');
     built = true;
+    // The parsed arrays now live in GPU buffers; dropping the resolved
+    // promise frees ~5 MB of heap. (Context loss rebuilds via a fresh
+    // fetch — instant from the service worker's cache.)
+    loading = null;
   }
+  if (token !== reqSeq) return true; // superseded during GL setup
   enterMode();
   return true;
 }

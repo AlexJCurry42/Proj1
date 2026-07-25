@@ -74,7 +74,13 @@ export function primeConstellations() {
   if (!loading) {
     loading = fetchJSON('data/constellation_zones.json')
       .then((d) => { zones = Array.isArray(d.zones) ? d.zones : []; })
-      .catch(() => { zones = []; });
+      .catch((e) => {
+        // A genuine 404 (file not generated on this deploy) latches "row
+        // omitted"; a TRANSIENT failure clears `loading` so the next lookup
+        // retries — net.js evicts its cache entry for exactly this reason.
+        if (/^HTTP 4/.test(e?.message || '')) zones = [];
+        else loading = null;
+      });
   }
   return loading;
 }

@@ -231,6 +231,14 @@ export function initSkyNow(aladin, { onTrackingStart } = {}) {
       if (lock) teardown.push(() => lock.release().catch(() => {}));
     } catch (err) { /* not critical */ }
 
+    // A "never mind" tap during the wake-lock await was silently dropped —
+    // this is the last gate before the mode engages, so honor it here,
+    // unwinding whatever teardown the setup already registered.
+    if (cancelEngage) {
+      for (const fn of teardown) { try { fn(); } catch (err) { /* best effort */ } }
+      teardown = [];
+      return;
+    }
     tracking = true;
     btn.setAttribute('aria-pressed', 'true');
     gyroBtn?.setAttribute('aria-pressed', 'true');

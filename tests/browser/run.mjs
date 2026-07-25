@@ -22,6 +22,18 @@ import path from 'node:path';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const CACHE = path.join(ROOT, 'tests/browser/.cache');
 
+// The Deep sky badge, computed from the data files with the app's own
+// dedup rule (js/catalogs.js: curated id + Messier's NGC cross-id) — a
+// hard-coded snapshot went stale every time the monthly OpenNGC refresh
+// landed, reddening the next unrelated push.
+const _mn = JSON.parse(await readFile(path.join(ROOT, 'data/messier_ngc.json'), 'utf8'));
+const _curated = [..._mn.messier, ..._mn.ngc_ic];
+const _ids = new Set(_curated.flatMap((o) => [o.id, o.ngc].filter(Boolean)
+  .map((s) => String(s).replace(/\s+/g, '').toUpperCase())));
+const DEEP_COUNT = _curated.length +
+  JSON.parse(await readFile(path.join(ROOT, 'data/ngc_full.json'), 'utf8'))
+    .objects.filter(([n]) => !_ids.has(String(n).replace(/\s+/g, '').toUpperCase())).length;
+
 // ---- locate playwright + chromium (CI installs them; the dev sandbox has
 // them preinstalled at fixed paths) ----
 async function loadPlaywright() {
@@ -114,6 +126,11 @@ const INIT = () => {
     }
   });
 };
+// Blanket-ignore network noise: the bundled engine's survey fetches fail
+// loudly on offline/CI-degraded networks, and stack-based attribution of
+// bare fetch errors proved flaky under real conditions (async stacks can
+// thread engine failures through app frames; WebKit omits stacks
+// entirely). App-side fetch bugs are covered by behavior asserts instead.
 const IGNORE_ERR = /HiPS|CDS ID|Failed to fetch|points to a HiPS|NetworkError|Load failed/i;
 
 async function newPage(browser, baseURL, { geolocation = true, guide = false, viewport = { width: 600, height: 700 } } = {}) {
@@ -278,7 +295,8 @@ await scenario('lazy dock: Deep sky fetches its own files on first flip, shimmer
   await page.waitForTimeout(3500);
   const done = await rowState(page, 'Deep sky');
   assert(!done.loading, 'shimmer must clear');
-  assert(done.count === '12,149', `Deep sky count should be 12,149, got "${done.count}"`);
+  assert(done.count.replace(/,/g, '') === String(DEEP_COUNT),
+    `Deep sky count should be ${DEEP_COUNT}, got "${done.count}"`);
   // The open dock behaves like a popover: moving the view or tapping
   // outside puts it away (taps inside — like the flips above — leave it).
   await page.click('#dock-collapse');
@@ -570,6 +588,19 @@ await scenario('time: playback moves the Moon; Back to now stops and resets', as
     'real-time playback from now must not shift the clock by even a millisecond');
   assert(!rt.egg, '1× must never arm the egg');
   assert(rt.playing === 'true', 'the play button must show playing at 1×');
+  // …and the camera must genuinely TRACK it: the planetarium loop retargets
+  // every ~250 ms of app time, which at 1× is every ~250 ms real. (The
+  // shipped v96 debounce swallowed all sub-15× motion — the audit's
+  // simulation found 1× produced ZERO engine calls; this pins the fix.)
+  await page.evaluate(() => {
+    const a = window.__aladin;
+    const orig = a.gotoRaDec.bind(a);
+    window.__gotoCalls = 0;
+    a.gotoRaDec = (...args) => { window.__gotoCalls++; return orig(...args); };
+  });
+  await page.waitForTimeout(1600);
+  const gotoCalls = await page.evaluate(() => { const n = window.__gotoCalls; return n; });
+  assert(gotoCalls >= 2, `1× playback must stream the camera (got ${gotoCalls} retargets in 1.6 s)`);
   await tap('#time-now');
   await page.waitForTimeout(300);
   assert(await page.evaluate(async () => (await import('/js/clock.js')).playSpeed() === 0),
@@ -815,7 +846,7 @@ await scenario('phone layout: dock rows never truncate their labels', async () =
   // iPhone-class viewport: the dock narrows via the max-width media query,
   // and "Horizon & compass" once ellipsized there — the first thing a
   // design-minded eye catches. Deep sky is flipped on first so the widest
-  // count ("12,149") is in play while measuring.
+  // count (five digits with separators) is in play while measuring.
   const { ctx, page } = await newPage(browser, baseURL, { viewport: { width: 390, height: 844 } });
   await page.click('#dock-collapse');
   await page.waitForTimeout(700);

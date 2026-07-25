@@ -11,12 +11,16 @@
 /** Canonical lowercase spelling; catalog designations collapse to one form
  *  ("m31", "ngc 224", "ic 434"). */
 export function normalizeName(s) {
+  // Whitespace collapses FIRST: the prefix rules are ^-anchored, and a
+  // leading space (an em-dash fragment from matchKeysFor, a padded SIMBAD
+  // alias) defeated them — which also broke lockstep with the Python
+  // mirror, which collapses first.
   return String(s || '')
     .toLowerCase()
-    .replace(/^name\s+/, '')
-    .replace(/^v?\*\s+/, '')
     .replace(/\s+/g, ' ')
     .trim()
+    .replace(/^name\s+/, '')
+    .replace(/^v?\*\s+/, '')
     .replace(/^messier\s*(?=\d)/, 'm')
     .replace(/^m\s+(?=\d)/, 'm')
     .replace(/^(ngc|ic)\s*(?=\d)/, '$1 ');

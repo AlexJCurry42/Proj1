@@ -8,7 +8,7 @@
 
 import {
   showToast, renderDetailPanel, showDetailLoading, closeDetailPanel,
-  fetchSimbadNear, humanObjectType,
+  currentDetailEpoch, fetchSimbadNear, humanObjectType,
   initTours, initAboutModal, initRedlightToggle,
   initDetailPanelClose, initKeyboard
 } from './ui.js';
@@ -231,13 +231,17 @@ async function main() {
     // common ones and validate before querying.
     const token = tapSeq;
     showDetailLoading();
-    const closed = () => document.getElementById('detail-panel')?.hidden; // ✕/Esc while loading
+    // Two staleness guards: the tap token (a newer TAP), and the shared
+    // panel epoch (a newer render from ANY writer — search, suggestion —
+    // or a dismissal; epoch captured after our own loading render).
+    const epoch = currentDetailEpoch();
+    const stale = () => token !== tapSeq || epoch !== currentDetailEpoch();
     try {
       const ra = [object.ra, data.ra, data.RA, data.RAJ2000, data.RA_ICRS].map(Number).find(Number.isFinite);
       const dec = [object.dec, data.dec, data.DE, data.DEJ2000, data.DE_ICRS].map(Number).find(Number.isFinite);
       const rec = await fetchSimbadNear(ra, dec);
       const typeLabel = await humanObjectType(rec.otype);
-      if (token !== tapSeq || closed()) return;
+      if (stale()) return;
       renderDetailPanel({
         name: rec.name,
         typeLabel,
@@ -249,7 +253,7 @@ async function main() {
         source: 'SIMBAD (CDS Strasbourg), via SIMBAD TAP cone search'
       });
     } catch (err) {
-      if (token !== tapSeq || closed()) return;
+      if (stale()) return;
       showToast(`Could not resolve object details: ${err.message}`, 'error');
       closeDetailPanel();
     }

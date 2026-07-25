@@ -3,9 +3,9 @@
 // submit → resolve → detail-panel flow. Resolution itself lives in
 // js/search.js; the suggestion index in js/suggest.js.
 
-import { runSearch, getHistory, addToHistory, flyTo } from './search.js';
+import { runSearch, supersedeSearch, getHistory, addToHistory, flyTo } from './search.js';
 import { querySuggestions, suggestionCoords } from './suggest.js';
-import { renderDetailPanel, humanObjectType } from './ui.js';
+import { renderDetailPanel, currentDetailEpoch, humanObjectType } from './ui.js';
 
 function debounce(fn, ms) {
   let t = null;
@@ -57,6 +57,7 @@ export function initSearchUI(aladin) {
   searchInput.addEventListener('focus', () => {
     if (searchInput.value.trim().length >= 2) return;
     renderHistory();
+    activeIdx = -1;
     historyList.hidden = getHistory().length === 0;
     syncExpanded();
   });
@@ -65,9 +66,13 @@ export function initSearchUI(aladin) {
     suggList.hidden = true;
     syncExpanded();
   }, 150));
-  historyList.addEventListener('click', (e) => {
+  // mousedown, not click — same reason as the suggestion list below: the
+  // input's blur hides this list after 150 ms, so a press held longer than
+  // that landed on a hidden list and was silently lost.
+  historyList.addEventListener('mousedown', (e) => {
     const li = e.target.closest('li');
     if (!li) return;
+    e.preventDefault();
     const h = getHistory()[Number(li.dataset.idx)];
     if (!h) return;
     searchInput.value = h.query;
@@ -99,6 +104,7 @@ export function initSearchUI(aladin) {
   function pickSuggestion(s) {
     const c = suggestionCoords(s);
     if (!c) return;
+    supersedeSearch(); // a slow pending submit must not fly us away later
     flyTo(aladin, c.ra, c.dec, s.fov ?? 0.8);
     addToHistory({ query: s.name, ra: c.ra, dec: c.dec, label: s.name });
     renderDetailPanel({ name: s.name, typeLabel: s.typeLabel, ra: c.ra, dec: c.dec });
@@ -115,20 +121,33 @@ export function initSearchUI(aladin) {
     e.preventDefault();
     pickSuggestion(currentSuggs[Number(li.dataset.i)]);
   });
+  // Arrow/Enter drive WHICHEVER list is open — the history dropdown
+  // advertises the same combobox contract and must honor it too.
   searchInput.addEventListener('keydown', (e) => {
-    if (suggList.hidden) return;
+    const list = !suggList.hidden ? suggList : (!historyList.hidden ? historyList : null);
+    if (!list) return;
+    const n = list === suggList ? currentSuggs.length : getHistory().length;
+    if (!n) return;
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
-      const n = currentSuggs.length;
       activeIdx = ((activeIdx + (e.key === 'ArrowDown' ? 1 : -1)) % n + n) % n;
-      [...suggList.children].forEach((el, i) => {
+      [...list.children].forEach((el, i) => {
         el.classList.toggle('active', i === activeIdx);
         el.setAttribute('aria-selected', String(i === activeIdx));
       });
-      searchInput.setAttribute('aria-activedescendant', `sugg-opt-${activeIdx}`);
+      searchInput.setAttribute('aria-activedescendant',
+        `${list === suggList ? 'sugg' : 'hist'}-opt-${activeIdx}`);
     } else if (e.key === 'Enter' && activeIdx >= 0) {
       e.preventDefault();
-      pickSuggestion(currentSuggs[activeIdx]);
+      if (list === suggList) {
+        pickSuggestion(currentSuggs[activeIdx]);
+      } else {
+        const h = getHistory()[activeIdx];
+        if (!h) return;
+        searchInput.value = h.query;
+        historyList.hidden = true;
+        searchForm.requestSubmit();
+      }
     }
   });
 
@@ -141,13 +160,14 @@ export function initSearchUI(aladin) {
     const token = ++submitSeq;
     suggList.hidden = true;
     syncExpanded();
+    const epoch = currentDetailEpoch();
     const result = await runSearch(aladin, searchInput.value);
     renderHistory();
     searchInput.blur();
     // A resolved named object opens its detail card (with media if famous).
     if (result && result.name) {
       const typeLabel = result.otype ? await humanObjectType(result.otype) : 'Astronomical object';
-      if (token !== submitSeq) return;
+      if (token !== submitSeq || epoch !== currentDetailEpoch()) return;
       renderDetailPanel({
         name: result.name,
         aliases: result.aliases,

@@ -10,6 +10,11 @@ const sesameCache = new Map(); // name (lowercased) -> resolved result
 let searchHistory = []; // in-memory only, most-recent-first, max 10
 let searchSeq = 0; // monotonic: identifies the newest runSearch call
 
+/** Invalidate any in-flight name resolution: a newer intent (e.g. picking
+ *  a suggestion) must stop a slow Sesame answer from flying the view away
+ *  from it and polluting the history. */
+export function supersedeSearch() { searchSeq++; }
+
 /**
  * Parse "13 29 52 +47 11 43" (sexagesimal RA h m s, Dec d m s) or
  * "202.4696 47.1953" / "202.4696, 47.1953" (decimal degrees) input.

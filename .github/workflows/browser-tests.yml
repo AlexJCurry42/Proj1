@@ -41,6 +41,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'   # pinned major: the suite is plain ESM + fetch
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ matrix.engine }}-${{ hashFiles('.github/workflows/browser-tests.yml') }}
       - name: Install Playwright + ${{ matrix.engine }} (pinned — the version the suite is verified against)
         run: |
           npm i --no-save playwright@1.56.1

@@ -97,14 +97,17 @@ export function initDockCollapse() {
   if (!dock || !btn) return; // stale HTML mid-deploy: skip, never crash boot
   let expandedAt = 0; // grace: residual view motion (horizon-lock settle,
                       // flight tail) must not slam the dock shut as it opens
-  function setCollapsed(c) {
+  // Only a DELIBERATE chevron tap persists the preference: auto-collapse
+  // (outside taps, view motion) is session courtesy, and letting it write
+  // the pref overwrote the user's explicit "keep it open" within seconds.
+  function setCollapsed(c, persist = false) {
     if (!c) expandedAt = performance.now();
     dock.classList.toggle('collapsed', c);
     btn.setAttribute('aria-expanded', String(!c));
     btn.setAttribute('aria-label', c ? 'Expand the layers menu' : 'Collapse the layers menu');
-    writePref('dockcollapsed', c);
+    if (persist) writePref('dockcollapsed', c);
   }
-  btn.addEventListener('click', () => setCollapsed(!dock.classList.contains('collapsed')));
+  btn.addEventListener('click', () => setCollapsed(!dock.classList.contains('collapsed'), true));
   // Collapsed by default: the dock must not open itself over the sky on a
   // first visit — the guided tour points it out instead. The user's own
   // expand/collapse choice persists from then on.

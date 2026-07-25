@@ -12,10 +12,15 @@ function notify() {
   }
 }
 
-/** One-shot geolocation as a promise; cached for the session. */
+/** One-shot geolocation as a promise; cached for the session. Concurrent
+ *  callers (a Horizon flip while the Sky Now prompt is up) share ONE
+ *  in-flight request, so the browser is asked once and subscribers are
+ *  notified once — the documented contract. */
+let pending = null;
 export function requestObserver() {
   if (cache) return Promise.resolve(cache);
-  return new Promise((resolve, reject) => {
+  if (pending) return pending;
+  pending = new Promise((resolve, reject) => {
     if (!navigator.geolocation) { reject(new Error('no geolocation on this browser')); return; }
     navigator.geolocation.getCurrentPosition(
       (pos) => {
@@ -27,6 +32,9 @@ export function requestObserver() {
       { timeout: 10000, maximumAge: 300000 }
     );
   });
+  // A denied prompt must not poison later attempts.
+  pending.then(() => { pending = null; }, () => { pending = null; });
+  return pending;
 }
 
 /** Adopt coordinates obtained elsewhere (e.g. the gyro tracker's fix). */

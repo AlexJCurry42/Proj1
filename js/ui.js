@@ -177,7 +177,16 @@ export async function fetchSimbadNear(ra, dec, radiusDeg = 0.02) {
 const detailPanel = () => document.getElementById('detail-panel');
 const detailContent = () => document.getElementById('detail-content');
 
+// The detail panel has THREE async writers (sky tap, search submit,
+// suggestion pick) — each guards against itself, but only a SHARED epoch
+// can stop a slow writer from overwriting a newer one's panel (or
+// reopening a dismissed one). Every render/close bumps it; every async
+// writer captures it before awaiting and re-checks before rendering.
+let detailEpoch = 0;
+export const currentDetailEpoch = () => detailEpoch;
+
 export function closeDetailPanel() {
+  detailEpoch++;
   if (!detailPanel().hidden) panelClose();
   // If the keyboard was inside the panel (✕ or Escape), hand it back to the
   // sky container instead of letting it drop to <body> — the panel's opener
@@ -245,7 +254,15 @@ export function makeDismissable(el, onDismiss, baseTransform = '') {
   el.addEventListener('pointermove', (e) => {
     if (!active) return;
     dx = e.clientX - startX;
-    if (Math.abs(e.clientY - startY) > 60 && Math.abs(dx) < 30) { active = false; el.style.transform = ''; return; }
+    if (Math.abs(e.clientY - startY) > 60 && Math.abs(dx) < 30) {
+      // Escaped vertically: restore EVERYTHING the drag touched — a leaked
+      // inline opacity/transition left survivors faded and unanimated.
+      active = false;
+      el.style.transform = '';
+      el.style.opacity = '';
+      el.style.transition = '';
+      return;
+    }
     el.style.transition = 'none';
     setX(dx);
     el.style.opacity = String(Math.max(0.25, 1 - Math.abs(dx) / 180));
@@ -339,6 +356,7 @@ function trapFocus(container) {
 }
 
 export function showDetailLoading() {
+  detailEpoch++;
   detailPanel().hidden = false;
   detailContent().innerHTML = `<p id="detail-loading">Loading object details…</p>`;
 }
@@ -348,6 +366,7 @@ export function showDetailLoading() {
  * obj: { name, aliases, typeLabel, ra, dec, mag, distanceText, badges, extraRows, source, approxNote }
  */
 export function renderDetailPanel(obj) {
+  detailEpoch++;
   const wasHidden = detailPanel().hidden;
   detailPanel().hidden = false;
   if (wasHidden) panelOpen();

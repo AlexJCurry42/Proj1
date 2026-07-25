@@ -8,12 +8,18 @@ export async function fetchText(url, { timeoutMs = DEFAULT_TIMEOUT_MS, retries =
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const res = await fetch(url, { signal: controller.signal });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (!res.ok) {
+      const err = new Error(`HTTP ${res.status}`);
+      err.status = res.status;
+      throw err;
+    }
     return await res.text();
   } catch (err) {
     // retries: 0 disables the retry for requests where a repeat would just
-    // double the pain (e.g. a 90-second full-catalog download).
-    if (attempt <= retries) return fetchText(url, { timeoutMs, retries, attempt: attempt + 1 });
+    // double the pain (e.g. a 90-second full-catalog download) — and a
+    // 4xx is permanent, so retrying it is a guaranteed wasted request.
+    const permanent = err.status && err.status < 500;
+    if (!permanent && attempt <= retries) return fetchText(url, { timeoutMs, retries, attempt: attempt + 1 });
     // A clear offline story beats "TypeError: Failed to fetch": every
     // layer/search toast built from this message now says WHY.
     if (typeof navigator !== 'undefined' && navigator.onLine === false) {

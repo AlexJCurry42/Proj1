@@ -15,7 +15,13 @@ function load() {
   // Action-generated: the file legitimately doesn't exist until the first
   // data-refresh run after a deploy, and that must read as "no descriptions
   // yet", not as an error.
-  promise ??= fetchJSON('data/descriptions.json').catch(() => null);
+  promise ??= fetchJSON('data/descriptions.json').catch((err) => {
+    // A 404 means the pipeline hasn't published the file — that's stable,
+    // cache the null. A TRANSIENT failure resets so the next lookup
+    // retries (net.js evicts its own cache entry for the same reason).
+    if (!/^HTTP 4/.test(err?.message || '')) promise = null;
+    return null;
+  });
   return promise;
 }
 

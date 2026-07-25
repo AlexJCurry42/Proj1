@@ -22,11 +22,17 @@ const approxObserver = () => ({ lat: 35, lon: -(new Date().getTimezoneOffset() /
 
 export function initTimeSky(aladin) {
   let lastT = appNow().getTime();
+  let lastOffset = 0;   // clock offset at the last notify — see the scrub path
+  let wasPlaying = false;
   let raf = null;
 
   function retarget(newT) {
     const obs = cachedObserver() || approxObserver();
-    if (Math.abs(newT - lastT) < 250) { lastT = newT; return; }
+    // Debounce WITHOUT advancing the anchor: at slow playback (1×–15×) the
+    // per-frame delta never reaches the threshold, and swallowing the
+    // anchor each frame froze the camera entirely — deltas must ACCUMULATE
+    // across skipped frames until they're worth an engine call.
+    if (Math.abs(newT - lastT) < 250) return;
     let ra0, dec0;
     try { [ra0, dec0] = aladin.getRaDec(); } catch (err) { lastT = newT; return; }
     // The direction the user is looking, in their sky, at the OLD time —
@@ -37,10 +43,10 @@ export function initTimeSky(aladin) {
     lastT = newT;
   }
 
-  // Playback runs its own frame loop — the clock's 500 ms notify ticker
-  // would hop the camera (half a sky-day per hop at day/s); per-frame
-  // retargeting streams it. (Panning during playback is fine: each frame
-  // re-anchors from wherever the user is looking NOW.)
+  // Playback runs its own frame loop — the clock's notify ticker would hop
+  // the camera (half a sky-day per hop at day/s); per-frame retargeting
+  // streams it. (Panning during playback is fine: each frame re-anchors
+  // from wherever the user is looking NOW.)
   function loop() {
     raf = null;
     if (playSpeed() <= 0) return;
@@ -48,11 +54,22 @@ export function initTimeSky(aladin) {
     raf = requestAnimationFrame(loop);
   }
 
-  onTimeChange(() => {
-    if (playSpeed() > 0) {
+  onTimeChange((now, offsetMs) => {
+    const playing = playSpeed() > 0;
+    if (playing) {
       if (!raf) raf = requestAnimationFrame(loop);
-      return;
+    } else {
+      // A scrub, a jump, or Back to now. lastT can be arbitrarily stale
+      // here (nothing notifies while idle), and anchoring an hour-old
+      // line of sight over-rotates the view by the idle duration — so
+      // re-derive the PRE-scrub app moment from real time plus the
+      // previous offset. Except right after playback stopped: there
+      // lastT is frame-fresh and strictly more accurate than the
+      // half-second-stale notified offset.
+      if (!wasPlaying) lastT = Date.now() + lastOffset;
+      retarget(appNow().getTime());
     }
-    retarget(appNow().getTime()); // a scrub, a jump, or Back to now
+    wasPlaying = playing;
+    lastOffset = offsetMs;
   });
 }

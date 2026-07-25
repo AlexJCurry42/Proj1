@@ -180,8 +180,13 @@ export async function initStarBloom(aladin) {
     const pxPerDeg = Math.max(W, H) / fov;
     const rMax = 0.45 * Math.max(W, H);
     const magCap = fov > 40 ? 3.0 : 99;
+    // Both star files are magnitude-sorted (brightest first — verified in
+    // the data) and the activation radius shrinks monotonically with
+    // magnitude, so the FIRST star below the ramp means every later one is
+    // too: stop there instead of scanning all 8,404 per pan frame.
     for (const s of bright) {
       if (s[2] > magCap) break;
+      if (coreRadiusDeg(s[2]) * pxPerDeg <= ACTIVATE_PX) break;
       drawStar(ctx, view, state.alpha, pxPerDeg, rMax, s);
     }
     // Faint tier only at depth — where their cores resolve into blotches.

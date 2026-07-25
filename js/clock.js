@@ -54,7 +54,17 @@ export function isTimeShifted() {
 export function setAppTime(dateOrNull) {
   accrue();
   const wasPlaying = nominalMult !== 0;
-  if (wasPlaying) setPlaySpeed(0);
+  if (wasPlaying) {
+    // Stop SILENTLY — setPlaySpeed would notify with the pre-scrub time,
+    // making every subscriber do one round of stale work (planetslayer's
+    // throttle then rendered the OLD moment and queued the real one ~1 s).
+    // One notify below broadcasts the stop and the new offset together.
+    nominalMult = 0;
+    extraRate = 0;
+    rateAnchor = Date.now();
+    clearInterval(ticker);
+    ticker = null;
+  }
   const next = dateOrNull ? dateOrNull.getTime() - Date.now() : 0;
   if (next === offsetMs && !wasPlaying) return;
   offsetMs = next;
@@ -75,7 +85,12 @@ export function setPlaySpeed(mult) {
   rateAnchor = Date.now();
   clearInterval(ticker);
   ticker = null;
-  if (nominalMult !== 0) ticker = setInterval(notify, 500);
+  // Tick period scales with speed: 500 ms at fast-lapse (the Moon visibly
+  // races), stretching to 5 s at exactly 1× — where the sky moves 0.004°/s
+  // and 2 Hz subscriber fan-out (catalog rebuilds, chip re-renders) was
+  // pure waste. The planetarium camera is unaffected: it runs its own
+  // per-frame loop, kicked by the immediate notify below.
+  if (nominalMult !== 0) ticker = setInterval(notify, Math.min(5000, Math.max(500, 30000 / nominalMult)));
   notify();
 }
 

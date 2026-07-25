@@ -21,11 +21,10 @@
 // constellations_lines/names/borders) here — they may not exist on a fresh
 // deploy and one 404 fails the entire install. Runtime caching covers them.
 // Bump together with js/version.js (shown in the About panel).
-const VERSION = 'dsa-shell-v97';
+const VERSION = 'dsa-shell-v98';
 
 const SHELL = [
   './',
-  'index.html',
   'manifest.webmanifest',
   'css/style.css',
   'js/app.js',
@@ -156,15 +155,21 @@ self.addEventListener('fetch', (e) => {
   // Action-refreshed data: stale-while-revalidate — instant from cache,
   // silently refreshed behind for the next load.
   if (url.pathname.includes('/data/')) {
+    // The background refresh must OUTLIVE the response: without
+    // waitUntil, returning the cached hit lets the browser kill the
+    // worker mid-refresh, leaving short sessions stale indefinitely.
+    const refresh = caches.open(VERSION).then((c) =>
+      fetch(e.request, { cache: 'no-cache' })
+        .then(async (res) => {
+          if (res.ok) await c.put(e.request, res.clone());
+          return res;
+        })
+        .catch(() => null)
+    );
+    e.waitUntil(refresh);
     e.respondWith(
       caches.open(VERSION).then(async (c) => {
         const hit = await c.match(e.request);
-        const refresh = fetch(e.request, { cache: 'no-cache' })
-          .then((res) => {
-            if (res.ok) c.put(e.request, res.clone());
-            return res;
-          })
-          .catch(() => null);
         return hit || refresh.then((res) => res || Response.error());
       })
     );
@@ -173,8 +178,11 @@ self.addEventListener('fetch', (e) => {
 
   // Versioned shell: cache-first. Immutable within a VERSION — a warm load
   // costs zero network round-trips.
+  // Match within THIS version's cache only: the global caches.match walks
+  // caches in creation order and could serve the OLD version's asset in
+  // the brief claim-before-activate-cleanup overlap.
   e.respondWith(
-    caches.match(e.request).then((hit) => hit ||
+    caches.open(VERSION).then((c) => c.match(e.request)).then((hit) => hit ||
       fetch(e.request, { cache: 'no-cache' }).then((res) => {
         if (res.ok) {
           const copy = res.clone();

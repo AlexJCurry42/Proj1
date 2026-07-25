@@ -285,12 +285,10 @@ await test('precession J2000→B1875: plausible shift, poles stay polar', () => 
 });
 
 await test('constellation zones: famous objects land in the right constellation', async () => {
-  const { existsSync, readFileSync } = await import('node:fs');
+  // No missing-file skip: the zone table is git-tracked, so its absence IS
+  // a regression — a silent green here once hid eight real assertions.
+  const { readFileSync } = await import('node:fs');
   const path = new URL('../data/constellation_zones.json', import.meta.url);
-  if (!existsSync(path)) {
-    console.log('      (data/constellation_zones.json not fetched yet — Action-generated; skipping lookups)');
-    return;
-  }
   const zones = JSON.parse(readFileSync(path)).zones;
   assert.ok(zones.length > 300, `${zones.length} zones`);
   const expect = [
@@ -318,6 +316,12 @@ await test('object names: one canonical spelling across every lookup', async () 
   assert.equal(normalizeName('IC434'), 'ic 434');
   assert.equal(normalizeName('NAME Andromeda Galaxy'), 'andromeda galaxy');
   assert.equal(normalizeName('V* V645 Cen'), 'v645 cen');
+  // Leading whitespace must not defeat the anchored prefix rules — these
+  // exact strings come out of matchKeysFor's em-dash split, and the
+  // Python pipeline mirror (tools/fetch_descriptions.py) collapses first.
+  assert.equal(normalizeName(' * alf Ori'), 'alf ori');
+  assert.equal(normalizeName(' NAME Betelgeuse'), 'betelgeuse');
+  assert.equal(normalizeName('  V* V645 Cen'), 'v645 cen');
   // tools/fetch_descriptions.py mirrors these rules when writing lookup
   // keys — this block is the JS half of that contract.
   const keys = matchKeysFor('NGC 7293 — Helix Nebula', ['Ring Nebula (M57)']);

@@ -100,7 +100,7 @@ export function initViewState(aladin, { onZoom, onPosition, initialViewMode, spe
   onZoom(updateHash);
   onPosition(updateHash);
 
-  document.getElementById('share-btn').addEventListener('click', async () => {
+  document.getElementById('share-btn')?.addEventListener('click', async () => {
     const url = currentViewUrl();
     history.replaceState(null, '', url);
     if (navigator.share) {
@@ -126,7 +126,7 @@ export function initViewState(aladin, { onZoom, onPosition, initialViewMode, spe
       if (mode === 'globe' && fov > 180) aladin.setFoV(180);   // globe caps at a hemisphere
     } catch (err) { /* keep current FoV */ }
     applyFovLimits();
-    viewBtn.setAttribute('aria-pressed', String(mode === 'inside'));
+    viewBtn?.setAttribute('aria-pressed', String(mode === 'inside'));
     writePref('viewmode', mode);
     updateHash();
     if (announce) {
@@ -135,9 +135,9 @@ export function initViewState(aladin, { onZoom, onPosition, initialViewMode, spe
         : 'Globe view: the celestial sphere seen from outside.', 'info', 6000);
     }
   }
-  viewBtn.setAttribute('aria-pressed', String(viewMode === 'inside'));
-  nudgeUntilPressed(viewBtn, 'viewhint');
-  viewBtn.addEventListener('click', () => {
+  viewBtn?.setAttribute('aria-pressed', String(viewMode === 'inside'));
+  if (viewBtn) nudgeUntilPressed(viewBtn, 'viewhint');
+  viewBtn?.addEventListener('click', () => {
     applyViewMode(viewMode === 'inside' ? 'globe' : 'inside');
   });
 
@@ -148,8 +148,8 @@ export function initViewState(aladin, { onZoom, onPosition, initialViewMode, spe
       aladin.setFoV(Math.min(maxFovFor(viewMode), Math.max(0.02, fov * factor)));
     } catch (err) { /* engine mid-animation; ignore */ }
   }
-  document.getElementById('zoom-in').addEventListener('click', () => zoomBy(0.5));
-  document.getElementById('zoom-out').addEventListener('click', () => zoomBy(2));
+  document.getElementById('zoom-in')?.addEventListener('click', () => zoomBy(0.5));
+  document.getElementById('zoom-out')?.addEventListener('click', () => zoomBy(2));
 
   // ------------------------------------------------------- Coordinates HUD ---
   // One whisper of text, bottom-right: the view center's coordinates.

@@ -120,10 +120,11 @@ export function initLayersDock(aladin, { onZoom, onPosition, fadeCatalog }) {
     constToggle.setLoading(true);
     loadConstellations(aladin).then(({ catalogs, count }) => {
       constRef.catalogs = catalogs;
-      constRef.loading = false;
-      constToggle.setLoading(false);
       constToggle.setCount(count);
       setCatalogVisible(catalogs, constToggle.isChecked());
+    }).finally(() => {
+      constRef.loading = false;
+      constToggle.setLoading(false);
     });
   }
 
@@ -137,9 +138,8 @@ export function initLayersDock(aladin, { onZoom, onPosition, fadeCatalog }) {
       bordersRef.loading = true;
       loadConstellationBorders(aladin).then(({ catalogs }) => {
         bordersRef.catalogs = catalogs;
-        bordersRef.loading = false;
         setCatalogVisible(catalogs, constToggle.isChecked() && bordersToggle.isChecked());
-      });
+      }).finally(() => { bordersRef.loading = false; });
       return;
     }
     setCatalogVisible(bordersRef.catalogs, show);
@@ -171,18 +171,26 @@ export function initLayersDock(aladin, { onZoom, onPosition, fadeCatalog }) {
     onToggle: async (v) => {
       // Everything is lazy — curated showpieces AND the full OpenNGC
       // catalog load together on the first flip, nothing at boot.
-      if (v && !deepRef.curated && !deepRef.loading) {
+      // Nothing-loaded (a failed fetch returns empty catalogs) counts as
+      // NOT loaded — the next flip retries, which net.js's failure
+      // eviction makes a real re-fetch; try/finally keeps the shimmer and
+      // the loading latch honest even if a loader throws.
+      if (v && !deepRef.curated?.length && !deepRef.full && !deepRef.loading) {
         deepRef.loading = true;
         deepToggle.setLoading(true);
-        const { catalogs, count, ids } = await loadMessierNgc(aladin, onZoom);
-        deepRef.curated = catalogs;
-        deepRef.curatedCount = count;
-        deepRef.ids = ids;
-        const full = await loadNgcFull(aladin, onZoom, ids || undefined);
-        deepRef.full = full.catalog;
-        deepRef.loading = false;
-        deepToggle.setLoading(false);
-        deepToggle.setCount((count + (full.count || 0)).toLocaleString());
+        try {
+          const { catalogs, count, ids } = await loadMessierNgc(aladin, onZoom);
+          deepRef.curated = catalogs.length ? catalogs : null;
+          deepRef.curatedCount = count;
+          deepRef.ids = ids;
+          const full = await loadNgcFull(aladin, onZoom, ids || undefined);
+          deepRef.full = full.catalog;
+          const total = count + (full.count || 0);
+          if (total > 0) deepToggle.setCount(total.toLocaleString());
+        } finally {
+          deepRef.loading = false;
+          deepToggle.setLoading(false);
+        }
       }
       setCatalogVisible(deepRef.curated, deepToggle.isChecked());
       setCatalogVisible(deepRef.full, deepToggle.isChecked());
@@ -279,10 +287,11 @@ export function initLayersDock(aladin, { onZoom, onPosition, fadeCatalog }) {
         stellarToggle.setLoading(true);
         loadStellarBlackHoles(aladin).then(({ catalog, count }) => {
           stellarRef.catalog = catalog;
-          stellarRef.loading = false;
-          stellarToggle.setLoading(false);
           if (count) stellarToggle.setCount(count);
           setCatalogVisible(catalog, stellarToggle.isChecked());
+        }).finally(() => {
+          stellarRef.loading = false;
+          stellarToggle.setLoading(false);
         });
       } else {
         setCatalogVisible(stellarRef.catalog, v);
@@ -305,10 +314,11 @@ export function initLayersDock(aladin, { onZoom, onPosition, fadeCatalog }) {
         flagshipToggle.setLoading(true);
         loadFlagshipSupermassive(aladin).then(({ catalog, count }) => {
           flagshipRef.catalog = catalog;
-          flagshipRef.loading = false;
-          flagshipToggle.setLoading(false);
           if (count) flagshipToggle.setCount(count);
           setCatalogVisible(catalog, flagshipToggle.isChecked());
+        }).finally(() => {
+          flagshipRef.loading = false;
+          flagshipToggle.setLoading(false);
         });
       } else {
         setCatalogVisible(flagshipRef.catalog, v);

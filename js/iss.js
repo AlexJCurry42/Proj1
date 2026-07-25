@@ -21,17 +21,17 @@ import { fetchText } from './net.js';
 import { showToast, renderDetailPanel } from './ui.js';
 import { getOverlay, haloText } from './overlay.js';
 
-/** The ISS entry from the TLE snapshot (works on old multi-sat files too). */
+/** The ISS entry from the TLE snapshot. Scans by NAME rather than assuming
+ *  aligned 3-line strides: one header/banner line (or a nameless 2-line
+ *  entry) ahead of the ISS in a future snapshot would misalign every
+ *  triple and silently hide the station. */
 function parseIssTle(text) {
   const lines = text.split('\n').map(l => l.trimEnd()).filter(l => l.trim());
-  for (let i = 0; i + 2 < lines.length + 1; i += 3) {
-    const [name, l1, l2] = [lines[i], lines[i + 1], lines[i + 2]];
-    if (!l1?.startsWith('1 ') || !l2?.startsWith('2 ')) break;
-    if (/ISS \(ZARYA\)/.test(name)) {
-      try { return twoline2satrec(l1, l2); } catch (err) { return null; }
-    }
-  }
-  return null;
+  const i = lines.findIndex(l => /ISS \(ZARYA\)/.test(l));
+  if (i === -1) return null;
+  const l1 = lines[i + 1], l2 = lines[i + 2];
+  if (!l1?.startsWith('1 ') || !l2?.startsWith('2 ')) return null;
+  try { return twoline2satrec(l1, l2); } catch (err) { return null; }
 }
 
 /** Topocentric look angles; null when propagation fails. */
