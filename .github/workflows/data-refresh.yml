@@ -117,7 +117,7 @@ jobs:
             'https://raw.githubusercontent.com/mattiaverga/OpenNGC/master/database_files/NGC.csv' \
             -o /tmp/NGC.csv
           python3 - <<'EOF'
-          import csv, json, os, re
+          import csv, json, math, os, re
 
           # Object types worth plotting; duplicates/non-existent entries are
           # dropped, bare stars kept out to avoid noise.

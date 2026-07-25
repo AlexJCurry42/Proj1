@@ -98,16 +98,21 @@ const failures = [];
 // signatures earn one fresh-context retry; assertion failures never do —
 // and a genuine boot regression still fails deterministically on retry.
 const CRASH_RE = /Target (page|crashed)|context or browser has been closed|engine never booted/i;
+// Up to TWO fresh-context retries: under heavy memory pressure a
+// software-rendered WebKit runner can crash the SAME scenario on
+// back-to-back attempts (observed 2026-07-25). Assertion failures never
+// retry, so a real regression still fails deterministically.
+const MAX_CRASH_RETRIES = 2;
 async function scenario(name, fn) {
   for (let attempt = 1; ; attempt++) {
     try {
       await fn();
       passed++;
-      console.log(`  ok  ${name}${attempt > 1 ? ' (after renderer-crash retry)' : ''}`);
+      console.log(`  ok  ${name}${attempt > 1 ? ` (after ${attempt - 1} renderer-crash retr${attempt > 2 ? 'ies' : 'y'})` : ''}`);
       return;
     } catch (err) {
-      if (attempt === 1 && CRASH_RE.test(err.message)) {
-        console.warn(`  retry ${name} — renderer crashed: ${err.message.slice(0, 100)}`);
+      if (attempt <= MAX_CRASH_RETRIES && CRASH_RE.test(err.message)) {
+        console.warn(`  retry ${name} (${attempt}/${MAX_CRASH_RETRIES}) — renderer crashed: ${err.message.slice(0, 100)}`);
         continue;
       }
       failures.push(name);
