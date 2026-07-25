@@ -88,9 +88,12 @@ let passed = 0;
 const failures = [];
 // Software-rendered WebKit occasionally loses its renderer under heavy
 // canvas/WebGL load — every later protocol call then reports a closed
-// target. That's an environment crash, not a product regression, so ONLY
-// that signature earns one fresh-context retry; assertion failures never do.
-const CRASH_RE = /Target (page|crashed)|context or browser has been closed/i;
+// target — and under the same pressure can fail the engine's wasm INIT on
+// a fresh page ("engine never booted", with webgl2 reporting fine). Both
+// are environment crashes, not product regressions, so ONLY those
+// signatures earn one fresh-context retry; assertion failures never do —
+// and a genuine boot regression still fails deterministically on retry.
+const CRASH_RE = /Target (page|crashed)|context or browser has been closed|engine never booted/i;
 async function scenario(name, fn) {
   for (let attempt = 1; ; attempt++) {
     try {
