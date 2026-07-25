@@ -1,4 +1,4 @@
-// Pocket Planetarium — the DESI cosmic web in three dimensions. Every point
+// Project Planetarium — the DESI cosmic web in three dimensions. Every point
 // is a real galaxy or quasar with a spectroscopically measured redshift from
 // DESI Data Release 1, placed at its comoving position (Earth at the
 // origin). This is the survey's signature product — the largest 3-D map of

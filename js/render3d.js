@@ -1,4 +1,4 @@
-// Deep Sky Atlas — procedural 3-D renders for famous objects, shown in the
+// Project Planetarium — procedural 3-D renders for famous objects, shown in the
 // detail panel. A single WebGL fragment shader ray-shades a rotating sphere
 // (rocky / gas giant / ice giant / lava / cloudy / star) or draws a black hole
 // with photon ring, doppler-boosted accretion disk and lensed arcs. Renders

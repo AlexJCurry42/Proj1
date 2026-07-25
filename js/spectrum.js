@@ -1,4 +1,4 @@
-// Deep Sky Atlas — the spectrum rail. Every imagery survey on one vertical
+// Project Planetarium — the spectrum rail. Every imagery survey on one vertical
 // track at the top-right, ordered by wavelength: gamma-ray at the top, radio
 // at the bottom. Dragging cross-fades adjacent surveys live.
 //

@@ -1,4 +1,4 @@
-// Pocket Planetarium — one shared spelling for object names. The same
+// Project Planetarium — one shared spelling for object names. The same
 // object arrives under many spellings: SIMBAD main_ids ("NAME Betelgeuse",
 // "* alf Ori", "V* V645 Cen"), compound layer labels ("NGC 7293 — Helix
 // Nebula"), user typing ("M 31", "messier 31"). Every feature that looks an

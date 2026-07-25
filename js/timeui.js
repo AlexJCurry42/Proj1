@@ -1,4 +1,4 @@
-// Pocket Planetarium — the time scrubber's UI: the clock button, the glass
+// Project Planetarium — the time scrubber's UI: the clock button, the glass
 // popover (date-time picker, play controls, "Back to now"), and the amber
 // time-shifted chip. All state lives in js/clock.js; every time-dependent
 // layer subscribes there, so this file only drives the shared clock.

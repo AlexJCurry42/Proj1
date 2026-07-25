@@ -1,4 +1,4 @@
-// Pocket Planetarium — lint policy. Deliberately small and dependency-free
+// Project Planetarium — lint policy. Deliberately small and dependency-free
 // (core ESLint rules only, no plugins): every rule here is a SECURITY or
 // correctness invariant the codebase actually holds, enforced in CI
 // (.github/workflows/lint.yml). Style is left to code review.

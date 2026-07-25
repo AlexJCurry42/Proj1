@@ -1,4 +1,4 @@
-// Deep Sky Atlas — instant search suggestions from the app's own curated
+// Project Planetarium — instant search suggestions from the app's own curated
 // datasets (no network round-trip): planets + Sun/Moon, Messier/NGC objects,
 // black holes, famous stars/exoplanets, and tour stops. Sesame still
 // handles anything not in the index.

@@ -1,4 +1,4 @@
-// Pocket Planetarium — the location consent card. The horizon overlay is on
+// Project Planetarium — the location consent card. The horizon overlay is on
 // by default and needs geolocation, but a browser permission dialog with no
 // context is the rudest possible first impression (and browsers increasingly
 // auto-deny prompts that arrive without a user gesture). So at boot the app

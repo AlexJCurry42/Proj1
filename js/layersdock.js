@@ -1,4 +1,4 @@
-// Pocket Planetarium — the layer dock controller: every switch in the left
+// Project Planetarium — the layer dock controller: every switch in the left
 // dock, section by section, with its lazy loading, consent flows and count
 // badges. Extracted from app.js, which now only boots and wires.
 //

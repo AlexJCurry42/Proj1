@@ -1,4 +1,4 @@
-// Deep Sky Atlas — search box: CDS Sesame name resolution + coordinate parsing.
+// Project Planetarium — search box: CDS Sesame name resolution + coordinate parsing.
 
 import { showToast } from './ui.js';
 import { fetchText } from './net.js';

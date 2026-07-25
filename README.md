@@ -1,6 +1,6 @@
-# Pocket Planetarium
+# Project Planetarium
 
-**Pocket Planetarium** (formerly Deep Sky Atlas): an interactive, browser-based atlas of the entire sky — imagery across the
+**Project Planetarium**: an interactive, browser-based map of the entire sky — imagery across the
 electromagnetic spectrum, stars, galaxies, nebulae, exoplanets, Solar System
 planets, the ISS overhead, and a dedicated **black
 holes** layer covering stellar-mass X-ray binaries and supermassive black
@@ -113,7 +113,7 @@ keys — plain ES modules, HTML and CSS.
 
 ## About this project
 
-Pocket Planetarium is a **personal project, made by a single person** —
+Project Planetarium is a **personal project, made by a single person** —
 not a team, a company, or an institution — and it was **made with
 Claude**, Anthropic's AI assistant: the large majority of the code,
 tests, and documentation were written by Claude (via Claude Code),

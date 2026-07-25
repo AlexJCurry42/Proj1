@@ -1,4 +1,4 @@
-// Pocket Planetarium — service-worker bootstrap. Loaded from index.html
+// Project Planetarium — service-worker bootstrap. Loaded from index.html
 // (the one file that is always network-first and therefore always fresh)
 // rather than from app.js, which is cache-first and can be a version
 // behind — a stale app.js can't be trusted to notice its own staleness.

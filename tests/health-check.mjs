@@ -1,4 +1,4 @@
-// Pocket Planetarium — live-endpoint health check. Dependency-free Node
+// Project Planetarium — live-endpoint health check. Dependency-free Node
 // (≥18, for global fetch). Run with `node tests/health-check.mjs`.
 //
 // The app has no backend: it talks straight to CDS, VizieR, NASA, CelesTrak
@@ -12,7 +12,7 @@
 // Every check retries once (transient network flakes are not drift) and
 // carries its own timeout.
 
-const UA = 'PocketPlanetarium-healthcheck/1 (+https://github.com/AlexJCurry42/Proj1)';
+const UA = 'ProjectPlanetarium-healthcheck/1 (+https://github.com/AlexJCurry42/Proj1)';
 const TIMEOUT_MS = 30000;
 
 // Endpoints exactly as the app uses them (js/*.js, .github/workflows/*.yml).

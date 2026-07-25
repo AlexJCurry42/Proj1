@@ -1,4 +1,4 @@
-// Pocket Planetarium — the layer dock's building blocks: section headers,
+// Project Planetarium — the layer dock's building blocks: section headers,
 // the toggle rows (switches and sub-checkboxes), persistence of the user's
 // layer choices, and the collapse-to-pill behavior. app.js composes the
 // actual dock from these.

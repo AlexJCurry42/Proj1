@@ -1,4 +1,4 @@
-// Pocket Planetarium — bundled two-sentence descriptions for the most
+// Project Planetarium — bundled two-sentence descriptions for the most
 // notable catalog objects. The 75 tour destinations carry hand-written
 // captions; data/descriptions.json (English Wikipedia lead extracts,
 // refreshed by the data pipeline, CC BY-SA 4.0) covers the next ~1,000

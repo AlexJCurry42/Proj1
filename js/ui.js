@@ -1,4 +1,4 @@
-// Deep Sky Atlas — UI chrome: toasts, object detail panel, sky destinations,
+// Project Planetarium — UI chrome: toasts, object detail panel, sky destinations,
 // about/credits modal, red-light night-vision mode.
 
 import { fetchJSON } from './net.js';
@@ -692,8 +692,8 @@ export async function initTours(aladin, spectrum) {
 export function initAboutModal() {
   const modal = document.getElementById('about-modal');
   document.getElementById('about-content').innerHTML = `
-    <h2>Pocket Planetarium</h2>
-    <p>A planetarium in your pocket: a browser-based sky atlas built with <a href="https://aladin.cds.unistra.fr/AladinLite/" target="_blank" rel="noopener">Aladin Lite v3</a>, streaming imagery and catalog data live from public astronomical archives.</p>
+    <h2>Project Planetarium</h2>
+    <p>Project Planetarium: a browser-based window on the whole sky, built with <a href="https://aladin.cds.unistra.fr/AladinLite/" target="_blank" rel="noopener">Aladin Lite v3</a>, streaming imagery and catalog data live from public astronomical archives.</p>
     <h3>Imagery &amp; sky rendering</h3>
     <ul>
       <li><strong>Aladin Lite v3.9.0-beta</strong> &mdash; CDS, Observatoire de Strasbourg &amp; CNRS. Bundled with this app; LGPL-3.0-or-later, <a href="https://github.com/cds-astro/aladin-lite" target="_blank" rel="noopener">source</a></li>

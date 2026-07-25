@@ -1,4 +1,4 @@
-// Pocket Planetarium — unit tests. Dependency-free: plain Node (≥18), no
+// Project Planetarium — unit tests. Dependency-free: plain Node (≥18), no
 // test framework, no DOM. Run with `node tests/unit.mjs` (or `npm test`).
 //
 // Scope: the pure math the sky stands on — js/astro.js (sidereal time,

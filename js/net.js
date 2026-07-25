@@ -1,4 +1,4 @@
-// Deep Sky Atlas — shared network helper: every external request gets a
+// Project Planetarium — shared network helper: every external request gets a
 // 10s timeout and a single retry, per the project's engineering standards.
 
 const DEFAULT_TIMEOUT_MS = 10000;

@@ -1,4 +1,4 @@
-// Pocket Planetarium — the animations switch. One shared answer to "should
+// Project Planetarium — the animations switch. One shared answer to "should
 // this animate?" for every module (flights, fades, reveals, CSS).
 //
 // Animations are ON by default for everybody. (An earlier build followed

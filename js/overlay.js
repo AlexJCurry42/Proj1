@@ -1,4 +1,4 @@
-// Pocket Planetarium — the unified sky-overlay engine. Constellations, the
+// Project Planetarium — the unified sky-overlay engine. Constellations, the
 // horizon & compass, live satellites and the marker-fade transitions all
 // draw here, on ONE canvas driven by ONE animation loop.
 //

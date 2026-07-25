@@ -1,4 +1,4 @@
-// Pocket Planetarium — the time scrubber's CAMERA: a real planetarium
+// Project Planetarium — the time scrubber's CAMERA: a real planetarium
 // turns the sky when you turn the clock. The view is anchored in the
 // observer's LOCAL frame — whatever altitude/azimuth the user is looking
 // at stays their line of sight — so:

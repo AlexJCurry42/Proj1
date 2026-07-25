@@ -1,4 +1,4 @@
-// Pocket Planetarium — marker cross-fades for layer toggles. The sky
+// Project Planetarium — marker cross-fades for layer toggles. The sky
 // engine's catalog show/hide is a hard cut, and its marker bitmaps are
 // baked when sources are added (setShape after the fact has no visual
 // effect — verified empirically). So the fade happens on our side: the

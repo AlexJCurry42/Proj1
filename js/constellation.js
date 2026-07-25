@@ -1,4 +1,4 @@
-// Pocket Planetarium — "which constellation is this?", answered the
+// Project Planetarium — "which constellation is this?", answered the
 // official way, not by nearest-label guessing: the IAU constellation
 // boundaries (Delporte 1930) are fixed along lines of the 1875.0 equinox,
 // and the standard determination algorithm (Roman 1987; VizieR VI/42) is

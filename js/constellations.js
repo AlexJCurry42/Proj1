@@ -1,4 +1,4 @@
-// Pocket Planetarium — constellations, built for stargazers. Primary data is
+// Project Planetarium — constellations, built for stargazers. Primary data is
 // the full-88 IAU set (figures, official names + label positions, boundaries)
 // from the d3-celestial project (BSD-3-Clause, Stellarium-derived), committed
 // into data/ by the data-refresh Action. If those files are

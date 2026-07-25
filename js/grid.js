@@ -1,4 +1,4 @@
-// Pocket Planetarium — the coordinate grid, drawn on the unified overlay
+// Project Planetarium — the coordinate grid, drawn on the unified overlay
 // engine (replacing the engine's built-in graticule, whose line spacing
 // snapped between levels and whose labels rode the sky, drifting with
 // every pan). This one is fluid by construction:

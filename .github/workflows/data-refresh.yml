@@ -1,4 +1,4 @@
-# Pocket Planetarium — THE data pipeline. Every repo-bundled dataset the
+# Project Planetarium — THE data pipeline. Every repo-bundled dataset the
 # static app depends on is fetched, validated and committed here, in one
 # sequential job (the five separate workflows this replaced raced each
 # other's pushes on busy days). Which datasets run depends on the trigger:

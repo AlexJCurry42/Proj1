@@ -1,5 +1,5 @@
-// Deep Sky Atlas — "Sky Now" compass mode. Tap: the view flies to your
-// zenith and then TRACKS the phone — point the device anywhere and the atlas
+// Project Planetarium — "Sky Now" compass mode. Tap: the view flies to your
+// zenith and then TRACKS the phone — point the device anywhere and the app
 // shows the sky behind it, live (back-camera axis → alt/az → RA/Dec via
 // local sidereal time). Tap again, or drag the sky, to stop. Devices without
 // motion sensors (or denied permission) fall back to a one-shot zenith view.

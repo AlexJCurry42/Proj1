@@ -1,4 +1,4 @@
-// Pocket Planetarium — the sound design. Every major animated moment gets
+// Project Planetarium — the sound design. Every major animated moment gets
 // a matching audio response, SYNTHESIZED in-code with WebAudio rather than
 // shipped as clip files: no downloads, no licensing questions, zero bytes
 // on the wire, and clips that are exactly as long as the animations they

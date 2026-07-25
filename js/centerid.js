@@ -1,4 +1,4 @@
-// Pocket Planetarium — "what's under the crosshair?": when a known deep-sky
+// Project Planetarium — "what's under the crosshair?": when a known deep-sky
 // object (a Messier or curated NGC/IC showpiece, or any tour destination)
 // sits under the view-center crosshair, two things identify it:
 //  · a small CARD (top of the screen; bottom slot on phones) with its name,

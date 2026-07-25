@@ -1,4 +1,4 @@
-# Pocket Planetarium — browser regression suite: the real app against the
+# Project Planetarium — browser regression suite: the real app against the
 # real Aladin Lite engine (tests/browser/run.mjs), in headless Chromium AND
 # headless WebKit. WebKit is the closest CI proxy for iOS Safari — the
 # platform the actual user base is on, and where every audio/gesture/CSS

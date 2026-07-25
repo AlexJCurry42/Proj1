@@ -1,4 +1,4 @@
-// Pocket Planetarium — the live cone-search layer skeleton, shared by every
+// Project Planetarium — the live cone-search layer skeleton, shared by every
 // layer that re-queries a TAP service around the view center as the user
 // pans and zooms (SIMBAD galaxies, SIMBAD black holes, VizieR Milliquas
 // AGN/quasars). One implementation of the debounce, the view-key dedupe,

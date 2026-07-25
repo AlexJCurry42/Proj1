@@ -1,4 +1,4 @@
-// Pocket Planetarium — the app clock. One shared answer to "what time is it
+// Project Planetarium — the app clock. One shared answer to "what time is it
 // in the app?": normally real time, but the time scrubber can shift it, and
 // every time-dependent layer (Solar System, horizon, satellites, Sky Now)
 // asks THIS module instead of `new Date()` so the whole sky moves together.

@@ -1,4 +1,4 @@
-// Pocket Planetarium — the Solar System marker layer: Sun, Moon and planets
+// Project Planetarium — the Solar System marker layer: Sun, Moon and planets
 // as engine catalogs, positions from the self-contained ephemeris
 // (js/planets.js). Positions are computed for the app clock's current
 // moment and rebuilt whenever the time scrubber moves or plays (throttled:

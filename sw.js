@@ -1,4 +1,4 @@
-// Pocket Planetarium — service worker: caches the app shell (HTML/CSS/JS/data/
+// Project Planetarium — service worker: caches the app shell (HTML/CSS/JS/data/
 // icons) so revisits and the installed PWA start instantly. All sky data —
 // HiPS tiles, TAP queries, photographs — is cross-origin and passes straight
 // through to the network, always live.
@@ -21,7 +21,7 @@
 // constellations_lines/names/borders) here — they may not exist on a fresh
 // deploy and one 404 fails the entire install. Runtime caching covers them.
 // Bump together with js/version.js (shown in the About panel).
-const VERSION = 'dsa-shell-v96';
+const VERSION = 'dsa-shell-v97';
 
 const SHELL = [
   './',

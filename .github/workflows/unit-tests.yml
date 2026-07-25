@@ -1,4 +1,4 @@
-# Pocket Planetarium — deterministic unit suite (astro math, ephemeris,
+# Project Planetarium — deterministic unit suite (astro math, ephemeris,
 # clock, SGP4, coordinate parsing, version consistency). Dependency-free
 # Node, seconds to run, zero network — so it runs on EVERY code push and
 # can never be reddened by a provider outage (live checks are separate:

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Pocket Planetarium — DESI cosmic-web builder (run by data-refresh.yml).
+"""Project Planetarium — DESI cosmic-web builder (run by data-refresh.yml).
 
 Draws a uniform random subsample of the DESI Data Release 1 redshift
 catalog (galaxies and quasars with reliable redshifts) from NOIRLab's
@@ -24,7 +24,7 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 TAP_SYNC = 'https://datalab.noirlab.edu/tap/sync'
-UA = 'PocketPlanetariumDataRefresh/1.0 (+https://github.com/AlexJCurry42/Proj1)'
+UA = 'ProjectPlanetariumDataRefresh/1.0 (+https://github.com/AlexJCurry42/Proj1)'
 TARGET_N = 400_000     # points shipped (~3.2 MB at 8 bytes each)
 MIN_ROWS = 250_000     # validation gate: fewer means the query went wrong
 Z_MIN, Z_MAX = 0.001, 3.5

@@ -1,6 +1,6 @@
 MIT License
 
-Copyright (c) 2026 AlexJCurry42 and Deep Sky Atlas contributors
+Copyright (c) 2026 AlexJCurry42 and Project Planetarium contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,7 +22,7 @@ SOFTWARE.
 
 ---
 
-This license covers the Deep Sky Atlas source code only. Sky imagery,
+This license covers the Project Planetarium source code only. Sky imagery,
 catalogs, photographs and artist impressions displayed by the application are
 served live from their providers (CDS Strasbourg, NASA/IPAC, ESA, ESO, the
 EHT Collaboration, Wikimedia Commons and others) and remain under their own

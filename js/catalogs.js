@@ -1,4 +1,4 @@
-// Deep Sky Atlas — catalog overlays: SIMBAD/Gaia progressive HiPS catalogs,
+// Project Planetarium — catalog overlays: SIMBAD/Gaia progressive HiPS catalogs,
 // eagerly-loaded Messier/NGC/IC markers with zoom-aware density, and the
 // NASA Exoplanet Archive layer.
 

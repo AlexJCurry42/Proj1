@@ -1,4 +1,4 @@
-// Pocket Planetarium — view-state controller: the globe/inside view mode
+// Project Planetarium — view-state controller: the globe/inside view mode
 // (projection + FoV caps), the per-survey zoom floor with its ease-out,
 // the shareable permalink hash, the share button, the floating zoom
 // buttons and the coordinates HUD. Everything here answers one question —
@@ -104,7 +104,7 @@ export function initViewState(aladin, { onZoom, onPosition, initialViewMode, spe
     const url = currentViewUrl();
     history.replaceState(null, '', url);
     if (navigator.share) {
-      try { await navigator.share({ title: 'Pocket Planetarium', url }); return; }
+      try { await navigator.share({ title: 'Project Planetarium', url }); return; }
       catch (err) { if (err.name === 'AbortError') return; }
     }
     try {

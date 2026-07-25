@@ -1,4 +1,4 @@
-// Pocket Planetarium — browser regression suite. Runs the REAL app against
+// Project Planetarium — browser regression suite. Runs the REAL app against
 // the REAL Aladin Lite engine in headless Chromium, covering the behavior
 // the unit tests can't see: boot budget, lazy layers, flights, the star
 // bloom, the horizon lock, spectrum transitions, time-lapse, the location

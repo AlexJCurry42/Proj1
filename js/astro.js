@@ -1,4 +1,4 @@
-// Pocket Planetarium — shared spherical-astronomy math. One home for the
+// Project Planetarium — shared spherical-astronomy math. One home for the
 // unit-vector helpers, coordinate transforms and sidereal time that the
 // sky-side modules (constellations, horizon, satellites, gyro tracking)
 // previously each carried their own copies of.

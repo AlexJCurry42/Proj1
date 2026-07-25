@@ -1,4 +1,4 @@
-// Pocket Planetarium — the DESI cosmic-web binary format (data/desi_web.bin,
+// Project Planetarium — the DESI cosmic-web binary format (data/desi_web.bin,
 // written by the data pipeline). A subsample of the DESI DR1 redshift
 // catalog: every point is a REAL spectroscopically measured galaxy or
 // quasar, positioned in comoving space (flat Planck-2018 ΛCDM turns each

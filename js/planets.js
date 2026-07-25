@@ -1,10 +1,10 @@
-// Deep Sky Atlas — Solar System planet positions.
+// Project Planetarium — Solar System planet positions.
 //
 // Self-contained implementation of the JPL "Keplerian Elements for Approximate
 // Positions of the Major Planets" low-precision formulae (Standish 1800-2050 AD
 // table, as also reproduced in Meeus, "Astronomical Algorithms"). Accuracy is a
 // few arcminutes over 1800-2050, which is more than sufficient for plotting
-// planet markers on a sky atlas. No external ephemeris service is used.
+// planet markers on a sky map. No external ephemeris service is used.
 
 const DEG2RAD = Math.PI / 180;
 const RAD2DEG = 180 / Math.PI;
@@ -195,7 +195,7 @@ export function computeMoonPosition(date = new Date()) {
     + 0.0028 * c(269.9 + 954397.70 * T);
   const distanceKm = 6378.14 / Math.sin(pi * DEG2RAD);
 
-  // The Almanac series yields ecliptic-of-DATE coordinates, but the atlas
+  // The Almanac series yields ecliptic-of-DATE coordinates, but the app
   // works in J2000/ICRS like everything else on the sky. Rotate the longitude
   // back by the accumulated general precession (5029.1"/century): without
   // this the marker leads the real Moon by ~0.4° by the mid-2020s — more

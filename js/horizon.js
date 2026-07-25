@@ -1,8 +1,8 @@
-// Pocket Planetarium — the local horizon & compass overlay. Draws YOUR
+// Project Planetarium — the local horizon & compass overlay. Draws YOUR
 // horizon on the celestial sphere: the great circle of altitude 0° for the
 // observer's location at the current moment, with cardinal direction labels
 // (N accented like a compass), azimuth tick marks, and a zenith marker.
-// This is the layer that turns the atlas into a backyard instrument.
+// This is the layer that turns the planetarium into a backyard instrument.
 //
 // Draws on the unified overlay engine; a 10 s time bucket in the dirty
 // signature keeps the line pinned as the sky rotates (~0.25°/minute).

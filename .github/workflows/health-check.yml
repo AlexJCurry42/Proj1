@@ -1,4 +1,4 @@
-# Pocket Planetarium — scheduled LIVE health check only. The app has no
+# Project Planetarium — scheduled LIVE health check only. The app has no
 # backend: it talks straight to CDS, VizieR, NASA, CelesTrak and Wikimedia
 # Commons from the browser, and any of them can drift (TAP column renames,
 # retired HiPS IDs, moved Commons files). This workflow replays every live

@@ -1,4 +1,4 @@
-// Deep Sky Atlas — the black holes signature layer: confirmed stellar-mass
+// Project Planetarium — the black holes signature layer: confirmed stellar-mass
 // X-ray binaries and supermassive black holes (a curated measured set plus
 // a live VizieR Milliquas AGN/quasar cone search).
 

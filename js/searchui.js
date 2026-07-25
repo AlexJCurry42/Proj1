@@ -1,4 +1,4 @@
-// Pocket Planetarium — the search box UX: recents dropdown, instant
+// Project Planetarium — the search box UX: recents dropdown, instant
 // suggestions from the curated catalogs, keyboard navigation, and the
 // submit → resolve → detail-panel flow. Resolution itself lives in
 // js/search.js; the suggestion index in js/suggest.js.

@@ -1,4 +1,4 @@
-// Pocket Planetarium — the boot loading bar's driver. Loaded as a CLASSIC
+// Project Planetarium — the boot loading bar's driver. Loaded as a CLASSIC
 // blocking script right after the boot-screen markup, so it runs before
 // anything else has even started downloading (it was inline until the
 // Content-Security-Policy arrived: external same-origin scripts keep the

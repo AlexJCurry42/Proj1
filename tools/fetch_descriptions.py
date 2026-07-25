@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Pocket Planetarium — bundled-description fetcher (run by data-refresh.yml).
+"""Project Planetarium — bundled-description fetcher (run by data-refresh.yml).
 
 Builds data/descriptions.json: two-sentence English Wikipedia lead extracts
 for the most notable deep-sky objects — every Messier object, every curated
@@ -27,7 +27,7 @@ from urllib.error import HTTPError
 from urllib.parse import quote
 from urllib.request import Request, urlopen
 
-UA = 'PocketPlanetariumDataRefresh/1.0 (+https://github.com/AlexJCurry42/Proj1)'
+UA = 'ProjectPlanetariumDataRefresh/1.0 (+https://github.com/AlexJCurry42/Proj1)'
 API = 'https://en.wikipedia.org/api/rest_v1/page/summary/'
 ATTEMPT_BUDGET = 1000   # articles tried; misses (no article) simply drop out
 MIN_EXTRACT = 60        # shorter than this is a stub, not a description

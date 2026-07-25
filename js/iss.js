@@ -1,4 +1,4 @@
-// Pocket Planetarium — the International Space Station, part of the Solar
+// Project Planetarium — the International Space Station, part of the Solar
 // System layer. Propagated live on-device with SGP4 (vendored satellite.js
 // submodules; no WASM, no network beyond the repo's own TLE snapshot, which
 // the data-refresh Action keeps fresh daily from CelesTrak).

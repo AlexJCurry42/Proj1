@@ -1,4 +1,4 @@
-// Pocket Planetarium — local preferences. All persistence in the app flows
+// Project Planetarium — local preferences. All persistence in the app flows
 // through here: one namespace ('dsa-'), one JSON codec, one try/catch
 // (private-mode Safari throws on any storage access).
 

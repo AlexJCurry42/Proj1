@@ -1,4 +1,4 @@
-# Pocket Planetarium — architecture
+# Project Planetarium — architecture
 
 A static, build-free web app: plain ES modules, HTML and CSS, deployed as
 files. No backend, no API keys, no accounts, no analytics. This document

@@ -1,4 +1,4 @@
-# Pocket Planetarium — static analysis: ESLint (security-invariant rules,
+# Project Planetarium — static analysis: ESLint (security-invariant rules,
 # see eslint.config.mjs) plus CodeQL's JavaScript security queries.
 
 name: Static analysis

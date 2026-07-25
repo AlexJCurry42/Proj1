@@ -1,4 +1,4 @@
-// Pocket Planetarium — application entry point: boot sequencing and wiring
+// Project Planetarium — application entry point: boot sequencing and wiring
 // only. The substance lives in controllers:
 //   js/layersdock.js — every dock switch, its lazy loading and consent flows
 //   js/viewstate.js  — view mode, zoom floors, permalink hash, share, HUD
@@ -299,7 +299,7 @@ function initDebugConsole() {
 // Persistent (non-toast) failure banner: if the sky engine can't start there
 // is no app to speak of, so the user must see why, not a 15-second toast.
 function showFatalError(message, title = 'The sky engine failed to start') {
-  console.error('Pocket Planetarium fatal:', message);
+  console.error('Project Planetarium fatal:', message);
   document.getElementById('fatal-banner')?.remove();
   const banner = document.createElement('div');
   banner.id = 'fatal-banner';

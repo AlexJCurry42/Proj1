@@ -1,4 +1,4 @@
-// Pocket Planetarium — the star bloom: catalog-driven glows drawn over the
+// Project Planetarium — the star bloom: catalog-driven glows drawn over the
 // imagery on bright stars. The photographic survey plates saturated on
 // them (clipped cores, misaligned red/blue exposures, JPEG chroma blocking
 // — see the About panel), and a survey can't be repainted. This layer is

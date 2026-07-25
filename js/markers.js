@@ -1,4 +1,4 @@
-// Deep Sky Atlas — custom canvas-drawn marker icons. Aladin Lite accepts an
+// Project Planetarium — custom canvas-drawn marker icons. Aladin Lite accepts an
 // Image/HTMLCanvasElement as a catalog `shape`, so instead of its hard-edged
 // default squares we draw soft, glowing star-like dots (radial gradients),
 // and give black holes a miniature dark-core-with-glowing-ring icon that

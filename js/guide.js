@@ -1,4 +1,4 @@
-// Pocket Planetarium — the first-run guided tour: a small glass callout
+// Project Planetarium — the first-run guided tour: a small glass callout
 // that steps through the UI's doorways with Next buttons, a sprung
 // highlight ring gliding from target to target, and page dots. It replaced
 // the old static tips card, which explained less and pointed at nothing.
@@ -13,7 +13,7 @@ import { cardAppear } from './sound.js';
 // idea per stop, and the location step keeps the optional-only promise.
 const STEPS = [
   { target: null,
-    text: 'Welcome to Pocket Planetarium — the whole sky, live. Drag to look around, pinch to zoom.' },
+    text: 'Welcome to Project Planetarium — the whole sky, live. Drag to look around, pinch to zoom.' },
   { target: 'layer-dock',
     text: 'Layers: sky guides, catalogs, black holes and display options all live here.' },
   { target: 'spectrum-rail',

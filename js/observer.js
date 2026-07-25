@@ -1,4 +1,4 @@
-// Pocket Planetarium — the observer's location, shared by every feature that
+// Project Planetarium — the observer's location, shared by every feature that
 // needs it (horizon overlay, satellites, Sky Now, gyro tracking). One
 // permission flow, one per-session cache; coordinates are consumed entirely
 // on-device and never transmitted anywhere.
