@@ -307,6 +307,30 @@ await test('constellation zones: famous objects land in the right constellation'
   }
 });
 
+await test('camera-owner arbiter: mutual exclusion + eviction chain', async () => {
+  const { acquireView, releaseView, viewOwner } = await import('../js/cameraowner.js');
+  const log = [];
+  releaseView('gyro'); releaseView('play'); releaseView('cosmos'); // clean slate
+  acquireView('gyro', () => log.push('gyro'));
+  assert.equal(viewOwner(), 'gyro');
+  acquireView('play', () => log.push('play')); // evicts gyro
+  assert.equal(viewOwner(), 'play');
+  assert.deepEqual(log, ['gyro'], 'acquiring evicts the previous owner');
+  acquireView('cosmos', () => log.push('cosmos')); // evicts play
+  assert.equal(viewOwner(), 'cosmos');
+  assert.deepEqual(log, ['gyro', 'play']);
+  releaseView('gyro'); // stale release from an already-evicted owner is ignored
+  assert.equal(viewOwner(), 'cosmos', 'a stale release must not clear a newer owner');
+  releaseView('cosmos');
+  assert.equal(viewOwner(), null);
+  // Same-owner re-acquire is a no-op (must not self-evict).
+  log.length = 0;
+  acquireView('play', () => log.push('a'));
+  acquireView('play', () => log.push('b'));
+  assert.deepEqual(log, [], 're-acquiring for the current owner does not evict it');
+  releaseView('play');
+});
+
 await test('object names: one canonical spelling across every lookup', async () => {
   const { normalizeName, matchKeysFor } = await import('../js/objnames.js');
   // Designations collapse to one form no matter how they arrive.
