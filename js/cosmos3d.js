@@ -13,6 +13,7 @@
 import { parseDesiWeb } from './desidata.js';
 import { showToast, makeDismissable } from './ui.js';
 import { motionOK } from './motion.js';
+import { acquireView, releaseView } from './cameraowner.js';
 
 const VERT = `
 attribute vec3 aPos;
@@ -270,17 +271,34 @@ function attachControls() {
   }, { passive: false });
 }
 
-const onKey = (e) => { if (e.key === 'Escape' && active) exitMode(true); };
+// Capture phase + higher-surface guard (like the guided tour): defer to an
+// open modal/sheet/lightbox so their Escape wins; otherwise exit the mode
+// and stop the event so the central handler doesn't also act on one press.
+const onKey = (e) => {
+  if (e.key !== 'Escape' || !active) return;
+  const higherOpen = document.getElementById('lightbox') ||
+    !document.getElementById('shortcuts-sheet')?.hidden ||
+    !document.getElementById('about-modal')?.hidden;
+  if (higherOpen) return;
+  e.stopImmediatePropagation();
+  exitMode(true);
+};
 const onResize = () => { if (active) resize(); };
 
 function enterMode() {
   if (active) return; // a double-enter would orphan a second rAF loop
+  // Claim the view: taking it over while time playback or Sky Now gyro is
+  // running would leave their per-frame loops driving the hidden 2-D camera
+  // (and the clock ticking invisibly). Acquiring evicts them first. If WE
+  // are later evicted (the user starts playback from the chrome that stays
+  // above the 3-D view), exit AND revert the dock switch — exitMode(true).
+  acquireView('cosmos', () => exitMode(true));
   active = true;
   document.body.classList.add('cosmos-on');
   canvas.style.display = 'block';
   showLegend();
   exitBtn.style.display = 'flex';
-  document.addEventListener('keydown', onKey);
+  document.addEventListener('keydown', onKey, true);
   window.addEventListener('resize', onResize);
   resize();
   lastInteract = performance.now();
@@ -291,8 +309,9 @@ function enterMode() {
 function exitMode(byUser) {
   if (!active) return;
   active = false;
+  releaseView('cosmos');
   cancelAnimationFrame(raf);
-  document.removeEventListener('keydown', onKey);
+  document.removeEventListener('keydown', onKey, true);
   window.removeEventListener('resize', onResize);
   document.body.classList.remove('cosmos-on');
   canvas.style.display = 'none';

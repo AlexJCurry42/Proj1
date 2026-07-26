@@ -14,6 +14,7 @@ import { appNow, isTimeShifted } from './clock.js';
 import { requestObserver, seedObserver } from './observer.js';
 import { geoPermissionState, showLocationCard } from './loccard.js';
 import { motionOK } from './motion.js';
+import { acquireView, releaseView } from './cameraowner.js';
 
 
 /**
@@ -54,6 +55,7 @@ export function initSkyNow(aladin, { onTrackingStart } = {}) {
   function stopTracking(quiet = false) {
     if (!tracking) return;
     tracking = false;
+    releaseView('gyro');
     for (const fn of teardown) { try { fn(); } catch (err) { /* best effort */ } }
     teardown = [];
     btn.setAttribute('aria-pressed', 'false');
@@ -239,6 +241,9 @@ export function initSkyNow(aladin, { onTrackingStart } = {}) {
       teardown = [];
       return;
     }
+    // Claim the camera: this evicts time playback or the cosmic-web mode if
+    // either held it, so two per-frame drivers never fight over gotoRaDec.
+    acquireView('gyro', () => stopTracking(true));
     tracking = true;
     btn.setAttribute('aria-pressed', 'true');
     gyroBtn?.setAttribute('aria-pressed', 'true');

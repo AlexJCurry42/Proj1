@@ -137,7 +137,10 @@ export function initLayersDock(aladin, { onZoom, onPosition, fadeCatalog }) {
     if (show && !bordersRef.catalogs && !bordersRef.loading) {
       bordersRef.loading = true;
       loadConstellationBorders(aladin).then(({ catalogs }) => {
-        bordersRef.catalogs = catalogs;
+        // Empty (a failed/absent fetch) counts as NOT loaded, so the next
+        // flip retries — mirrors the Deep-sky fix; an empty array is truthy
+        // and would otherwise latch the retry guard forever.
+        bordersRef.catalogs = catalogs.length ? catalogs : null;
         setCatalogVisible(catalogs, constToggle.isChecked() && bordersToggle.isChecked());
       }).finally(() => { bordersRef.loading = false; });
       return;
@@ -204,18 +207,29 @@ export function initLayersDock(aladin, { onZoom, onPosition, fadeCatalog }) {
   // OFF by default like every catalog: a new user's first sky is just the
   // sky (the guided tour points at the dock where all of this lives).
   const planetsRef = { iss: null, issStarted: false };
+  // The badge counts Sun/Moon/planets, plus the ISS only when the layer is
+  // ON and the station has actually inited. Computing from LIVE state on
+  // every change keeps it honest regardless of the order the two async
+  // writers (initPlanetsLayer, onObserver) resolve — and fixes the default
+  // path, where the observer fix (ISS init) arrives while Solar System is
+  // still off, so the old one-shot +1 in onObserver never applied.
+  function refreshPlanetCount() {
+    const base = planetsRef.count || 11;
+    planetsToggle.setCount(planetsToggle.isChecked() && planetsRef.iss ? base + 1 : base);
+  }
   const planetsToggle = addToggle(catalogList, {
     label: 'Solar System', color: '#7fd6ff', checked: false,
     onToggle: (v) => {
       setCatalogVisible(planetsRef.catalogs, v);
       if (planetsRef.iss) { if (v) planetsRef.iss.show(); else planetsRef.iss.hide(); }
+      refreshPlanetCount();
     }
   });
   initPlanetsLayer(aladin).then(({ catalogs, count }) => {
     planetsRef.catalogs = catalogs;
     planetsRef.count = count;
-    planetsToggle.setCount(count);
     setCatalogVisible(catalogs, planetsToggle.isChecked());
+    refreshPlanetCount();
   });
   onObserver(async (obs) => {
     if (planetsRef.issStarted) return;
@@ -223,10 +237,8 @@ export function initLayersDock(aladin, { onZoom, onPosition, fadeCatalog }) {
     try {
       planetsRef.iss = await initIssLayer(aladin, obs);
     } catch (err) { /* no TLE yet: the marker just doesn't appear */ }
-    if (planetsRef.iss && planetsToggle.isChecked()) {
-      planetsRef.iss.show();
-      planetsToggle.setCount((planetsRef.count || 11) + 1);
-    }
+    if (planetsRef.iss && planetsToggle.isChecked()) planetsRef.iss.show();
+    refreshPlanetCount();
   });
 
   // Off by default, created lazily on first enable: heavy/bulk layers.

@@ -11,6 +11,7 @@
 
 import { appNow, setAppTime, isTimeShifted, onTimeChange, setPlaySpeed, playSpeed } from './clock.js';
 import { playStart, playStop } from './sound.js';
+import { acquireView, releaseView } from './cameraowner.js';
 
 export function initTimeControl() {
   const btn = document.getElementById('time-btn');
@@ -130,6 +131,11 @@ export function initTimeControl() {
     syncEgg();
   }
   onTimeChange(refresh);
+  // Playback can stop via paths that bypass the play button — "Back to now"
+  // and the date/time pickers both call setAppTime, which clears the play
+  // rate. Release the camera whenever it's no longer running, from any path
+  // (idempotent: releaseView only acts if 'play' is still the owner).
+  onTimeChange(() => { if (playSpeed() === 0) releaseView('play'); });
 
   let idleSync = null;
   function openPanel() {
@@ -170,16 +176,24 @@ export function initTimeControl() {
     setAppTime(null); // stops playback and returns to real time
     panel.hidden = true;
   });
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && !panel.hidden) panel.hidden = true;
-  });
+  // Escape is handled centrally in js/ui.js initKeyboard (single precedence
+  // chain) — a standalone listener here fired alongside it, closing this
+  // panel AND the topmost surface on one press.
 
   // ---- play controls ----
+  // Stopping playback releases the camera; starting it CLAIMS the camera,
+  // evicting Sky Now gyro or the cosmic-web mode if either held it (the
+  // planetarium loop and a gyro loop must never both drive gotoRaDec).
+  function stopPlayback() { setPlaySpeed(0); playStop(); releaseView('play'); }
   playBtn?.addEventListener('click', () => {
-    const starting = playSpeed() === 0;
-    selectedMult = multFromSlider();
-    setPlaySpeed(starting ? selectedMult : 0);
-    if (starting) playStart(); else playStop();
+    if (playSpeed() === 0) {
+      selectedMult = multFromSlider();
+      acquireView('play', stopPlayback);
+      setPlaySpeed(selectedMult);
+      playStart();
+    } else {
+      stopPlayback();
+    }
   });
   // Seamless: dragging the slider retunes a running playback continuously.
   speedSlider?.addEventListener('input', () => {

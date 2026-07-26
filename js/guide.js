@@ -98,7 +98,7 @@ export function initUiGuide() {
     active = false;
     writePref('uiguide', true);
     window.removeEventListener('resize', place);
-    document.removeEventListener('keydown', onKey);
+    document.removeEventListener('keydown', onKey, true);
     document.body.classList.remove('guiding');
     card.remove();
     ring.remove();
@@ -110,10 +110,22 @@ export function initUiGuide() {
   });
   skip.addEventListener('click', finish);
   makeDismissable(card, finish);
-  // The same keyboard contract as every other dismissable surface:
-  // Escape puts the tour away (it counts as done — it never returns).
-  const onKey = (e) => { if (e.key === 'Escape' && active) finish(); };
-  document.addEventListener('keydown', onKey);
+  // Escape puts the tour away (it counts as done). CAPTURE phase + a
+  // higher-surface guard so it coordinates with the central Escape handler
+  // (js/ui.js) instead of double-firing: if a modal/sheet/lightbox is open
+  // over the tour, defer to that (let the central handler close it); only
+  // when the tour is the topmost surface do we finish AND stop the event so
+  // the central handler doesn't also act on the same press.
+  const onKey = (e) => {
+    if (e.key !== 'Escape' || !active) return;
+    const higherOpen = document.getElementById('lightbox') ||
+      !document.getElementById('shortcuts-sheet')?.hidden ||
+      !document.getElementById('about-modal')?.hidden;
+    if (higherOpen) return;
+    e.stopImmediatePropagation();
+    finish();
+  };
+  document.addEventListener('keydown', onKey, true);
 
   // Let the boot screen fade and the sky settle before speaking up.
   setTimeout(() => {

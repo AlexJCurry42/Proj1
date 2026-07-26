@@ -307,6 +307,11 @@ export function initKeyboard() {
       if (sheet && !sheet.hidden) { sheet.hidden = true; restoreSheetFocus(); return; }
       const about = document.getElementById('about-modal');
       if (!about.hidden) { document.getElementById('about-close').click(); return; }
+      // The time panel had its own uncoordinated Escape listener, so one
+      // press closed it AND the topmost surface at once. It lives in the
+      // precedence chain now (below About, above the detail panel).
+      const timePanel = document.getElementById('time-panel');
+      if (timePanel && !timePanel.hidden) { timePanel.hidden = true; return; }
       if (!detailPanel().hidden) closeDetailPanel();
       return;
     }
@@ -321,6 +326,8 @@ export function initKeyboard() {
     } else if (e.key === '?') {
       const sheet = document.getElementById('shortcuts-sheet');
       if (!sheet) return;
+      // Never stack over the About dialog — one modal at a time.
+      if (!document.getElementById('about-modal').hidden) return;
       if (sheet.hidden) {
         // Opening: remember where focus came from, move it into the
         // dialog, keep Tab inside — the standard modal contract.
@@ -636,6 +643,11 @@ export async function initTours(aladin, spectrum) {
   }
 
   btn.addEventListener('click', async () => {
+    // Not while the cosmic-web 3-D mode owns the viewport: a flight would
+    // animate the hidden 2-D camera and its caption would leak over the
+    // takeover (the sky-tap that normally cancels a flight is unreachable
+    // under the cosmos canvas).
+    if (document.body.classList.contains('cosmos-on')) return;
     const t = draw();
     const token = ++flightToken;
     // The caption is withheld until the object is actually on screen: it

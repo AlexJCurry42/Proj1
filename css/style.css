@@ -753,6 +753,14 @@ input[type="range"]::-moz-range-thumb{
   left: calc(12px + var(--safe-left));
   display: flex; flex-direction: column; gap: 8px; align-items: flex-start;
   pointer-events: none; width: min(320px, calc(100% - 24px));
+  transition: bottom 0.2s ease;
+}
+/* The time panel opens bottom-left, right where toasts stack — lift the
+   toasts above it so an error toast can't cover the "Back to now" button
+   (both are pointer-interactive). #toast-container follows #time-panel in
+   the DOM, so the sibling combinator reaches it. */
+#time-panel:not([hidden]) ~ #toast-container{
+  bottom: calc(262px + var(--safe-bottom));
 }
 .toast{
   pointer-events: auto;
@@ -921,6 +929,15 @@ body.reduce-motion *, body.reduce-motion *::before, body.reduce-motion *::after{
   }
 
   #zoom-stack{ display: none; } /* pinch is the natural gesture on phones */
+
+  /* The detail sheet fills the bottom of a phone; the time-panel popover
+     would float on top of it (both bottom-anchored). Move the time panel to
+     the top instead — it stays fully usable and they no longer overlap.
+     (#detail-panel precedes #time-panel in the DOM, so the sibling
+     combinator reaches it.) */
+  #detail-panel:not([hidden]) ~ #time-panel:not([hidden]){
+    bottom: auto; top: calc(64px + var(--safe-top));
+  }
 
 }
 
@@ -1156,6 +1173,10 @@ body:has(#about-modal:not([hidden])) #center-card{ display: none; }
 }
 /* The tour owns the first-visit moment: the center-ID card waits. */
 body.guiding #center-card{ display: none; }
+/* The tour's Sky Now step points at the compass; if the user taps it mid-
+   tour the consent card would open UNDER the guide card (guide z85 >
+   loc-card z70). Keep the consent flow out of the way until the tour ends. */
+body.guiding #loc-card{ display: none; }
 
 #shortcuts-sheet .tips-title{ font-size: 14px; letter-spacing: -0.01em; }
 #shortcuts-sheet #shortcuts-close{ position: absolute; top: 8px; right: 8px; }
