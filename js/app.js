@@ -175,11 +175,7 @@ async function main() {
   });
 
   // One slider, the whole spectrum: settles persist position + permalink.
-  // The engine booted with startSurvey as its base; the rail keeps that base
-  // fixed and layers the current selection above it (never touches the base),
-  // so it must know which survey the floor is.
   spectrum = initSpectrumBar(aladin, {
-    baseSurvey: startSurvey,
     onSettle: (v) => { writePref('spectrum', v); view.updateHash(); view.applyFovLimits(); },
     // Collapsed by default: menus must not open themselves over the sky on
     // a first visit — the guided tour points them out instead.

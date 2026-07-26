@@ -1,16 +1,14 @@
 // Project Planetarium — the spectrum rail. Every imagery survey on one vertical
 // track at the top-right, ordered by wavelength: gamma-ray at the top, radio
-// at the bottom. The rail selects one survey; a blend overlay renders it.
+// at the bottom. Dragging cross-fades adjacent surveys live.
 //
-// Interaction model:
-//  - the thumb critically-damps toward the pointer (eased glide, never a
-//    jump — taps and keyboard steps travel there smoothly),
-//  - the survey is COMMITTED once the rail settles on a stop (imagery is not
-//    touched mid-drag), and the commit rides a single overlay above a FIXED
-//    base — never the base layer itself. The engine applies a base swap
-//    asynchronously and refuses base == overlay; touching the base directly
-//    either froze the sky or (cancelling the boot load) blacked it out
-//    entirely. See commitSurvey for the full account.
+// Smoothness model:
+//  - the displayed value critically-damps toward the pointer (eased glide,
+//    never a jump — taps on the track travel there smoothly),
+//  - blend opacity follows smoothstep(frac), so fades breathe into and out
+//    of each stop instead of moving linearly,
+//  - crossing a stop is seamless by construction: at the moment of the swap
+//    the overlay is fully opaque and identical to the incoming base layer.
 // Custom pointer-driven slider (native vertical range inputs are unreliable
 // across engines) with full keyboard support: arrows step between surveys,
 // Home/End jump to the spectrum's ends.
@@ -38,8 +36,9 @@ export const MAX_VALUE = (SURVEYS.length - 1) * STOP;
 export const DEFAULT_VALUE = SURVEYS.findIndex(s => s.name === '2MASS') * STOP;
 
 const PAD = 15; // px of thumb-travel inset at each end of the track
+const smoothstep = (t) => t * t * (3 - 2 * t);
 
-export function initSpectrumBar(aladin, { onSettle, collapsed = false, onCollapse, baseSurvey } = {}) {
+export function initSpectrumBar(aladin, { onSettle, collapsed = false, onCollapse } = {}) {
   const rail = document.getElementById('spectrum-rail');
   const track = document.getElementById('spectrum-track');
   const thumb = document.getElementById('spectrum-thumb');
@@ -63,60 +62,7 @@ export function initSpectrumBar(aladin, { onSettle, collapsed = false, onCollaps
   let raf = null;
   let settlePending = false;
 
-  // Survey selection NEVER touches the base layer. The base stays the boot
-  // survey for the whole session — a permanent, already-loaded floor — and
-  // the CURRENT selection rides on one overlay ('dsa-blend') above it.
-  //
-  // Why: this engine applies a base swap asynchronously, and (fatally for the
-  // old code) REFUSES to set the base to a survey that is already loaded as
-  // the blend overlay. The previous cross-fade pinned base=from + overlay=to
-  // then set base=to while `to` was the overlay → ignored, bookkeeping
-  // desynced, and the sky froze on the boot survey (the on-device report).
-  // The first repair swung the other way — setBaseImageLayer directly — which
-  // cancelled the constructor's in-flight base load at boot and left NO base:
-  // a fully black sky. Keeping the base fixed and layering the selection on
-  // top sidesteps both: no base==overlay conflict, and the base is always
-  // visible underneath, so a still-loading selection reveals the floor rather
-  // than black. Selecting the base survey itself just removes the overlay.
-  const BASE_ID = baseSurvey; // set once by the constructor; never reassigned
-  let appliedIdx = -1;
-  let overlay = null;
-  let fadeRaf = null;
-  function fadeOverlay(toOpacity, removeAtEnd) {
-    cancelAnimationFrame(fadeRaf);
-    let from = 0;
-    try { from = overlay?.getOpacity?.() ?? 0; } catch (err) { from = 0; }
-    const dur = motionOK() ? 450 : 0;
-    const t0 = performance.now();
-    const step = (t) => {
-      const u = dur ? Math.min(1, (t - t0) / dur) : 1;
-      try { overlay?.setOpacity?.(from + (toOpacity - from) * u); } catch (err) { /* layer gone */ }
-      if (u < 1) { fadeRaf = requestAnimationFrame(step); return; }
-      if (removeAtEnd) {
-        try { aladin.removeImageLayer?.('dsa-blend'); } catch (err) { /* already gone */ }
-        overlay = null;
-      }
-    };
-    fadeRaf = requestAnimationFrame(step);
-  }
-  function commitSurvey(idx) {
-    idx = Math.max(0, Math.min(SURVEYS.length - 1, idx));
-    if (idx === appliedIdx) return;
-    appliedIdx = idx;
-    if (SURVEYS[idx].id === BASE_ID) {
-      // The selection IS the base survey: fade the overlay away to reveal it.
-      if (overlay) fadeOverlay(0, true);
-      return;
-    }
-    try {
-      overlay = aladin.setOverlayImageLayer(SURVEYS[idx].id, 'dsa-blend')
-        || aladin.getOverlayImageLayer?.('dsa-blend') || overlay;
-      // Start transparent so the base floor shows while the new tiles load —
-      // an un-loaded overlay draws nothing, never a black cover.
-      overlay?.setOpacity?.(0);
-    } catch (err) { overlay = null; }
-    fadeOverlay(1, false);
-  }
+  let curBase = -1, curOver = -1, overlayLayer = null;
 
   // The label chip is feedback, not furniture: visible while the user is
   // adjusting, then gone two seconds after the adjustment settles.
@@ -131,15 +77,66 @@ export function initSpectrumBar(aladin, { onSettle, collapsed = false, onCollaps
     chipTimer = setTimeout(() => chip.classList.remove('visible'), 2000);
   }
 
-  // Visual-only: name, band, dots, thumb position and ARIA. The imagery
-  // itself is NOT touched per-frame — it is committed once when the rail
-  // settles (commitSurvey), so a drag previews the label live but never
-  // fires a burst of colliding async base swaps. While between two stops the
-  // name reads "A + B" so the user sees which pair they are sliding across.
+  function setBase(i) {
+    try { aladin.setBaseImageLayer(SURVEYS[i].id); } catch (err) { /* mid-drag hiccup */ }
+    curBase = i;
+  }
+  function pointOverlay(i) {
+    if (curOver === i && overlayLayer) return;
+    try {
+      overlayLayer = aladin.setOverlayImageLayer(SURVEYS[i].id, 'dsa-blend')
+        || aladin.getOverlayImageLayer?.('dsa-blend') || overlayLayer;
+    } catch (err) { overlayLayer = null; }
+    curOver = i;
+  }
+  const setOpacity = (o) => { try { overlayLayer?.setOpacity?.(o); } catch (err) { /* non-fatal */ } };
+
+  // Crossing a stop used to jitter: the base swapped to a survey the engine
+  // hadn't finished setting up, and in the same breath the opaque overlay
+  // that could have covered the work was re-pointed elsewhere — one or more
+  // frames showed a half-initialized layer. The choreography now never
+  // exposes a fresh layer: whatever swaps does so UNDER cover of a warm,
+  // fully-opaque layer of the survey already on screen, and the cover is
+  // held for a few frames before moving on.
+  let overlayHold = 0; // frames the redundant opaque cover outlives an up-crossing
+
   function applyEngine(v) {
     const idx = Math.min(Math.floor(v / STOP), SURVEYS.length - 2);
     const frac = (v - idx * STOP) / STOP;
     const overIdx = idx + 1;
+
+    if (idx !== curBase) {
+      if (curBase !== -1 && idx === curBase - 1 && curOver !== idx) {
+        // Adjacent DOWN-crossing mid-scrub: the survey on screen is the OLD
+        // base. Cover with it first (warm tiles — it was just the base),
+        // then swap the cold new base fully hidden beneath.
+        pointOverlay(overIdx);
+        setOpacity(Math.max(smoothstep(frac), 0.999));
+        setBase(idx);
+        overlayHold = 0;
+      } else {
+        // UP-crossing, or a fade/jump landing on a stop: swap the base, and
+        // if the current overlay already mirrors the new base (the opaque
+        // cover of a scrub crossing, or a completed direct fade), HOLD it a
+        // few frames so the fresh base is never seen mid-initialization.
+        // An unrelated overlay (multi-stop jump) is never held — that would
+        // freeze the wrong survey on screen.
+        setBase(idx);
+        overlayHold = curOver === idx ? 4 : 0;
+      }
+    }
+
+    if (overlayHold > 0 && curOver !== overIdx) {
+      overlayHold--;
+      setOpacity(1); // the cover mirrors the new base: visually seamless
+    } else if (frac > 0.001) {
+      overlayHold = 0;
+      pointOverlay(overIdx);
+      setOpacity(smoothstep(frac));
+    } else {
+      setOpacity(0);
+    }
+
     const near = Math.round(v / STOP);
     nameEl.textContent = (frac > 0.18 && frac < 0.82)
       ? `${SURVEYS[idx].name} + ${SURVEYS[overIdx].name}`
@@ -164,7 +161,6 @@ export function initSpectrumBar(aladin, { onSettle, collapsed = false, onCollaps
       value = target;
       applyEngine(value);
       paint(value);
-      commitSurvey(Math.round(value / STOP)); // settled: apply the survey once
       raf = null;
       if (settlePending) {
         settlePending = false;
@@ -302,20 +298,28 @@ export function initSpectrumBar(aladin, { onSettle, collapsed = false, onCollaps
   }
   rail.querySelector('#spectrum-track').addEventListener('transitionend', () => paint(value));
 
-  // Programmatic survey selection, used by the "Show me something cool"
-  // flights and the tap / keyboard handlers. The thumb GLIDES to the target
-  // (visual feedback), and the survey is committed once on settle by the
-  // tick loop — one setBaseImageLayer, never a per-stop burst. The engine
-  // runs its own fade between base layers, so the reveal stays smooth
-  // without this module orchestrating a blend overlay.
+  // Direct survey cross-fade, used by the "Show me something cool" flights.
+  // Scrubbing the VALUE to a distant survey swaps the base layer at every
+  // stop crossed and creates an overlay per intermediate survey — tile
+  // fetches for wavelengths shown for milliseconds, mid-camera-animation.
+  // That churn is what made flights stutter. This instead pins the CURRENT
+  // survey as the base, brings the DESTINATION in as the single blend
+  // overlay, and eases only its opacity; the base swap happens once, hidden
+  // beneath a fully-opaque overlay (the same seamless-by-construction trick
+  // applyEngine uses at stop crossings).
+  let fadeToken = 0;
+  // Pin the blend pair: base = the survey on screen now, overlay = the
+  // incoming one (created only if it isn't already the 'dsa-blend' layer).
+  function pinBlendPair(fromIdx, toIdx) {
+    if (curBase !== fromIdx) setBase(fromIdx);
+    pointOverlay(toIdx);
+  }
   const api = {
     setValue(v, { settle = false } = {}) {
-      // A direct set supersedes any in-flight glide: the single tick loop
-      // always eases toward the latest `target`.
+      fadeToken++; // a direct set supersedes any in-flight fade
       value = target = Math.max(0, Math.min(MAX_VALUE, v));
       applyEngine(value);
       paint(value);
-      commitSurvey(Math.round(value / STOP)); // apply immediately (no glide)
       if (settle) onSettle?.(value);
     },
     getValue: () => target,
@@ -324,38 +328,51 @@ export function initSpectrumBar(aladin, { onSettle, collapsed = false, onCollaps
       const i = SURVEYS.findIndex(s => s.id === id);
       return i >= 0 ? i * STOP : null;
     },
-    // Kept for the flight callers' API. Prefetching the destination as a
-    // hidden overlay is deliberately NOT done: this engine removes layers
-    // asynchronously, so an overlay of the destination survey could still be
-    // present when the landing commits it as the base — and the engine
-    // refuses base == overlay, which is the exact freeze this module now
-    // avoids. Landing cold (~1 s, masked by the flight) is the safe trade.
-    primeSurvey() { /* no-op: see above */ },
-    fadeToSurvey(id) {
+    // Create the destination survey as an INVISIBLE (opacity 0) blend
+    // overlay so the engine starts fetching its tiles now — flights call
+    // this at launch, then fadeToSurvey later finds the layer warm and the
+    // reveal is a pure opacity ramp instead of a cold tile load.
+    primeSurvey(id) {
+      const i = SURVEYS.findIndex(s => s.id === id);
+      if (i < 0 || i === Math.round(target / STOP)) return;
+      fadeToken++; // priming supersedes any fade already in flight
+      pinBlendPair(Math.round(target / STOP), i);
+      try { overlayLayer?.setOpacity?.(0); } catch (err) { /* non-fatal */ }
+    },
+    fadeToSurvey(id, ms = 1800) {
       const i = SURVEYS.findIndex(s => s.id === id);
       if (i < 0) return;
       const toV = i * STOP;
       const fromV = target;
       // The wavelength change gets its crystalline sweep — rising toward
       // gamma (index 0), falling toward radio.
-      if (Math.round(fromV / STOP) !== i && motionOK()) spectrumShift(toV < fromV);
-      showChip();
-      // Commit the selection NOW — the survey swap, permalink, saved position
-      // and FoV floor must not wait on the cosmetic thumb glide. That glide is
-      // frame-paced and crawls while the engine is busy, so deferring the
-      // commit to it left the sky (and the hash) a beat behind the tap. The
-      // thumb still eases over for feedback; when motion is reduced it snaps.
-      target = toV;
-      commitSurvey(i);
-      scheduleChipHide();
-      onSettle?.(toV);
-      if (motionOK()) {
-        animate();
-      } else {
-        value = toV;
-        applyEngine(value);
-        paint(value);
+      if (Math.round(fromV) !== toV && motionOK()) spectrumShift(toV < fromV);
+      // Taps and keyboard steps show the chip before fading; every exit
+      // from here must schedule its retirement or it lingers forever.
+      if (Math.round(fromV) === toV || !motionOK()) {
+        api.setValue(toV, { settle: true });
+        scheduleChipHide();
+        return;
       }
+      const token = ++fadeToken;
+      // Pin the pair: the on-screen survey stays the base, the destination
+      // is the one incoming layer (a no-op if primeSurvey already did this).
+      pinBlendPair(Math.round(fromV / STOP), i);
+      const t0 = performance.now();
+      const step = (t) => {
+        // A user grab or another set/fade takes over instantly.
+        if (token !== fadeToken || dragging) return;
+        const u = Math.min(1, (t - t0) / ms);
+        try { overlayLayer?.setOpacity?.(smoothstep(u)); } catch (err) { /* non-fatal */ }
+        // The thumb glides along for feedback; the engine pair stays pinned.
+        value = target = fromV + (toV - fromV) * smoothstep(u);
+        paint(value);
+        if (u < 1) { requestAnimationFrame(step); return; }
+        // Fully opaque: swapping the base underneath is invisible.
+        api.setValue(toV, { settle: true });
+        scheduleChipHide();
+      };
+      requestAnimationFrame(step);
     }
   };
   return api;
