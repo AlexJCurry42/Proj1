@@ -35,7 +35,7 @@
       "dec": 41.269167,
       "fov_deg": 3.0,
       "caption": "Our nearest large galactic neighbor, about 2.5 million light-years away and on a slow collision course with the Milky Way. It's the most distant object easily visible to the naked eye.",
-      "survey": "P/PanSTARRS/DR1/color-z-zg-g"
+      "survey": "P/DSS2/color"
     },
     {
       "id": "pillars",
@@ -80,7 +80,7 @@
       "dec": 24.116667,
       "fov_deg": 2.5,
       "caption": "The Seven Sisters — the sky's most famous star cluster, about 444 light-years away. Its hot young blue stars are drifting through a chance cloud of dust that scatters their light into wispy blue reflection nebulae.",
-      "survey": "P/PanSTARRS/DR1/color-z-zg-g"
+      "survey": "P/DSS2/color"
     },
     {
       "id": "horsehead",
@@ -134,7 +134,7 @@
       "dec": -20.837222,
       "fov_deg": 0.6,
       "caption": "The nearest bright planetary nebula, about 650 light-years away — often called the 'Eye of God'. Its comet-like knots, each the size of a solar system, number in the tens of thousands.",
-      "survey": "P/PanSTARRS/DR1/color-z-zg-g"
+      "survey": "P/DSS2/color"
     },
     {
       "id": "lagoon",
@@ -295,7 +295,7 @@
       "ra": 148.97,
       "dec": 69.27,
       "fov_deg": 1.6,
-      "survey": "P/PanSTARRS/DR1/color-z-zg-g",
+      "survey": "P/DSS2/color",
       "caption": "A gravitational duel: grand-design spiral M81 and its neighbor M82, ignited into a starburst by their last close pass."
     },
     {
@@ -304,7 +304,7 @@
       "ra": 170.06,
       "dec": 13.2,
       "fov_deg": 1.5,
-      "survey": "P/PanSTARRS/DR1/color-z-zg-g",
+      "survey": "P/DSS2/color",
       "caption": "Three spiral galaxies in one field, each tilted differently — edge-on, inclined, and face-on — 35 million light-years away."
     },
     {
@@ -313,7 +313,7 @@
       "ra": 187.0,
       "dec": 13.0,
       "fov_deg": 3.0,
-      "survey": "P/PanSTARRS/DR1/color-z-zg-g",
+      "survey": "P/DSS2/color",
       "caption": "A graceful arc of galaxies through the heart of the Virgo Cluster — our local supercluster's downtown."
     },
     {
@@ -349,7 +349,7 @@
       "ra": 34.75,
       "dec": 57.13,
       "fov_deg": 1.6,
-      "survey": "P/PanSTARRS/DR1/color-z-zg-g",
+      "survey": "P/DSS2/color",
       "caption": "Twin young star clusters born together a few thousand years apart, a naked-eye smudge known since antiquity."
     },
     {
@@ -412,7 +412,7 @@
       "ra": 11.888,
       "dec": -25.288,
       "fov_deg": 0.5,
-      "survey": "P/PanSTARRS/DR1/color-z-zg-g",
+      "survey": "P/DSS2/color",
       "caption": "The dusty 'Silver Coin' — a starburst galaxy forming stars so furiously it drives a superwind out of its core."
     },
     {
@@ -458,7 +458,7 @@
       "dec": 30.66022,
       "fov_deg": 1.5,
       "caption": "The third-largest galaxy in our Local Group, 2.7 million light-years away — a face-on spiral so loosely wound its arms dissolve into swarms of star-forming regions. One of them, NGC 604, is among the largest stellar nurseries known, forty times the Orion Nebula's size.",
-      "survey": "P/PanSTARRS/DR1/color-z-zg-g"
+      "survey": "P/DSS2/color"
     },
     {
       "id": "m83",
@@ -467,7 +467,7 @@
       "dec": -29.86542,
       "fov_deg": 0.4,
       "caption": "A barred spiral 15 million light-years away that faces us square-on, its arms threaded with pink star-forming knots. It is one of the most prolific supernova factories known — six observed in the last century alone.",
-      "survey": "P/PanSTARRS/DR1/color-z-zg-g"
+      "survey": "P/DSS2/color"
     },
     {
       "id": "needle",
@@ -512,7 +512,7 @@
       "dec": 60.15392,
       "fov_deg": 0.35,
       "caption": "No galaxy has produced more observed supernovae — ten in the last century, versus roughly one per century expected in the Milky Way. It sits 25 million light-years away, dimmed and reddened behind the dust of our own galactic plane.",
-      "survey": "P/PanSTARRS/DR1/color-z-zg-g"
+      "survey": "P/DSS2/color"
     },
     {
       "id": "california",
@@ -548,7 +548,7 @@
       "dec": 68.16956,
       "fov_deg": 0.6,
       "caption": "A rare BLUE nebula: 1,300 light-years away, the young star HD 200775 lights the surrounding dust the way a streetlamp lights fog — reflected starlight, not glowing gas, unfolding in petals like its namesake flower.",
-      "survey": "P/PanSTARRS/DR1/color-z-zg-g"
+      "survey": "P/DSS2/color"
     },
     {
       "id": "crescent",
@@ -575,7 +575,7 @@
       "dec": -36.10272,
       "fov_deg": 1.2,
       "caption": "Four glowing toe-pads stamped on the Scorpius Milky Way, 5,500 light-years away — one of our galaxy's most active nurseries of MASSIVE stars, holding tens of thousands of newborn suns behind its red hydrogen glow.",
-      "survey": "P/allWISE/color"
+      "survey": "P/DSS2/color"
     },
     {
       "id": "warandpeace",
@@ -584,7 +584,7 @@
       "dec": -34.20133,
       "fov_deg": 1.1,
       "caption": "Home to Pismis 24, a cluster containing some of the most massive stars ever weighed — close to the theoretical limit where a star's own light tears it apart. Their radiation sculpts the surrounding cloud, 8,000 light-years away, into lobes that reminded surveyors of a dove and a skull.",
-      "survey": "P/allWISE/color"
+      "survey": "P/DSS2/color"
     },
     {
       "id": "elephantstrunk",
@@ -620,7 +620,7 @@
       "dec": -7.217,
       "fov_deg": 2.0,
       "caption": "A cackling profile in profile — chin, nose and brow — 900 light-years away, shining not by its own light but by REFLECTED light from brilliant Rigel next door. The dust grains scatter blue best, giving the Witch her ghostly pallor.",
-      "survey": "P/PanSTARRS/DR1/color-z-zg-g"
+      "survey": "P/DSS2/color"
     },
     {
       "id": "coalsack",
@@ -665,7 +665,7 @@
       "dec": -6.27003,
       "fov_deg": 0.5,
       "caption": "One of the richest open clusters known: nearly 3,000 stars packed so tightly, 6,200 light-years away, that it almost passes for a globular. Its brightest members form the flying-wedge 'V' of migrating ducks that named it.",
-      "survey": "P/PanSTARRS/DR1/color-z-zg-g"
+      "survey": "P/DSS2/color"
     },
     {
       "id": "jewelbox",
