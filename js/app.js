@@ -54,6 +54,20 @@ async function main() {
   // tiny, but strictly off the boot path.
   (window.requestIdleCallback || ((fn) => setTimeout(fn, 4000)))(() => primeConstellations());
 
+  // One-time unstick: the permalink hash records the current survey and is
+  // rewritten on every pan/zoom (js/viewstate.js), and the band is also saved
+  // to prefs. A broken survey-switch build could leave BOTH pinned to a band
+  // that is black at the viewed spot — radio (NVSS) and gamma (Fermi) are
+  // near-empty sky, and SDSS/DESI have coverage gaps — so every reload booted
+  // to a black sphere with no obvious way out. Once, drop that hash and reset
+  // the saved band to the reliably all-sky 2MASS default; the boot's first
+  // view change writes a fresh, correct hash from there.
+  if (readPref('unstick104', false) !== true) {
+    writePref('unstick104', true);
+    writePref('spectrum', DEFAULT_VALUE);
+    if (location.hash) history.replaceState(null, '', location.pathname + location.search);
+  }
+
   // Spectrum position priority: shared link > saved position > legacy survey
   // preference > default.
   const linkedView = parseViewHash();
@@ -66,10 +80,17 @@ async function main() {
   // persists exactly as before. A shared view link still wins outright.
   const migrated2mass = readPref('default2mass', false) === true;
   if (!migrated2mass) writePref('default2mass', true);
-  const initialSpectrum = linkedIdx >= 0 ? linkedIdx * STOP
+  let initialSpectrum = linkedIdx >= 0 ? linkedIdx * STOP
     : !migrated2mass ? DEFAULT_VALUE
       : typeof prefSpectrum === 'number' ? Math.max(0, Math.min(MAX_VALUE, prefSpectrum))
         : legacyIdx >= 0 ? legacyIdx * STOP : DEFAULT_VALUE;
+  // Never OPEN on a band that is black across most of the sky. Radio (NVSS)
+  // and gamma (Fermi) are near-empty except at their handful of sources, so
+  // booting into one reads as a broken app; fall back to the all-sky 2MASS
+  // default. The band stays one tap away on the rail — this only changes what
+  // the sky opens ON, never what the user can select.
+  const bootId = SURVEYS[Math.round(initialSpectrum / STOP)].id;
+  if (bootId === 'P/NVSS' || bootId === 'P/Fermi/color') initialSpectrum = DEFAULT_VALUE;
   const startSurvey = SURVEYS[Math.round(initialSpectrum / STOP)].id;
 
   // View mode: 'globe' looks AT the celestial sphere (orthographic, ≤180°);
