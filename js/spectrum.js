@@ -1,16 +1,16 @@
 // Project Planetarium — the spectrum rail. Every imagery survey on one vertical
 // track at the top-right, ordered by wavelength: gamma-ray at the top, radio
-// at the bottom. The rail selects one survey; the engine renders the switch.
+// at the bottom. The rail selects one survey; a blend overlay renders it.
 //
 // Interaction model:
 //  - the thumb critically-damps toward the pointer (eased glide, never a
 //    jump — taps and keyboard steps travel there smoothly),
-//  - the survey is COMMITTED once the rail settles on a stop, via a single
-//    aladin.setBaseImageLayer. The engine applies a base swap asynchronously
-//    and refuses to set the base to a survey it is already showing as an
-//    overlay; the old per-frame base+overlay blend fought both and could
-//    leave the sky frozen on the boot survey, so imagery is no longer
-//    touched mid-drag — only on settle.
+//  - the survey is COMMITTED once the rail settles on a stop (imagery is not
+//    touched mid-drag), and the commit rides a single overlay above a FIXED
+//    base — never the base layer itself. The engine applies a base swap
+//    asynchronously and refuses base == overlay; touching the base directly
+//    either froze the sky or (cancelling the boot load) blacked it out
+//    entirely. See commitSurvey for the full account.
 // Custom pointer-driven slider (native vertical range inputs are unreliable
 // across engines) with full keyboard support: arrows step between surveys,
 // Home/End jump to the spectrum's ends.
@@ -39,7 +39,7 @@ export const DEFAULT_VALUE = SURVEYS.findIndex(s => s.name === '2MASS') * STOP;
 
 const PAD = 15; // px of thumb-travel inset at each end of the track
 
-export function initSpectrumBar(aladin, { onSettle, collapsed = false, onCollapse } = {}) {
+export function initSpectrumBar(aladin, { onSettle, collapsed = false, onCollapse, baseSurvey } = {}) {
   const rail = document.getElementById('spectrum-rail');
   const track = document.getElementById('spectrum-track');
   const thumb = document.getElementById('spectrum-thumb');
@@ -63,22 +63,59 @@ export function initSpectrumBar(aladin, { onSettle, collapsed = false, onCollaps
   let raf = null;
   let settlePending = false;
 
-  // Survey selection is a single authoritative setBaseImageLayer, applied
-  // when the rail settles on a stop and deduped so a stop is applied once.
-  // The previous base+overlay cross-fade fought two engine facts: a base
-  // swap lands asynchronously (~1 s), and the engine REFUSES to set the base
-  // to a survey that is currently loaded as the blend overlay. The fade
-  // pinned base=from + overlay=to, then set base=to while `to` was the
-  // overlay — the engine ignored it, this module's own base bookkeeping
-  // desynced from the engine's real base, and the sky froze on the boot
-  // survey wherever the rail was dragged. One committed swap per settle
-  // sidesteps both.
+  // Survey selection NEVER touches the base layer. The base stays the boot
+  // survey for the whole session — a permanent, already-loaded floor — and
+  // the CURRENT selection rides on one overlay ('dsa-blend') above it.
+  //
+  // Why: this engine applies a base swap asynchronously, and (fatally for the
+  // old code) REFUSES to set the base to a survey that is already loaded as
+  // the blend overlay. The previous cross-fade pinned base=from + overlay=to
+  // then set base=to while `to` was the overlay → ignored, bookkeeping
+  // desynced, and the sky froze on the boot survey (the on-device report).
+  // The first repair swung the other way — setBaseImageLayer directly — which
+  // cancelled the constructor's in-flight base load at boot and left NO base:
+  // a fully black sky. Keeping the base fixed and layering the selection on
+  // top sidesteps both: no base==overlay conflict, and the base is always
+  // visible underneath, so a still-loading selection reveals the floor rather
+  // than black. Selecting the base survey itself just removes the overlay.
+  const BASE_ID = baseSurvey; // set once by the constructor; never reassigned
   let appliedIdx = -1;
+  let overlay = null;
+  let fadeRaf = null;
+  function fadeOverlay(toOpacity, removeAtEnd) {
+    cancelAnimationFrame(fadeRaf);
+    let from = 0;
+    try { from = overlay?.getOpacity?.() ?? 0; } catch (err) { from = 0; }
+    const dur = motionOK() ? 450 : 0;
+    const t0 = performance.now();
+    const step = (t) => {
+      const u = dur ? Math.min(1, (t - t0) / dur) : 1;
+      try { overlay?.setOpacity?.(from + (toOpacity - from) * u); } catch (err) { /* layer gone */ }
+      if (u < 1) { fadeRaf = requestAnimationFrame(step); return; }
+      if (removeAtEnd) {
+        try { aladin.removeImageLayer?.('dsa-blend'); } catch (err) { /* already gone */ }
+        overlay = null;
+      }
+    };
+    fadeRaf = requestAnimationFrame(step);
+  }
   function commitSurvey(idx) {
     idx = Math.max(0, Math.min(SURVEYS.length - 1, idx));
     if (idx === appliedIdx) return;
     appliedIdx = idx;
-    try { aladin.setBaseImageLayer(SURVEYS[idx].id); } catch (err) { /* transient engine state; the next settle re-commits */ }
+    if (SURVEYS[idx].id === BASE_ID) {
+      // The selection IS the base survey: fade the overlay away to reveal it.
+      if (overlay) fadeOverlay(0, true);
+      return;
+    }
+    try {
+      overlay = aladin.setOverlayImageLayer(SURVEYS[idx].id, 'dsa-blend')
+        || aladin.getOverlayImageLayer?.('dsa-blend') || overlay;
+      // Start transparent so the base floor shows while the new tiles load —
+      // an un-loaded overlay draws nothing, never a black cover.
+      overlay?.setOpacity?.(0);
+    } catch (err) { overlay = null; }
+    fadeOverlay(1, false);
   }
 
   // The label chip is feedback, not furniture: visible while the user is
