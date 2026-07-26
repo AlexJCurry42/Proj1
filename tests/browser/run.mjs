@@ -461,7 +461,14 @@ await scenario('horizon lock: never steers mid-drag; budgeted leveling after', a
   await page.waitForTimeout(3200);
   const rotAfter = await page.evaluate(() => window.__aladin.getRotation());
   assert(duringDrag === 0, `lock issued ${duringDrag} rotations during the drag`);
-  assert(Math.abs(rotAfter - rotBefore) < 36, `post-swipe leveling exceeded budget: ${Math.abs(rotAfter - rotBefore).toFixed(1)}°`);
+  // Leveling must be BOUNDED, not runaway. The per-episode budget scales with
+  // the tilt (js/horizon.js: max(28, min(120, |err|*1.1))), and this swipe
+  // tilts the view enough that a full, correct level is ~37° — so a 36° cap
+  // sat just under the scenario's own legitimate budget and flaked whenever
+  // timing landed on the high side. 50° still fails hard on a runaway level
+  // (the skip-zone/budget bug this guards produced 100°+), while accepting a
+  // single correct leveling episode.
+  assert(Math.abs(rotAfter - rotBefore) < 50, `post-swipe leveling exceeded budget: ${Math.abs(rotAfter - rotBefore).toFixed(1)}°`);
   assert(page.__errors.length === 0, `page errors: ${page.__errors.join('; ')}`);
   await ctx.close();
 });
