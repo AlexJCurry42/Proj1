@@ -277,8 +277,9 @@ async function main() {
   // a version behind — registration from here once left phones running new
   // HTML against stale CSS/JS with no way to converge.
 
-  // Everything interactive is wired: retire the boot screen (tiles keep
-  // streaming in behind it regardless — the sky is usable now).
+  // Everything interactive is wired. This marks the chrome ready; the boot
+  // screen actually lifts once the sky has also begun to paint (bootbar.js),
+  // so the cover masks the initial tile-in instead of vanishing over black.
   window.__boot?.done();
 }
 
@@ -330,6 +331,6 @@ function showFatalError(message, title = 'The sky engine failed to start') {
 
 initDebugConsole();
 main().catch(err => {
-  window.__boot?.done(); // the banner (z:150) sits below the boot screen (z:400)
+  window.__boot?.done(true); // force: no sky is coming, and the banner (z:150) sits below the boot screen (z:400)
   showFatalError(err.message);
 });

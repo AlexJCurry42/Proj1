@@ -63,7 +63,7 @@ html, body{
   background: #000;
   color: var(--text-primary);
   font-family: var(--font);
-  font-size: 15px;
+  font-size: 14px;
   letter-spacing: -0.01em;
   overflow: hidden;
   overscroll-behavior: none;
@@ -120,8 +120,9 @@ body.redlight #overlay-canvas{ filter: sepia(1) saturate(6) hue-rotate(-50deg) b
 }
 
 .glass-btn{
+  position: relative;
   display: inline-flex; align-items: center; justify-content: center;
-  width: 40px; height: 40px; flex-shrink: 0;
+  width: 36px; height: 36px; flex-shrink: 0;
   border-radius: 999px; border: 0.5px solid var(--hairline);
   background: var(--sheen), var(--material);
   -webkit-backdrop-filter: var(--blur);
@@ -131,13 +132,18 @@ body.redlight #overlay-canvas{ filter: sepia(1) saturate(6) hue-rotate(-50deg) b
   color: var(--text-primary);
   transition: transform 0.15s ease, background 0.2s ease;
 }
+/* The chrome reads ~10% smaller than it did, but the TAP target must not:
+   this transparent halo extends the clickable area 4px past the visible
+   glass on every side (a click on an overflowing pseudo-element still
+   counts as a click on its button), so a 36px button stays a 44px target. */
+.glass-btn::after{ content: ""; position: absolute; inset: -4px; border-radius: inherit; }
 .glass-btn:active{ transform: scale(0.92); }
 .glass-btn[aria-pressed="true"]{ background: rgba(255, 69, 58, 0.28); border-color: rgba(255, 69, 58, 0.5); }
 .glass-btn.small{ width: 30px; height: 30px; }
 .glass-btn.small .icon{ width: 14px; height: 14px; }
 
 .icon{
-  width: 18px; height: 18px;
+  width: 16px; height: 16px;
   fill: none; stroke: currentColor; stroke-width: 1.8;
   stroke-linecap: round; stroke-linejoin: round;
 }
@@ -249,8 +255,8 @@ body.redlight #overlay-canvas{ filter: sepia(1) saturate(6) hue-rotate(-50deg) b
 
 /* "Show me something cool": the serendipity button */
 #cool-btn{
-  width: auto; padding: 0 14px; gap: 7px;
-  font-size: 13.5px; font-weight: 600; white-space: nowrap;
+  width: auto; padding: 0 13px; gap: 6px;
+  font-size: 12.5px; font-weight: 600; white-space: nowrap;
 }
 #cool-btn .icon{ width: 15px; height: 15px; color: #ffd60a; }
 #cool-btn:active .icon{ transform: rotate(72deg) scale(1.2); transition: transform 0.3s var(--spring); }
@@ -270,7 +276,7 @@ body.redlight #overlay-canvas{ filter: sepia(1) saturate(6) hue-rotate(-50deg) b
   position: fixed; z-index: 44;
   top: calc(64px + var(--safe-top));
   left: calc(12px + var(--safe-left));
-  width: 240px;
+  width: 224px;
   max-height: calc(100vh - 170px);
   display: flex; flex-direction: column;
   overflow: hidden;
@@ -288,7 +294,7 @@ body.redlight #overlay-canvas{ filter: sepia(1) saturate(6) hue-rotate(-50deg) b
   -webkit-overflow-scrolling: touch;
   /* Fixed content width: while the fold animates, rows slide behind the
      clipped edge instead of reflowing and re-ellipsizing mid-animation. */
-  min-width: 216px;
+  min-width: 200px;
   transition: opacity 0.22s ease;
 }
 #layer-dock-list::-webkit-scrollbar{ width: 0; }
@@ -552,11 +558,13 @@ input[type="range"]::-moz-range-thumb{
 
 /* Shared fold affordance: the chevron that collapses rail and dock alike */
 .fold-btn{
-  width: 40px; height: 40px; flex-shrink: 0;
+  position: relative;
+  width: 36px; height: 36px; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
   background: transparent; border: none; border-radius: 999px;
   color: var(--text-secondary); cursor: pointer;
 }
+.fold-btn::after{ content: ""; position: absolute; inset: -4px; } /* keep the 44px tap target */
 .fold-btn .icon{
   width: 15px; height: 15px;
   transition: transform 0.42s var(--spring);
@@ -665,8 +673,8 @@ input[type="range"]::-moz-range-thumb{
   display: flex; align-items: center; gap: 8px;
 }
 #skynow-btn{
-  width: auto; padding: 0 16px; gap: 8px;
-  font-size: 14px; font-weight: 600;
+  width: auto; padding: 0 14px; gap: 7px;
+  font-size: 13px; font-weight: 600;
 }
 #gyro-toggle[aria-pressed="true"]{
   background: rgba(10, 132, 255, 0.30);

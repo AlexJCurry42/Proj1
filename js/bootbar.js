@@ -24,16 +24,39 @@ window.__boot = (() => {
     shown = Math.min(target, shown + Math.max(0.35, (target - shown) * 0.10));
     fill.style.width = shown + '%';
   }, 120);
+
+  // The screen lifts only when BOTH conditions hold: the chrome is wired
+  // (app.js calls done()) AND the sky has actually begun to paint. The old
+  // behaviour retired on wiring alone — with a warm wasm cache the engine
+  // came up in a blink, the cover vanished, and the user watched the sky
+  // tile in from black for a second. The engine fires AL:Resource.fetched on
+  // document as it pulls the survey's properties and first tiles; the first
+  // of those means real sky is arriving, so hold the cover a beat past it to
+  // mask the tile-in, then lift.
+  let chromeReady = false, skyPainting = false, retired = false;
+  function retire() {
+    if (retired || !chromeReady || !skyPainting) return;
+    retired = true;
+    if (timer) { clearInterval(timer); timer = null; }
+    fill.style.width = '100%';
+    const el = document.getElementById('boot-screen');
+    el.classList.add('boot-out');
+    setTimeout(() => el.remove(), 500);
+  }
+  // This listener is registered before the engine (or even app.js) runs, so
+  // it can't miss the first fetch. One is enough — remove it immediately.
+  document.addEventListener('AL:Resource.fetched', function onFetch() {
+    document.removeEventListener('AL:Resource.fetched', onFetch);
+    setTimeout(() => { skyPainting = true; retire(); }, 700);
+  });
+  // Ceiling: a blocked or offline CDN never paints a sky — the cover must
+  // still lift so it can never trap taps behind a full-screen div.
+  setTimeout(() => { skyPainting = true; retire(); }, 4500);
+
   return {
     to(p) { target = Math.max(target, p); },
-    done() {
-      if (!timer) return;
-      clearInterval(timer);
-      timer = null;
-      fill.style.width = '100%';
-      const el = document.getElementById('boot-screen');
-      el.classList.add('boot-out');
-      setTimeout(() => el.remove(), 500);
-    }
+    // force lifts immediately (the fatal-error path: there is no sky coming,
+    // and the error banner sits BELOW the cover, so it must come off now).
+    done(force) { chromeReady = true; if (force) skyPainting = true; retire(); }
   };
 })();
