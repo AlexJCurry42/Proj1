@@ -44,10 +44,10 @@
    "source": "d3-celestial (Stellarium sky culture)"
   },
   "descriptions.json": {
-   "bytes": 164950,
-   "refreshed": "2026-07-26T23:53:43+00:00",
-   "run": "30226032362",
-   "sha256": "f79dbc101893f30f6a421ff25c64a50d92c4ea505248f20d1565fc8b50547daf",
+   "bytes": 165181,
+   "refreshed": "2026-08-03T06:37:28+00:00",
+   "run": "30790462557",
+   "sha256": "99eb5b617fd0b49fd8d6bc47d6eeeae7148d19ffee270d4959c48305cfcd731d",
    "source": "English Wikipedia REST lead extracts (CC BY-SA 4.0), tools/fetch_descriptions.py"
   },
   "desi_web.bin": {
