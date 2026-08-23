@@ -73,9 +73,9 @@
   },
   "satellites_tle.txt": {
    "bytes": 152,
-   "refreshed": "2026-08-22T05:02:54+00:00",
-   "run": "32553312877",
-   "sha256": "0d952d43fc77483fa04bd2bf7c74846c91cd4e1411e2087fd8a787921cab6a1d",
+   "refreshed": "2026-08-23T05:04:37+00:00",
+   "run": "32619440571",
+   "sha256": "423a475b91d51ddd6ec53ec3fed1e0ce3c839b14124703206424410f12cdc165",
    "source": "https://celestrak.org/NORAD/elements/gp.php?GROUP=stations&FORMAT=tle"
   }
  }
