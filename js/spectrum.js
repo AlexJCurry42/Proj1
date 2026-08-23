@@ -99,24 +99,58 @@ export function initSpectrumBar(aladin, { onSettle, collapsed = false, onCollaps
   // settles (commitSurvey), so a drag previews the label live but never
   // fires a burst of colliding async base swaps. While between two stops the
   // name reads "A + B" so the user sees which pair they are sliding across.
+  // Every write here is deduped against what is already on screen. The label
+  // only changes a handful of times across a whole glide, but this runs once
+  // per frame — blindly rewriting two text nodes, eight dot classes and two
+  // ARIA attributes every frame put ~13 DOM mutations against the main thread
+  // exactly while the engine was decoding a new survey's tiles.
+  let lastNear = -1, lastLabel = null, lastValueNow = null;
   function applyEngine(v) {
     const idx = Math.min(Math.floor(v / STOP), SURVEYS.length - 2);
     const frac = (v - idx * STOP) / STOP;
-    const overIdx = idx + 1;
     const near = Math.round(v / STOP);
-    nameEl.textContent = (frac > 0.18 && frac < 0.82)
-      ? `${SURVEYS[idx].name} + ${SURVEYS[overIdx].name}`
+    const label = (frac > 0.18 && frac < 0.82)
+      ? `${SURVEYS[idx].name} + ${SURVEYS[idx + 1].name}`
       : SURVEYS[near].name;
-    bandEl.textContent = SURVEYS[near].band;
-    dots.forEach((d, i) => d.classList.toggle('active', i === near));
-    track.setAttribute('aria-valuenow', String(Math.round(v)));
-    track.setAttribute('aria-valuetext', nameEl.textContent);
+    if (label !== lastLabel) {
+      lastLabel = label;
+      nameEl.textContent = label;
+      track.setAttribute('aria-valuetext', label);
+    }
+    if (near !== lastNear) {
+      if (lastNear >= 0) dots[lastNear].classList.remove('active');
+      dots[near].classList.add('active');
+      lastNear = near;
+      bandEl.textContent = SURVEYS[near].band;
+    }
+    const valueNow = String(Math.round(v));
+    if (valueNow !== lastValueNow) {
+      lastValueNow = valueNow;
+      track.setAttribute('aria-valuenow', valueNow);
+    }
+  }
+
+  // getBoundingClientRect() forces a synchronous layout, and the drag/glide
+  // loop called it EVERY frame — the single most expensive thing on the rail's
+  // hot path, and it competes with the engine's own work during a swap. The
+  // track's geometry only moves on resize, orientation change and the collapse
+  // fold, so read it once and invalidate on exactly those.
+  let rectCache = null, paintedY = null;
+  function trackRect() {
+    if (!rectCache) rectCache = track.getBoundingClientRect();
+    return rectCache;
+  }
+  function invalidateRect() {
+    rectCache = null;
+    paintedY = null; // geometry moved: the next paint must write even if y matches
   }
 
   function paint(v) {
-    const rect = track.getBoundingClientRect();
+    const rect = trackRect();
     const travel = rect.height - 2 * PAD;
     const y = PAD + (v / MAX_VALUE) * travel;
+    if (y === paintedY) return; // the thumb has not moved: nothing to write
+    paintedY = y;
     thumb.style.top = `${y}px`;
     chip.style.top = `${rect.top + y}px`;
   }
@@ -146,14 +180,14 @@ export function initSpectrumBar(aladin, { onSettle, collapsed = false, onCollaps
   const animate = () => { if (!raf) raf = requestAnimationFrame(tick); };
 
   function valueFromPointer(clientY) {
-    const rect = track.getBoundingClientRect();
+    const rect = trackRect();
     const travel = rect.height - 2 * PAD;
     const t = (clientY - rect.top - PAD) / travel;
     return Math.max(0, Math.min(MAX_VALUE, t * MAX_VALUE));
   }
 
   function thumbClientY() {
-    const rect = track.getBoundingClientRect();
+    const rect = trackRect();
     return rect.top + PAD + (value / MAX_VALUE) * (rect.height - 2 * PAD);
   }
 
@@ -190,6 +224,7 @@ export function initSpectrumBar(aladin, { onSettle, collapsed = false, onCollaps
     e.preventDefault();
     try { track.setPointerCapture(e.pointerId); } catch (err) { /* synthetic events */ }
     startX = e.clientX; startY = e.clientY;
+    invalidateRect(); // one fresh read per gesture, then cached for its frames
     if (Math.abs(e.clientY - thumbClientY()) <= THUMB_GRAB) {
       gesture = 'drag';
       startDrag(e.clientY);
@@ -243,7 +278,10 @@ export function initSpectrumBar(aladin, { onSettle, collapsed = false, onCollaps
     api.fadeToSurvey(SURVEYS[next].id, 550); // one direct fade, like taps
   });
 
-  window.addEventListener('resize', () => paint(value));
+  window.addEventListener('resize', () => { invalidateRect(); paint(value); });
+  // The chip is position:fixed off the track's viewport rect, so a scroll
+  // moves it even though the track's own box is unchanged.
+  window.addEventListener('scroll', invalidateRect, { passive: true });
 
   // ---- collapse / expand ----
   function setCollapsed(c) {
@@ -254,7 +292,7 @@ export function initSpectrumBar(aladin, { onSettle, collapsed = false, onCollaps
     collapseBtn.setAttribute('aria-label', c ? 'Expand the spectrum control' : 'Collapse the spectrum control');
     onCollapse?.(c);
     // The track's geometry changes as the fold animates: repaint on arrival.
-    if (!c) setTimeout(() => paint(value), 450);
+    if (!c) setTimeout(() => { invalidateRect(); paint(value); }, 450);
   }
   collapseBtn.addEventListener('click', () => setCollapsed(!rail.classList.contains('collapsed')));
   if (collapsed) {
@@ -263,7 +301,7 @@ export function initSpectrumBar(aladin, { onSettle, collapsed = false, onCollaps
     collapseBtn.setAttribute('aria-expanded', 'false');
     collapseBtn.setAttribute('aria-label', 'Expand the spectrum control');
   }
-  rail.querySelector('#spectrum-track').addEventListener('transitionend', () => paint(value));
+  rail.querySelector('#spectrum-track').addEventListener('transitionend', () => { invalidateRect(); paint(value); });
 
   // Programmatic survey selection, used by the "Show me something cool"
   // flights and the tap / keyboard handlers. The thumb GLIDES to the target
