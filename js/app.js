@@ -197,6 +197,9 @@ async function main() {
 
   // One slider, the whole spectrum: settles persist position + permalink.
   spectrum = initSpectrumBar(aladin, {
+    // The survey the constructor put in the BASE layer. The rail never
+    // re-sets the base; it cross-fades overlays above this one.
+    baseSurveyId: startSurvey,
     onSettle: (v) => { writePref('spectrum', v); view.updateHash(); view.applyFovLimits(); },
     // Collapsed by default: menus must not open themselves over the sky on
     // a first visit — the guided tour points them out instead.

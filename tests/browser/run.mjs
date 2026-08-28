@@ -507,6 +507,62 @@ await scenario('spectrum: a multi-stop tap is one direct fade, no intermediate s
   await ctx.close();
 });
 
+// The black flash between bands had exactly one cause: swapping the BASE
+// layer tore the current imagery down, and a base with no tiles paints black.
+// The rail now cross-fades overlays ABOVE a base it never touches, so this
+// asserts the property that makes the transition seamless rather than the
+// pixels (which a sandbox with no tile CDN cannot see).
+await scenario('spectrum: a band change never tears down the base (no black flash)', async () => {
+  const { ctx, page } = await newPage(browser, baseURL);
+  await page.evaluate(() => {
+    const a = window.__aladin;
+    window.__ev = [];
+    const mine = () => new Error().stack.includes('/js/spectrum.js');
+    const ob = a.setBaseImageLayer.bind(a);
+    a.setBaseImageLayer = (...la) => {
+      if (mine()) window.__ev.push(['base', String(la[0]?.id || la[0])]);
+      return ob(...la);
+    };
+    const oo = a.setOverlayImageLayer.bind(a);
+    a.setOverlayImageLayer = (...la) => {
+      if (mine()) window.__ev.push(['add', String(la[1])]);
+      return oo(...la);
+    };
+    if (a.removeImageLayer) {
+      const orm = a.removeImageLayer.bind(a);
+      a.removeImageLayer = (...la) => {
+        if (mine()) window.__ev.push(['remove', String(la[0])]);
+        return orm(...la);
+      };
+    }
+  });
+  await page.click('#spectrum-collapse');
+  await page.waitForTimeout(500);
+  const track = await page.locator('#spectrum-track').boundingBox();
+  // Walk across the spectrum: down to radio, back to gamma, then mid-band.
+  for (const f of [0.94, 0.06, 0.5]) {
+    await page.mouse.click(track.x + track.width / 2, track.y + track.height * f);
+    await page.waitForTimeout(1500);
+  }
+  const ev = await page.evaluate(() => window.__ev);
+
+  const baseCalls = ev.filter((e) => e[0] === 'base').map((e) => e[1]);
+  assert(baseCalls.length === 0,
+    `the rail must never re-set the base layer — that is the black flash: ${baseCalls.join(', ')}`);
+  assert(ev.some((e) => e[0] === 'add'), 'no overlay was ever raised: the rail changed nothing');
+
+  // Bookkeeping sanity: a layer is only ever dropped after its replacement
+  // went up, so the running count must never go negative.
+  let live = 0, low = Infinity;
+  for (const [kind] of ev) {
+    if (kind === 'add') live++;
+    else if (kind === 'remove') { live--; low = Math.min(low, live); }
+  }
+  assert(low >= 0, `dropped more overlays than were raised (count fell to ${low})`);
+  assert(page.__errors.length === 0, `page errors: ${page.__errors.join('; ')}`);
+  await ctx.close();
+});
+
 await scenario('time: playback moves the Moon; Back to now stops and resets', async () => {
   const { ctx, page } = await newPage(browser, baseURL);
   // WebKit CI renders the sky in software, and fast playback re-projects

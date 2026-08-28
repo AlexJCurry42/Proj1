@@ -5,12 +5,13 @@
 // Interaction model:
 //  - the thumb critically-damps toward the pointer (eased glide, never a
 //    jump — taps and keyboard steps travel there smoothly),
-//  - the survey is COMMITTED once the rail settles on a stop, via a single
-//    aladin.setBaseImageLayer. The engine applies a base swap asynchronously
-//    and refuses to set the base to a survey it is already showing as an
-//    overlay; the old per-frame base+overlay blend fought both and could
-//    leave the sky frozen on the boot survey, so imagery is no longer
-//    touched mid-drag — only on settle.
+//  - the survey is COMMITTED once the rail settles on a stop, and it arrives
+//    as a CROSS-FADE: the incoming survey is brought up as an overlay above
+//    whatever is already on screen, and the outgoing layer is dropped only
+//    once the new one is fully opaque. The base is set once by the
+//    constructor and never touched again, which is what keeps a switch from
+//    ever flashing black (see the long note on commitSurvey below).
+//    Imagery is not touched mid-drag — only on settle.
 // Custom pointer-driven slider (native vertical range inputs are unreliable
 // across engines) with full keyboard support: arrows step between surveys,
 // Home/End jump to the spectrum's ends.
@@ -38,8 +39,9 @@ export const MAX_VALUE = (SURVEYS.length - 1) * STOP;
 export const DEFAULT_VALUE = SURVEYS.findIndex(s => s.name === '2MASS') * STOP;
 
 const PAD = 15; // px of thumb-travel inset at each end of the track
+const smoothstep = (t) => t * t * (3 - 2 * t);
 
-export function initSpectrumBar(aladin, { onSettle, collapsed = false, onCollapse } = {}) {
+export function initSpectrumBar(aladin, { onSettle, collapsed = false, onCollapse, baseSurveyId } = {}) {
   const rail = document.getElementById('spectrum-rail');
   const track = document.getElementById('spectrum-track');
   const thumb = document.getElementById('spectrum-thumb');
@@ -63,22 +65,97 @@ export function initSpectrumBar(aladin, { onSettle, collapsed = false, onCollaps
   let raf = null;
   let settlePending = false;
 
-  // Survey selection is a single authoritative setBaseImageLayer, applied
-  // when the rail settles on a stop and deduped so a stop is applied once.
-  // The previous base+overlay cross-fade fought two engine facts: a base
-  // swap lands asynchronously (~1 s), and the engine REFUSES to set the base
-  // to a survey that is currently loaded as the blend overlay. The fade
-  // pinned base=from + overlay=to, then set base=to while `to` was the
-  // overlay — the engine ignored it, this module's own base bookkeeping
-  // desynced from the engine's real base, and the sky froze on the boot
-  // survey wherever the rail was dragged. One committed swap per settle
-  // sidesteps both.
-  let appliedIdx = -1;
+  // ---- survey selection: a cross-fade that can never show black ----
+  //
+  // Why not setBaseImageLayer: swapping the BASE tears the current imagery
+  // down and rebuilds it, so every switch showed the empty sky — black —
+  // until the new survey's tiles arrived. It is also the call the engine
+  // refuses while that survey is loaded as an overlay, and which it silently
+  // DEFERS while any layer is still being queried (see the engine's own
+  // _waitsForLayer / delayedBaseLayerCalledParams): the desync those two
+  // behaviours produced is what froze the rail on the boot survey.
+  //
+  // So the base is set ONCE, by the constructor, and never touched again.
+  // Every selection rides above it as a named overlay. The two properties
+  // that kill the black flash both fall out of that:
+  //   · a base layer missing tiles paints BLACK; an overlay missing tiles is
+  //     TRANSPARENT, so whatever is already on screen shows through it,
+  //   · the outgoing layer is removed only AFTER the incoming one has
+  //     reached full opacity, so there is never a frame with nothing up.
+  // Worst case (the engine refuses the new layer) the picture simply stays
+  // on the survey already showing. It never goes black.
+  const FADE_MS = 620;
+  const bootIdx = SURVEYS.findIndex(s => s.id === baseSurveyId);
+  // -1 would mean 'no stop matches the base', making the base unreachable
+  // and stranding an overlay forever; fall back to the documented default.
+  const baseIdx = bootIdx >= 0 ? bootIdx : Math.round(DEFAULT_VALUE / STOP);
+  let appliedIdx = baseIdx;      // what the rail has committed
+  let liveLayer = null;          // the overlay on screen, or null = base showing
+  let layerSeq = 0;
+  let fadeRaf = null, fadeDone = null;
+
+  function dropLayer(l) {
+    if (!l) return;
+    try { aladin.removeImageLayer(l.name); } catch (err) { /* already gone */ }
+  }
+
+  // Fast-forward any fade in flight: land it on its final opacity and run its
+  // cleanup, so a rapid second tap can never strand a half-faded layer.
+  function settleFade() {
+    if (fadeRaf) { cancelAnimationFrame(fadeRaf); fadeRaf = null; }
+    const done = fadeDone; fadeDone = null;
+    if (done) done();
+  }
+
+  function ramp(layer, from, to, after) {
+    const apply = (o) => { try { layer.setOpacity?.(o); } catch (err) { /* non-fatal */ } };
+    const finish = () => { apply(to); after?.(); };
+    if (!motionOK()) { finish(); return; }
+    apply(from);
+    const t0 = performance.now();
+    fadeDone = finish;
+    const step = (now) => {
+      const t = Math.min(1, (now - t0) / FADE_MS);
+      apply(from + (to - from) * smoothstep(t));
+      if (t < 1) { fadeRaf = requestAnimationFrame(step); return; }
+      fadeRaf = null; fadeDone = null;
+      after?.();
+    };
+    fadeRaf = requestAnimationFrame(step);
+  }
+
   function commitSurvey(idx) {
     idx = Math.max(0, Math.min(SURVEYS.length - 1, idx));
     if (idx === appliedIdx) return;
     appliedIdx = idx;
-    try { aladin.setBaseImageLayer(SURVEYS[idx].id); } catch (err) { /* transient engine state; the next settle re-commits */ }
+    settleFade();
+
+    // Back to the survey the base already holds: fade the overlay off and
+    // drop it. The base underneath is warm, so this is instant and clean.
+    if (idx === baseIdx) {
+      const out = liveLayer;
+      liveLayer = null;
+      if (out) ramp(out.layer, 1, 0, () => dropLayer(out));
+      return;
+    }
+
+    const name = 'dsa-blend-' + (++layerSeq);
+    let layer = null;
+    try {
+      layer = aladin.setOverlayImageLayer(SURVEYS[idx].id, name)
+        || aladin.getOverlayImageLayer?.(name);
+    } catch (err) { layer = null; }
+    if (!layer) {
+      // Engine busy or the survey was rejected: keep the current picture up
+      // (never black) and let the next settle re-commit.
+      appliedIdx = liveLayer ? liveLayer.idx : baseIdx;
+      return;
+    }
+    const prev = liveLayer;
+    liveLayer = { name, layer, idx };
+    // The outgoing layer stays fully opaque beneath until the incoming one
+    // has arrived, then it is removed — never a gap.
+    ramp(layer, 0, 1, () => dropLayer(prev));
   }
 
   // The label chip is feedback, not furniture: visible while the user is
