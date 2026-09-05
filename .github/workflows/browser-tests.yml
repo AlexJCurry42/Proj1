@@ -1,0 +1,56 @@
+# Project Planetarium — browser regression suite: the real app against the
+# real Aladin Lite engine (tests/browser/run.mjs), in headless Chromium AND
+# headless WebKit. WebKit is the closest CI proxy for iOS Safari — the
+# platform the actual user base is on, and where every audio/gesture/CSS
+# bug in this app's history lived while 12 green Chromium scenarios saw
+# nothing. (CI WebKit still isn't an iPhone: the pre-release on-device pass
+# is docs/DEVICE-CHECKLIST.md.)
+# Covers what the unit tests can't: boot budget, lazy layers, flights, the
+# star bloom, the horizon lock, spectrum fades, time-lapse, location consent.
+
+name: Browser tests
+
+on:
+  push:
+    paths:
+      - 'js/**'
+      - 'css/**'
+      - 'index.html'
+      - 'tests/browser/**'
+      - '.github/workflows/browser-tests.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A newer push supersedes an in-flight run of the same branch.
+concurrency:
+  group: browser-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false   # a WebKit-only failure is exactly the signal we want to see whole
+      matrix:
+        engine: [chromium, webkit]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'   # pinned major: the suite is plain ESM + fetch
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ matrix.engine }}-${{ hashFiles('.github/workflows/browser-tests.yml') }}
+      - name: Install Playwright + ${{ matrix.engine }} (pinned — the version the suite is verified against)
+        run: |
+          npm i --no-save playwright@1.56.1
+          npx playwright install --with-deps ${{ matrix.engine }}
+      - name: Run browser regression suite (${{ matrix.engine }})
+        env:
+          BROWSER_ENGINE: ${{ matrix.engine }}
+        run: node tests/browser/run.mjs

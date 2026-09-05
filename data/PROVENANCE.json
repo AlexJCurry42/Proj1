@@ -1,0 +1,82 @@
+{
+ "_comment": "Origin of every Action-refreshed data file: sha256, size, source, refresh time (UTC), workflow run id. Written by data-refresh.yml; entries persist until the file content actually changes.",
+ "files": {
+  "brightstars.json": {
+   "bytes": 242355,
+   "refreshed": "2026-07-19T21:56:58+00:00",
+   "run": "29705253738",
+   "sha256": "4ede1d779a0371bfb41983136649e4da82ccfbe1db33314cb1d3212b100ab38f",
+   "source": "VizieR TAP V/50 (Yale BSC)"
+  },
+  "brightstars_faint.json": {
+   "bytes": 1593324,
+   "refreshed": "2026-07-19T21:56:58+00:00",
+   "run": "29705253738",
+   "sha256": "207b9d77b287da720a87b29788ec59e528b5d583217533bc7690b2bbaf471451",
+   "source": "VizieR TAP I/259 (Tycho-2)"
+  },
+  "constellation_zones.json": {
+   "bytes": 9749,
+   "refreshed": "2026-07-19T21:56:58+00:00",
+   "run": "29705253738",
+   "sha256": "448e153395cde510fde36b5176f04b5fa833488f513cdf927ca5b719d0f8ea69",
+   "source": "VizieR VI/42 (Roman 1987)"
+  },
+  "constellations_borders.json": {
+   "bytes": 47311,
+   "refreshed": "2026-07-19T21:56:58+00:00",
+   "run": "29705253738",
+   "sha256": "d118ffadfe6cc4a76435c969d09f8e6889c54b72c215dd416fb55e4507a39d30",
+   "source": "d3-celestial (Stellarium sky culture)"
+  },
+  "constellations_lines.json": {
+   "bytes": 27136,
+   "refreshed": "2026-07-19T21:56:58+00:00",
+   "run": "29705253738",
+   "sha256": "294f66bef5d5cf50b1e17f16d2efa1d97a15131612c68dd935adef6e7373e13c",
+   "source": "d3-celestial (Stellarium sky culture)"
+  },
+  "constellations_names.json": {
+   "bytes": 50581,
+   "refreshed": "2026-07-19T21:56:58+00:00",
+   "run": "29705253738",
+   "sha256": "ab4ae692027cbc042c0d6791a84456a65eb7c55656107fd00c58ff6e55d4d8b2",
+   "source": "d3-celestial (Stellarium sky culture)"
+  },
+  "descriptions.json": {
+   "bytes": 165181,
+   "refreshed": "2026-08-03T06:37:28+00:00",
+   "run": "30790462557",
+   "sha256": "99eb5b617fd0b49fd8d6bc47d6eeeae7148d19ffee270d4959c48305cfcd731d",
+   "source": "English Wikipedia REST lead extracts (CC BY-SA 4.0), tools/fetch_descriptions.py"
+  },
+  "desi_web.bin": {
+   "bytes": 3200012,
+   "refreshed": "2026-07-25T22:37:55+00:00",
+   "run": "30177712565",
+   "sha256": "46f8f408976591f8dc4dc3bb14d239d92a8239e87edb618e07055c11b5f2243a",
+   "source": "DESI DR1 zpix via NOIRLab Astro Data Lab TAP, tools/fetch_desi_web.py"
+  },
+  "exoplanets_snapshot.csv": {
+   "bytes": 506604,
+   "refreshed": "2026-08-24T07:17:45+00:00",
+   "run": "32700869341",
+   "sha256": "cb528806f8a040a65b4fd96ac4c3a0b1366eb5701c06c0a468aab4ac1dd3307c",
+   "source": "https://exoplanetarchive.ipac.caltech.edu/TAP/sync (pscomppars)"
+  },
+  "ngc_full.json": {
+   "bytes": 551185,
+   "refreshed": "2026-07-26T23:53:43+00:00",
+   "run": "30226032362",
+   "sha256": "4024cc81d944af0a7656ab89f1865941df4e4ce9d229548ba688df4ebcfa01c2",
+   "source": "https://raw.githubusercontent.com/mattiaverga/OpenNGC/master/database_files/NGC.csv"
+  },
+  "satellites_tle.txt": {
+   "bytes": 152,
+   "refreshed": "2026-09-05T08:33:07+00:00",
+   "run": "33955566454",
+   "sha256": "6a2a2e4deebf3044e2c9b2ca0b6481428ba8e18a8b7470f99a598149147b3d3f",
+   "source": "https://celestrak.org/NORAD/elements/gp.php?GROUP=stations&FORMAT=tle"
+  }
+ }
+}

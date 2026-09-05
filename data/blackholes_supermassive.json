@@ -1,0 +1,478 @@
+{
+  "_comment": "Curated supermassive black holes with direct or well-known mass measurements (stellar/gas dynamics, megamasers, reverberation mapping, EHT imaging). Coordinates are the host nuclei (J2000). 'approx: true' marks masses/distances where the literature spans a range or the method is indirect. The full AGN/quasar population (every one a supermassive black hole) loads separately and progressively from the VizieR Milliquas catalog (see js/blackholes.js).",
+  "objects": [
+    {
+      "name": "Sagittarius A*",
+      "aliases": [
+        "Sgr A*",
+        "Galactic Center black hole"
+      ],
+      "ra": 266.41683,
+      "dec": -29.007811,
+      "mass_solar": 4297000,
+      "approx": false,
+      "distance_kpc": 8.178,
+      "distance_approx": false,
+      "method": "Stellar orbits (GRAVITY interferometry)",
+      "jets": false,
+      "notes": "The supermassive black hole at the center of the Milky Way. Mass and distance from decades of stellar-orbit monitoring; imaged directly by the Event Horizon Telescope in 2022.",
+      "source": "GRAVITY Collaboration 2019/2022, A&A; EHT Collaboration 2022, ApJL 930, L12",
+      "eht_imaged": true,
+      "eht_year": 2022
+    },
+    {
+      "name": "M87*",
+      "aliases": [
+        "Virgo A black hole",
+        "NGC 4486 nucleus"
+      ],
+      "ra": 187.70593,
+      "dec": 12.391123,
+      "mass_solar": 6500000000,
+      "approx": false,
+      "distance_kpc": 16800,
+      "distance_approx": true,
+      "method": "EHT imaging + stellar dynamics",
+      "jets": true,
+      "notes": "Heart of the giant elliptical M87 and the first black hole ever directly imaged (EHT, April 2019). Powers a relativistic jet visible across the electromagnetic spectrum.",
+      "source": "EHT Collaboration 2019, ApJL 875, L1 & L6",
+      "eht_imaged": true,
+      "eht_year": 2019
+    },
+    {
+      "name": "Andromeda's black hole",
+      "aliases": [
+        "M31 nucleus",
+        "NGC 224 nucleus"
+      ],
+      "ra": 10.68471,
+      "dec": 41.26875,
+      "mass_solar": 140000000,
+      "approx": true,
+      "distance_kpc": 765,
+      "distance_approx": false,
+      "method": "Stellar dynamics",
+      "jets": false,
+      "notes": "The nucleus of our nearest large neighbor galaxy hosts a ~140-million-solar-mass black hole inside a distinctive double nucleus of orbiting stars.",
+      "source": "Bender et al. 2005, ApJ 631, 280; Kormendy & Ho 2013",
+      "eht_imaged": false
+    },
+    {
+      "name": "M32 nucleus",
+      "aliases": [
+        "NGC 221 nucleus"
+      ],
+      "ra": 10.67427,
+      "dec": 40.86517,
+      "mass_solar": 2500000,
+      "approx": true,
+      "distance_kpc": 790,
+      "distance_approx": false,
+      "method": "Stellar dynamics",
+      "jets": false,
+      "notes": "A compact elliptical satellite of Andromeda with a black hole of only a few million solar masses — one of the smallest galaxies known to host one.",
+      "source": "van den Bosch & de Zeeuw 2010; Kormendy & Ho 2013",
+      "eht_imaged": false
+    },
+    {
+      "name": "NGC 4258 (M106) nucleus",
+      "aliases": [
+        "M106 maser black hole"
+      ],
+      "ra": 184.73959,
+      "dec": 47.30403,
+      "mass_solar": 39000000,
+      "approx": false,
+      "distance_kpc": 7600,
+      "distance_approx": false,
+      "method": "Water megamaser disk",
+      "jets": false,
+      "notes": "The gold standard of black-hole mass measurement: water masers trace a thin Keplerian gas disk just a fraction of a light-year from the hole.",
+      "source": "Herrnstein et al. 1999/2005; Miyoshi et al. 1995, Nature 373, 127",
+      "eht_imaged": false
+    },
+    {
+      "name": "Sombrero Galaxy black hole",
+      "aliases": [
+        "M104 nucleus",
+        "NGC 4594 nucleus"
+      ],
+      "ra": 189.99763,
+      "dec": -11.62305,
+      "mass_solar": 660000000,
+      "approx": true,
+      "distance_kpc": 9550,
+      "distance_approx": true,
+      "method": "Stellar dynamics",
+      "jets": false,
+      "notes": "Two-thirds of a billion solar masses in the bulge-dominated Sombrero — one of the first galaxies where a central dark mass was detected (1988).",
+      "source": "Kormendy et al. 1996; Kormendy & Ho 2013",
+      "eht_imaged": false
+    },
+    {
+      "name": "Centaurus A black hole",
+      "aliases": [
+        "NGC 5128 nucleus"
+      ],
+      "ra": 201.36506,
+      "dec": -43.01911,
+      "mass_solar": 55000000,
+      "approx": true,
+      "distance_kpc": 3800,
+      "distance_approx": false,
+      "method": "Stellar + gas dynamics",
+      "jets": true,
+      "notes": "The nearest active radio galaxy: its black hole drives jets and giant radio lobes spanning ~10° of the southern sky.",
+      "source": "Cappellari et al. 2009, MNRAS 394, 660",
+      "eht_imaged": false
+    },
+    {
+      "name": "M81 nucleus",
+      "aliases": [
+        "NGC 3031 nucleus",
+        "Bode's Galaxy black hole"
+      ],
+      "ra": 148.88822,
+      "dec": 69.06529,
+      "mass_solar": 65000000,
+      "approx": true,
+      "distance_kpc": 3630,
+      "distance_approx": false,
+      "method": "Gas + stellar dynamics",
+      "jets": false,
+      "notes": "A low-luminosity active nucleus in the showpiece spiral M81, feeding at a trickle compared with quasars.",
+      "source": "Devereux et al. 2003, AJ 125, 1226",
+      "eht_imaged": false
+    },
+    {
+      "name": "M60 black hole",
+      "aliases": [
+        "NGC 4649 nucleus"
+      ],
+      "ra": 190.91659,
+      "dec": 11.55264,
+      "mass_solar": 4500000000,
+      "approx": true,
+      "distance_kpc": 16500,
+      "distance_approx": true,
+      "method": "Stellar dynamics",
+      "jets": false,
+      "notes": "A 4.5-billion-solar-mass giant in the Virgo elliptical M60 — among the most massive dynamically measured holes in the local universe.",
+      "source": "Shen & Gebhardt 2010, ApJ 711, 484",
+      "eht_imaged": false
+    },
+    {
+      "name": "M84 black hole",
+      "aliases": [
+        "NGC 4374 nucleus"
+      ],
+      "ra": 186.26559,
+      "dec": 12.88698,
+      "mass_solar": 850000000,
+      "approx": true,
+      "distance_kpc": 16600,
+      "distance_approx": true,
+      "method": "Gas-disk dynamics",
+      "jets": true,
+      "notes": "A Virgo radio galaxy whose nuclear gas disk, resolved by Hubble, orbits a ~billion-solar-mass hole.",
+      "source": "Walsh, Barth & Sarzi 2010, ApJ 721, 762",
+      "eht_imaged": false
+    },
+    {
+      "name": "NGC 1277 black hole",
+      "aliases": [
+        "Perseus 'overmassive' black hole"
+      ],
+      "ra": 49.96475,
+      "dec": 41.57361,
+      "mass_solar": 4900000000,
+      "approx": true,
+      "distance_kpc": 73000,
+      "distance_approx": true,
+      "method": "Stellar dynamics",
+      "jets": false,
+      "notes": "A compact Perseus-cluster galaxy whose black hole is extraordinarily large for its host — initial estimates reached 1.7×10^10 M☉; later modeling favors ~5×10^9.",
+      "source": "van den Bosch et al. 2012, Nature 491, 729; Walsh et al. 2016",
+      "eht_imaged": false
+    },
+    {
+      "name": "NGC 4889 black hole",
+      "aliases": [
+        "Coma cluster BCG black hole"
+      ],
+      "ra": 195.03384,
+      "dec": 27.97705,
+      "mass_solar": 21000000000,
+      "approx": true,
+      "distance_kpc": 102000,
+      "distance_approx": true,
+      "method": "Stellar dynamics",
+      "jets": false,
+      "notes": "The brightest galaxy of the Coma cluster hosts one of the largest directly measured black holes: best estimate 21 billion solar masses (range 6–37).",
+      "source": "McConnell et al. 2011, Nature 480, 215",
+      "eht_imaged": false
+    },
+    {
+      "name": "NGC 3842 black hole",
+      "aliases": [
+        "Leo cluster (Abell 1367) BCG"
+      ],
+      "ra": 176.00896,
+      "dec": 19.94981,
+      "mass_solar": 9700000000,
+      "approx": true,
+      "distance_kpc": 98000,
+      "distance_approx": true,
+      "method": "Stellar dynamics",
+      "jets": false,
+      "notes": "Nearly ten billion solar masses in the brightest galaxy of the Leo cluster — announced alongside NGC 4889 as a record-setting pair.",
+      "source": "McConnell et al. 2011, Nature 480, 215",
+      "eht_imaged": false
+    },
+    {
+      "name": "Holmberg 15A black hole",
+      "aliases": [
+        "Abell 85 BCG black hole"
+      ],
+      "ra": 10.46029,
+      "dec": -9.30302,
+      "mass_solar": 40000000000,
+      "approx": true,
+      "distance_kpc": 216000,
+      "distance_approx": true,
+      "method": "Stellar dynamics",
+      "jets": false,
+      "notes": "About 40 billion solar masses at the center of Abell 85's giant central galaxy — the largest black hole measured by direct stellar dynamics to date.",
+      "source": "Mehrgan et al. 2019, ApJ 887, 195",
+      "eht_imaged": false
+    },
+    {
+      "name": "NGC 1600 black hole",
+      "aliases": [],
+      "ra": 67.91617,
+      "dec": -5.08614,
+      "mass_solar": 17000000000,
+      "approx": true,
+      "distance_kpc": 64000,
+      "distance_approx": true,
+      "method": "Stellar dynamics",
+      "jets": false,
+      "notes": "A 17-billion-solar-mass hole in a relatively isolated elliptical — evidence that the biggest holes are not confined to rich cluster centers.",
+      "source": "Thomas et al. 2016, Nature 532, 340",
+      "eht_imaged": false
+    },
+    {
+      "name": "TON 618",
+      "aliases": [
+        "Ultramassive quasar black hole"
+      ],
+      "ra": 187.10404,
+      "dec": 31.47714,
+      "mass_solar": 66000000000,
+      "approx": true,
+      "distance_kpc": 3300000,
+      "distance_approx": true,
+      "method": "Broad-line (Hβ) single-epoch estimate",
+      "jets": true,
+      "notes": "A hyperluminous quasar whose broad-line width implies ~66 billion solar masses — among the largest estimates for any black hole. Indirect method; large uncertainty.",
+      "source": "Shemmer et al. 2004; Ge et al. 2019",
+      "eht_imaged": false
+    },
+    {
+      "name": "Cygnus A black hole",
+      "aliases": [
+        "3C 405 nucleus"
+      ],
+      "ra": 299.86816,
+      "dec": 40.73392,
+      "mass_solar": 2500000000,
+      "approx": true,
+      "distance_kpc": 232000,
+      "distance_approx": true,
+      "method": "Gas dynamics",
+      "jets": true,
+      "notes": "The archetypal powerful radio galaxy: a 2.5-billion-solar-mass engine driving jets that inflate radio lobes half a million light-years across.",
+      "source": "Tadhunter et al. 2003, MNRAS 342, 861",
+      "eht_imaged": false
+    },
+    {
+      "name": "3C 273 black hole",
+      "aliases": [
+        "First identified quasar"
+      ],
+      "ra": 187.27792,
+      "dec": 2.05239,
+      "mass_solar": 890000000,
+      "approx": true,
+      "distance_kpc": 749000,
+      "distance_approx": true,
+      "method": "Reverberation mapping",
+      "jets": true,
+      "notes": "The first object recognized as a quasar (1963). Reverberation of its broad emission lines weighs the hole at just under a billion suns.",
+      "source": "Peterson et al. 2004, ApJ 613, 682",
+      "eht_imaged": false
+    },
+    {
+      "name": "OJ 287 primary black hole",
+      "aliases": [
+        "Binary black hole blazar"
+      ],
+      "ra": 133.70365,
+      "dec": 20.10853,
+      "mass_solar": 18000000000,
+      "approx": true,
+      "distance_kpc": 1300000,
+      "distance_approx": true,
+      "method": "Binary orbital model",
+      "jets": true,
+      "notes": "A blazar whose ~12-year optical outburst cycle is modeled as a ~150-million-solar-mass secondary punching through the accretion disk of an 18-billion-solar-mass primary.",
+      "source": "Valtonen et al. 2008, Nature 452, 851",
+      "eht_imaged": false
+    },
+    {
+      "name": "NGC 4151 black hole",
+      "aliases": [
+        "Eye of Sauron galaxy nucleus"
+      ],
+      "ra": 182.63574,
+      "dec": 39.40573,
+      "mass_solar": 40000000,
+      "approx": true,
+      "distance_kpc": 19000,
+      "distance_approx": true,
+      "method": "Reverberation + stellar dynamics",
+      "jets": false,
+      "notes": "One of the nearest bright Seyfert 1 nuclei and a cornerstone of reverberation mapping.",
+      "source": "Bentz et al. 2006; Onken et al. 2014",
+      "eht_imaged": false
+    },
+    {
+      "name": "NGC 5548 black hole",
+      "aliases": [],
+      "ra": 214.49806,
+      "dec": 25.13683,
+      "mass_solar": 52000000,
+      "approx": true,
+      "distance_kpc": 75000,
+      "distance_approx": true,
+      "method": "Reverberation mapping",
+      "jets": false,
+      "notes": "The most intensively reverberation-mapped active galaxy — its black hole mass anchors the calibration used for thousands of quasars.",
+      "source": "Peterson et al. 2004; Pancoast et al. 2014",
+      "eht_imaged": false
+    },
+    {
+      "name": "NGC 3115 black hole",
+      "aliases": [],
+      "ra": 151.30825,
+      "dec": -7.71858,
+      "mass_solar": 900000000,
+      "approx": true,
+      "distance_kpc": 9700,
+      "distance_approx": false,
+      "method": "Stellar dynamics",
+      "jets": false,
+      "notes": "The Spindle Galaxy hosted one of the first convincing supermassive black hole detections (1992).",
+      "source": "Kormendy & Richstone 1992; Emsellem et al. 1999",
+      "eht_imaged": false
+    },
+    {
+      "name": "NGC 4261 black hole",
+      "aliases": [],
+      "ra": 184.84673,
+      "dec": 5.8253,
+      "mass_solar": 530000000,
+      "approx": true,
+      "distance_kpc": 31600,
+      "distance_approx": true,
+      "method": "Gas-disk dynamics",
+      "jets": true,
+      "notes": "Hubble resolved a 300-light-year dusty disk feeding this radio galaxy's half-billion-solar-mass hole — an iconic early image of black hole fueling.",
+      "source": "Ferrarese, Ford & Jaffe 1996, ApJ 470, 444",
+      "eht_imaged": false
+    },
+    {
+      "name": "M105 black hole",
+      "aliases": [
+        "NGC 3379 nucleus"
+      ],
+      "ra": 161.95665,
+      "dec": 12.58163,
+      "mass_solar": 400000000,
+      "approx": true,
+      "distance_kpc": 10700,
+      "distance_approx": false,
+      "method": "Stellar dynamics",
+      "jets": false,
+      "notes": "A quiet Leo-group elliptical whose ~400-million-solar-mass hole shows that even inactive galaxies keep their central engines.",
+      "source": "Shapiro et al. 2006; van den Bosch & de Zeeuw 2010",
+      "eht_imaged": false
+    },
+    {
+      "name": "NGC 7052 black hole",
+      "aliases": [],
+      "ra": 319.63788,
+      "dec": 26.4469,
+      "mass_solar": 330000000,
+      "approx": true,
+      "distance_kpc": 66000,
+      "distance_approx": true,
+      "method": "Gas-disk dynamics",
+      "jets": false,
+      "notes": "An elliptical with a 3,700-light-year dust disk orbiting its central hole, measured with Hubble spectroscopy.",
+      "source": "van der Marel & van den Bosch 1998, AJ 116, 2220",
+      "eht_imaged": false
+    },
+    {
+      "name": "NGC 1068 (M77) black hole",
+      "aliases": [
+        "Archetypal Seyfert 2 nucleus"
+      ],
+      "ra": 40.66963,
+      "dec": -0.01328,
+      "mass_solar": 10000000,
+      "approx": true,
+      "distance_kpc": 14400,
+      "distance_approx": false,
+      "method": "Water megamaser disk",
+      "jets": true,
+      "notes": "The archetype of obscured active galaxies: masers trace a warped disk around its ~10-million-solar-mass hole, hidden behind a dusty torus.",
+      "source": "Greenhill et al. 1996; Lodato & Bertin 2003",
+      "eht_imaged": false
+    },
+    {
+      "name": "NGC 4395 black hole",
+      "aliases": [
+        "Smallest Seyfert 1 nucleus"
+      ],
+      "ra": 186.45359,
+      "dec": 33.54693,
+      "mass_solar": 360000,
+      "approx": true,
+      "distance_kpc": 4300,
+      "distance_approx": false,
+      "method": "Reverberation + gas dynamics",
+      "jets": false,
+      "notes": "A dwarf spiral with no bulge at all, yet an active nucleus of only a few hundred thousand solar masses — a bridge toward intermediate-mass black holes.",
+      "source": "Peterson et al. 2005; den Brok et al. 2015",
+      "eht_imaged": false
+    },
+    {
+      "name": "NGC 6240 twin black holes",
+      "aliases": [
+        "Dual-nucleus merger"
+      ],
+      "ra": 253.24525,
+      "dec": 2.40099,
+      "mass_solar": 1000000000,
+      "approx": true,
+      "distance_kpc": 116000,
+      "distance_approx": true,
+      "method": "X-ray imaging + stellar dynamics",
+      "jets": false,
+      "notes": "A galaxy merger caught with two (possibly three) supermassive nuclei only a few thousand light-years apart, destined to coalesce.",
+      "source": "Komossa et al. 2003, ApJL 582, L15; Kollatschny et al. 2020",
+      "eht_imaged": false
+    }
+  ]
+}

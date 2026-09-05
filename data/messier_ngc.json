@@ -1,0 +1,1115 @@
+{
+ "_comment": "Eagerly-loaded marker sets: the full 110-object Messier catalog plus a curated subset of ~33 especially bright/famous NGC and IC objects. Coordinates are ICRS J2000 decimal degrees rounded to ~1 arcsec, standard published values (SEDS/OpenNGC-derived). type is one of: galaxy, nebula, open_cluster, globular_cluster, planetary_nebula, supernova_remnant, star_cloud, asterism, double_star -- used to pick the marker icon. Messier entries carry their standard NGC/IC cross-id in 'ngc' (used to dedupe against the full OpenNGC layer); M24/M40/M45 have none by design.",
+ "messier": [
+  {
+   "id": "M1",
+   "name": "Crab Nebula",
+   "type": "supernova_remnant",
+   "ra": 83.63308,
+   "dec": 22.0145,
+   "ngc": "NGC 1952"
+  },
+  {
+   "id": "M2",
+   "name": "M2",
+   "type": "globular_cluster",
+   "ra": 323.3625,
+   "dec": -0.8233,
+   "ngc": "NGC 7089"
+  },
+  {
+   "id": "M3",
+   "name": "M3",
+   "type": "globular_cluster",
+   "ra": 205.5484,
+   "dec": 28.37728,
+   "ngc": "NGC 5272"
+  },
+  {
+   "id": "M4",
+   "name": "M4",
+   "type": "globular_cluster",
+   "ra": 245.8967,
+   "dec": -26.52575,
+   "ngc": "NGC 6121"
+  },
+  {
+   "id": "M5",
+   "name": "M5",
+   "type": "globular_cluster",
+   "ra": 229.6383,
+   "dec": 2.081028,
+   "ngc": "NGC 5904"
+  },
+  {
+   "id": "M6",
+   "name": "Butterfly Cluster",
+   "type": "open_cluster",
+   "ra": 265.075,
+   "dec": -32.21667,
+   "ngc": "NGC 6405"
+  },
+  {
+   "id": "M7",
+   "name": "Ptolemy Cluster",
+   "type": "open_cluster",
+   "ra": 268.4625,
+   "dec": -34.79333,
+   "ngc": "NGC 6475"
+  },
+  {
+   "id": "M8",
+   "name": "Lagoon Nebula",
+   "type": "nebula",
+   "ra": 270.9042,
+   "dec": -24.38333,
+   "ngc": "NGC 6523"
+  },
+  {
+   "id": "M9",
+   "name": "M9",
+   "type": "globular_cluster",
+   "ra": 259.799,
+   "dec": -18.51611,
+   "ngc": "NGC 6333"
+  },
+  {
+   "id": "M10",
+   "name": "M10",
+   "type": "globular_cluster",
+   "ra": 254.2883,
+   "dec": -4.10056,
+   "ngc": "NGC 6254"
+  },
+  {
+   "id": "M11",
+   "name": "Wild Duck Cluster",
+   "type": "open_cluster",
+   "ra": 282.7708,
+   "dec": -6.27,
+   "ngc": "NGC 6705"
+  },
+  {
+   "id": "M12",
+   "name": "M12",
+   "type": "globular_cluster",
+   "ra": 251.8092,
+   "dec": -1.94833,
+   "ngc": "NGC 6218"
+  },
+  {
+   "id": "M13",
+   "name": "Hercules Cluster",
+   "type": "globular_cluster",
+   "ra": 250.4219,
+   "dec": 36.46025,
+   "ngc": "NGC 6205"
+  },
+  {
+   "id": "M14",
+   "name": "M14",
+   "type": "globular_cluster",
+   "ra": 264.4008,
+   "dec": -3.24583,
+   "ngc": "NGC 6402"
+  },
+  {
+   "id": "M15",
+   "name": "M15",
+   "type": "globular_cluster",
+   "ra": 322.4933,
+   "dec": 12.16667,
+   "ngc": "NGC 7078"
+  },
+  {
+   "id": "M16",
+   "name": "Eagle Nebula",
+   "type": "nebula",
+   "ra": 274.7,
+   "dec": -13.81667,
+   "ngc": "NGC 6611"
+  },
+  {
+   "id": "M17",
+   "name": "Omega / Swan Nebula",
+   "type": "nebula",
+   "ra": 275.1958,
+   "dec": -16.17167,
+   "ngc": "NGC 6618"
+  },
+  {
+   "id": "M18",
+   "name": "M18",
+   "type": "open_cluster",
+   "ra": 274.9917,
+   "dec": -17.13333,
+   "ngc": "NGC 6613"
+  },
+  {
+   "id": "M19",
+   "name": "M19",
+   "type": "globular_cluster",
+   "ra": 255.6583,
+   "dec": -26.26833,
+   "ngc": "NGC 6273"
+  },
+  {
+   "id": "M20",
+   "name": "Trifid Nebula",
+   "type": "nebula",
+   "ra": 270.5958,
+   "dec": -22.97139,
+   "ngc": "NGC 6514"
+  },
+  {
+   "id": "M21",
+   "name": "M21",
+   "type": "open_cluster",
+   "ra": 271.05,
+   "dec": -22.49333,
+   "ngc": "NGC 6531"
+  },
+  {
+   "id": "M22",
+   "name": "M22",
+   "type": "globular_cluster",
+   "ra": 279.1,
+   "dec": -23.90417,
+   "ngc": "NGC 6656"
+  },
+  {
+   "id": "M23",
+   "name": "M23",
+   "type": "open_cluster",
+   "ra": 269.2167,
+   "dec": -19.01667,
+   "ngc": "NGC 6494"
+  },
+  {
+   "id": "M24",
+   "name": "Sagittarius Star Cloud",
+   "type": "star_cloud",
+   "ra": 274.125,
+   "dec": -18.55
+  },
+  {
+   "id": "M25",
+   "name": "M25",
+   "type": "open_cluster",
+   "ra": 277.95,
+   "dec": -19.11667,
+   "ngc": "IC 4725"
+  },
+  {
+   "id": "M26",
+   "name": "M26",
+   "type": "open_cluster",
+   "ra": 281.325,
+   "dec": -9.38333,
+   "ngc": "NGC 6694"
+  },
+  {
+   "id": "M27",
+   "name": "Dumbbell Nebula",
+   "type": "planetary_nebula",
+   "ra": 299.9017,
+   "dec": 22.72111,
+   "ngc": "NGC 6853"
+  },
+  {
+   "id": "M28",
+   "name": "M28",
+   "type": "globular_cluster",
+   "ra": 276.1375,
+   "dec": -24.87,
+   "ngc": "NGC 6626"
+  },
+  {
+   "id": "M29",
+   "name": "M29",
+   "type": "open_cluster",
+   "ra": 305.9833,
+   "dec": 38.52167,
+   "ngc": "NGC 6913"
+  },
+  {
+   "id": "M30",
+   "name": "M30",
+   "type": "globular_cluster",
+   "ra": 325.0925,
+   "dec": -23.17972,
+   "ngc": "NGC 7099"
+  },
+  {
+   "id": "M31",
+   "name": "Andromeda Galaxy",
+   "type": "galaxy",
+   "ra": 10.68458,
+   "dec": 41.26917,
+   "ngc": "NGC 224"
+  },
+  {
+   "id": "M32",
+   "name": "M32",
+   "type": "galaxy",
+   "ra": 10.67417,
+   "dec": 40.86528,
+   "ngc": "NGC 221"
+  },
+  {
+   "id": "M33",
+   "name": "Triangulum Galaxy",
+   "type": "galaxy",
+   "ra": 23.46208,
+   "dec": 30.66,
+   "ngc": "NGC 598"
+  },
+  {
+   "id": "M34",
+   "name": "M34",
+   "type": "open_cluster",
+   "ra": 40.52083,
+   "dec": 42.76167,
+   "ngc": "NGC 1039"
+  },
+  {
+   "id": "M35",
+   "name": "M35",
+   "type": "open_cluster",
+   "ra": 92.25,
+   "dec": 24.33333,
+   "ngc": "NGC 2168"
+  },
+  {
+   "id": "M36",
+   "name": "M36",
+   "type": "open_cluster",
+   "ra": 84.075,
+   "dec": 34.14,
+   "ngc": "NGC 1960"
+  },
+  {
+   "id": "M37",
+   "name": "M37",
+   "type": "open_cluster",
+   "ra": 88.075,
+   "dec": 32.55333,
+   "ngc": "NGC 2099"
+  },
+  {
+   "id": "M38",
+   "name": "M38",
+   "type": "open_cluster",
+   "ra": 82.175,
+   "dec": 35.85667,
+   "ngc": "NGC 1912"
+  },
+  {
+   "id": "M39",
+   "name": "M39",
+   "type": "open_cluster",
+   "ra": 322.925,
+   "dec": 48.43333,
+   "ngc": "NGC 7092"
+  },
+  {
+   "id": "M40",
+   "name": "Winnecke 4",
+   "type": "double_star",
+   "ra": 185.55,
+   "dec": 58.08333
+  },
+  {
+   "id": "M41",
+   "name": "M41",
+   "type": "open_cluster",
+   "ra": 101.5,
+   "dec": -20.73333,
+   "ngc": "NGC 2287"
+  },
+  {
+   "id": "M42",
+   "name": "Orion Nebula",
+   "type": "nebula",
+   "ra": 83.82208,
+   "dec": -5.39111,
+   "ngc": "NGC 1976"
+  },
+  {
+   "id": "M43",
+   "name": "De Mairan's Nebula",
+   "type": "nebula",
+   "ra": 83.87917,
+   "dec": -5.26667,
+   "ngc": "NGC 1982"
+  },
+  {
+   "id": "M44",
+   "name": "Beehive Cluster",
+   "type": "open_cluster",
+   "ra": 130.1,
+   "dec": 19.66667,
+   "ngc": "NGC 2632"
+  },
+  {
+   "id": "M45",
+   "name": "Pleiades",
+   "type": "open_cluster",
+   "ra": 56.75,
+   "dec": 24.11667
+  },
+  {
+   "id": "M46",
+   "name": "M46",
+   "type": "open_cluster",
+   "ra": 115.45,
+   "dec": -14.81667,
+   "ngc": "NGC 2437"
+  },
+  {
+   "id": "M47",
+   "name": "M47",
+   "type": "open_cluster",
+   "ra": 114.15,
+   "dec": -14.48333,
+   "ngc": "NGC 2422"
+  },
+  {
+   "id": "M48",
+   "name": "M48",
+   "type": "open_cluster",
+   "ra": 123.425,
+   "dec": -5.75,
+   "ngc": "NGC 2548"
+  },
+  {
+   "id": "M49",
+   "name": "M49",
+   "type": "galaxy",
+   "ra": 187.4446,
+   "dec": 8.00056,
+   "ngc": "NGC 4472"
+  },
+  {
+   "id": "M50",
+   "name": "M50",
+   "type": "open_cluster",
+   "ra": 105.7,
+   "dec": -8.33333,
+   "ngc": "NGC 2323"
+  },
+  {
+   "id": "M51",
+   "name": "Whirlpool Galaxy",
+   "type": "galaxy",
+   "ra": 202.4696,
+   "dec": 47.19528,
+   "ngc": "NGC 5194"
+  },
+  {
+   "id": "M52",
+   "name": "M52",
+   "type": "open_cluster",
+   "ra": 351.2,
+   "dec": 61.59333,
+   "ngc": "NGC 7654"
+  },
+  {
+   "id": "M53",
+   "name": "M53",
+   "type": "globular_cluster",
+   "ra": 198.2304,
+   "dec": 18.16833,
+   "ngc": "NGC 5024"
+  },
+  {
+   "id": "M54",
+   "name": "M54",
+   "type": "globular_cluster",
+   "ra": 283.7638,
+   "dec": -30.47972,
+   "ngc": "NGC 6715"
+  },
+  {
+   "id": "M55",
+   "name": "M55",
+   "type": "globular_cluster",
+   "ra": 294.9975,
+   "dec": -30.96222,
+   "ngc": "NGC 6809"
+  },
+  {
+   "id": "M56",
+   "name": "M56",
+   "type": "globular_cluster",
+   "ra": 289.148,
+   "dec": 30.18361,
+   "ngc": "NGC 6779"
+  },
+  {
+   "id": "M57",
+   "name": "Ring Nebula",
+   "type": "planetary_nebula",
+   "ra": 283.3963,
+   "dec": 33.02917,
+   "ngc": "NGC 6720"
+  },
+  {
+   "id": "M58",
+   "name": "M58",
+   "type": "galaxy",
+   "ra": 189.4317,
+   "dec": 11.81806,
+   "ngc": "NGC 4579"
+  },
+  {
+   "id": "M59",
+   "name": "M59",
+   "type": "galaxy",
+   "ra": 190.5088,
+   "dec": 11.64694,
+   "ngc": "NGC 4621"
+  },
+  {
+   "id": "M60",
+   "name": "M60",
+   "type": "galaxy",
+   "ra": 190.9167,
+   "dec": 11.5525,
+   "ngc": "NGC 4649"
+  },
+  {
+   "id": "M61",
+   "name": "M61",
+   "type": "galaxy",
+   "ra": 185.4788,
+   "dec": 4.47361,
+   "ngc": "NGC 4303"
+  },
+  {
+   "id": "M62",
+   "name": "M62",
+   "type": "globular_cluster",
+   "ra": 255.3033,
+   "dec": -30.11306,
+   "ngc": "NGC 6266"
+  },
+  {
+   "id": "M63",
+   "name": "Sunflower Galaxy",
+   "type": "galaxy",
+   "ra": 198.9558,
+   "dec": 42.02917,
+   "ngc": "NGC 5055"
+  },
+  {
+   "id": "M64",
+   "name": "Black Eye Galaxy",
+   "type": "galaxy",
+   "ra": 194.182,
+   "dec": 21.68278,
+   "ngc": "NGC 4826"
+  },
+  {
+   "id": "M65",
+   "name": "M65",
+   "type": "galaxy",
+   "ra": 169.7333,
+   "dec": 13.0925,
+   "ngc": "NGC 3623"
+  },
+  {
+   "id": "M66",
+   "name": "M66",
+   "type": "galaxy",
+   "ra": 170.0625,
+   "dec": 12.99139,
+   "ngc": "NGC 3627"
+  },
+  {
+   "id": "M67",
+   "name": "M67",
+   "type": "open_cluster",
+   "ra": 132.825,
+   "dec": 11.8,
+   "ngc": "NGC 2682"
+  },
+  {
+   "id": "M68",
+   "name": "M68",
+   "type": "globular_cluster",
+   "ra": 189.8667,
+   "dec": -26.74417,
+   "ngc": "NGC 4590"
+  },
+  {
+   "id": "M69",
+   "name": "M69",
+   "type": "globular_cluster",
+   "ra": 277.8467,
+   "dec": -32.34806,
+   "ngc": "NGC 6637"
+  },
+  {
+   "id": "M70",
+   "name": "M70",
+   "type": "globular_cluster",
+   "ra": 280.8033,
+   "dec": -32.29194,
+   "ngc": "NGC 6681"
+  },
+  {
+   "id": "M71",
+   "name": "M71",
+   "type": "globular_cluster",
+   "ra": 298.4438,
+   "dec": 18.77917,
+   "ngc": "NGC 6838"
+  },
+  {
+   "id": "M72",
+   "name": "M72",
+   "type": "globular_cluster",
+   "ra": 313.3654,
+   "dec": -12.53722,
+   "ngc": "NGC 6981"
+  },
+  {
+   "id": "M73",
+   "name": "M73",
+   "type": "asterism",
+   "ra": 314.75,
+   "dec": -12.63333,
+   "ngc": "NGC 6994"
+  },
+  {
+   "id": "M74",
+   "name": "M74",
+   "type": "galaxy",
+   "ra": 24.17417,
+   "dec": 15.78361,
+   "ngc": "NGC 628"
+  },
+  {
+   "id": "M75",
+   "name": "M75",
+   "type": "globular_cluster",
+   "ra": 301.5204,
+   "dec": -21.92139,
+   "ngc": "NGC 6864"
+  },
+  {
+   "id": "M76",
+   "name": "Little Dumbbell Nebula",
+   "type": "planetary_nebula",
+   "ra": 25.5825,
+   "dec": 51.57528,
+   "ngc": "NGC 650"
+  },
+  {
+   "id": "M77",
+   "name": "M77",
+   "type": "galaxy",
+   "ra": 40.66967,
+   "dec": -0.01333,
+   "ngc": "NGC 1068"
+  },
+  {
+   "id": "M78",
+   "name": "M78",
+   "type": "nebula",
+   "ra": 86.6946,
+   "dec": 0.01389,
+   "ngc": "NGC 2068"
+  },
+  {
+   "id": "M79",
+   "name": "M79",
+   "type": "globular_cluster",
+   "ra": 81.0446,
+   "dec": -24.52444,
+   "ngc": "NGC 1904"
+  },
+  {
+   "id": "M80",
+   "name": "M80",
+   "type": "globular_cluster",
+   "ra": 244.2604,
+   "dec": -22.97611,
+   "ngc": "NGC 6093"
+  },
+  {
+   "id": "M81",
+   "name": "Bode's Galaxy",
+   "type": "galaxy",
+   "ra": 148.8883,
+   "dec": 69.06528,
+   "ngc": "NGC 3031"
+  },
+  {
+   "id": "M82",
+   "name": "Cigar Galaxy",
+   "type": "galaxy",
+   "ra": 148.9683,
+   "dec": 69.67972,
+   "ngc": "NGC 3034"
+  },
+  {
+   "id": "M83",
+   "name": "Southern Pinwheel Galaxy",
+   "type": "galaxy",
+   "ra": 204.2538,
+   "dec": -29.86556,
+   "ngc": "NGC 5236"
+  },
+  {
+   "id": "M84",
+   "name": "M84",
+   "type": "galaxy",
+   "ra": 186.2654,
+   "dec": 12.88694,
+   "ngc": "NGC 4374"
+  },
+  {
+   "id": "M85",
+   "name": "M85",
+   "type": "galaxy",
+   "ra": 186.35,
+   "dec": 18.19111,
+   "ngc": "NGC 4382"
+  },
+  {
+   "id": "M86",
+   "name": "M86",
+   "type": "galaxy",
+   "ra": 186.5488,
+   "dec": 12.94639,
+   "ngc": "NGC 4406"
+  },
+  {
+   "id": "M87",
+   "name": "Virgo A (M87)",
+   "type": "galaxy",
+   "ra": 187.70593,
+   "dec": 12.391123,
+   "ngc": "NGC 4486"
+  },
+  {
+   "id": "M88",
+   "name": "M88",
+   "type": "galaxy",
+   "ra": 187.9963,
+   "dec": 14.42028,
+   "ngc": "NGC 4501"
+  },
+  {
+   "id": "M89",
+   "name": "M89",
+   "type": "galaxy",
+   "ra": 188.9159,
+   "dec": 12.55639,
+   "ngc": "NGC 4552"
+  },
+  {
+   "id": "M90",
+   "name": "M90",
+   "type": "galaxy",
+   "ra": 189.2075,
+   "dec": 13.16278,
+   "ngc": "NGC 4569"
+  },
+  {
+   "id": "M91",
+   "name": "M91",
+   "type": "galaxy",
+   "ra": 188.8604,
+   "dec": 14.49639,
+   "ngc": "NGC 4548"
+  },
+  {
+   "id": "M92",
+   "name": "M92",
+   "type": "globular_cluster",
+   "ra": 259.2808,
+   "dec": 43.13611,
+   "ngc": "NGC 6341"
+  },
+  {
+   "id": "M93",
+   "name": "M93",
+   "type": "open_cluster",
+   "ra": 116.125,
+   "dec": -23.86167,
+   "ngc": "NGC 2447"
+  },
+  {
+   "id": "M94",
+   "name": "M94",
+   "type": "galaxy",
+   "ra": 192.7213,
+   "dec": 41.12056,
+   "ngc": "NGC 4736"
+  },
+  {
+   "id": "M95",
+   "name": "M95",
+   "type": "galaxy",
+   "ra": 160.9908,
+   "dec": 11.70361,
+   "ngc": "NGC 3351"
+  },
+  {
+   "id": "M96",
+   "name": "M96",
+   "type": "galaxy",
+   "ra": 161.6908,
+   "dec": 11.82028,
+   "ngc": "NGC 3368"
+  },
+  {
+   "id": "M97",
+   "name": "Owl Nebula",
+   "type": "planetary_nebula",
+   "ra": 168.6988,
+   "dec": 55.01889,
+   "ngc": "NGC 3587"
+  },
+  {
+   "id": "M98",
+   "name": "M98",
+   "type": "galaxy",
+   "ra": 183.4508,
+   "dec": 14.90028,
+   "ngc": "NGC 4192"
+  },
+  {
+   "id": "M99",
+   "name": "M99",
+   "type": "galaxy",
+   "ra": 184.7071,
+   "dec": 14.41639,
+   "ngc": "NGC 4254"
+  },
+  {
+   "id": "M100",
+   "name": "M100",
+   "type": "galaxy",
+   "ra": 185.7288,
+   "dec": 15.8225,
+   "ngc": "NGC 4321"
+  },
+  {
+   "id": "M101",
+   "name": "Pinwheel Galaxy",
+   "type": "galaxy",
+   "ra": 210.8022,
+   "dec": 54.34917,
+   "ngc": "NGC 5457"
+  },
+  {
+   "id": "M102",
+   "name": "Spindle Galaxy",
+   "type": "galaxy",
+   "ra": 226.6229,
+   "dec": 55.76333,
+   "ngc": "NGC 5866"
+  },
+  {
+   "id": "M103",
+   "name": "M103",
+   "type": "open_cluster",
+   "ra": 23.34167,
+   "dec": 60.7,
+   "ngc": "NGC 581"
+  },
+  {
+   "id": "M104",
+   "name": "Sombrero Galaxy",
+   "type": "galaxy",
+   "ra": 189.9975,
+   "dec": -11.62306,
+   "ngc": "NGC 4594"
+  },
+  {
+   "id": "M105",
+   "name": "M105",
+   "type": "galaxy",
+   "ra": 161.9558,
+   "dec": 12.58167,
+   "ngc": "NGC 3379"
+  },
+  {
+   "id": "M106",
+   "name": "M106",
+   "type": "galaxy",
+   "ra": 184.7396,
+   "dec": 47.30389,
+   "ngc": "NGC 4258"
+  },
+  {
+   "id": "M107",
+   "name": "M107",
+   "type": "globular_cluster",
+   "ra": 248.1329,
+   "dec": -13.05361,
+   "ngc": "NGC 6171"
+  },
+  {
+   "id": "M108",
+   "name": "M108",
+   "type": "galaxy",
+   "ra": 167.8792,
+   "dec": 55.67417,
+   "ngc": "NGC 3556"
+  },
+  {
+   "id": "M109",
+   "name": "M109",
+   "type": "galaxy",
+   "ra": 179.3996,
+   "dec": 53.37472,
+   "ngc": "NGC 3992"
+  },
+  {
+   "id": "M110",
+   "name": "M110",
+   "type": "galaxy",
+   "ra": 10.09217,
+   "dec": 41.68528,
+   "ngc": "NGC 205"
+  }
+ ],
+ "ngc_ic": [
+  {
+   "id": "NGC104",
+   "name": "47 Tucanae",
+   "type": "globular_cluster",
+   "ra": 6.0238,
+   "dec": -72.08139
+  },
+  {
+   "id": "NGC253",
+   "name": "Sculptor Galaxy",
+   "type": "galaxy",
+   "ra": 11.888,
+   "dec": -25.28833
+  },
+  {
+   "id": "NGC869",
+   "name": "h Persei",
+   "type": "open_cluster",
+   "ra": 34.75,
+   "dec": 57.15
+  },
+  {
+   "id": "NGC884",
+   "name": "chi Persei",
+   "type": "open_cluster",
+   "ra": 35.6,
+   "dec": 57.13333
+  },
+  {
+   "id": "NGC891",
+   "name": "NGC 891",
+   "type": "galaxy",
+   "ra": 35.6392,
+   "dec": 42.34917
+  },
+  {
+   "id": "NGC1499",
+   "name": "California Nebula",
+   "type": "nebula",
+   "ra": 60.825,
+   "dec": 36.41667
+  },
+  {
+   "id": "NGC2024",
+   "name": "Flame Nebula",
+   "type": "nebula",
+   "ra": 85.4292,
+   "dec": -1.85
+  },
+  {
+   "id": "IC434",
+   "name": "Horsehead Nebula region",
+   "type": "nebula",
+   "ra": 85.2417,
+   "dec": -2.45833
+  },
+  {
+   "id": "NGC2070",
+   "name": "Tarantula Nebula",
+   "type": "nebula",
+   "ra": 84.6604,
+   "dec": -69.1
+  },
+  {
+   "id": "NGC2237",
+   "name": "Rosette Nebula",
+   "type": "nebula",
+   "ra": 97.9875,
+   "dec": 5.03667
+  },
+  {
+   "id": "NGC2244",
+   "name": "Rosette Cluster",
+   "type": "open_cluster",
+   "ra": 98.025,
+   "dec": 4.9
+  },
+  {
+   "id": "NGC2264",
+   "name": "Cone Nebula / Christmas Tree Cluster",
+   "type": "nebula",
+   "ra": 100.25,
+   "dec": 9.88333
+  },
+  {
+   "id": "NGC2392",
+   "name": "Eskimo Nebula",
+   "type": "planetary_nebula",
+   "ra": 112.295,
+   "dec": 20.91111
+  },
+  {
+   "id": "IC405",
+   "name": "Flaming Star Nebula",
+   "type": "nebula",
+   "ra": 77.75,
+   "dec": 34.35
+  },
+  {
+   "id": "IC443",
+   "name": "Jellyfish Nebula",
+   "type": "supernova_remnant",
+   "ra": 94.2125,
+   "dec": 22.53333
+  },
+  {
+   "id": "NGC3242",
+   "name": "Ghost of Jupiter",
+   "type": "planetary_nebula",
+   "ra": 156.1921,
+   "dec": -18.64222
+  },
+  {
+   "id": "NGC4038",
+   "name": "Antennae Galaxies",
+   "type": "galaxy",
+   "ra": 180.4708,
+   "dec": -18.86944
+  },
+  {
+   "id": "NGC4565",
+   "name": "Needle Galaxy",
+   "type": "galaxy",
+   "ra": 189.0867,
+   "dec": 25.98778
+  },
+  {
+   "id": "NGC5128",
+   "name": "Centaurus A",
+   "type": "galaxy",
+   "ra": 201.3667,
+   "dec": -43.01917
+  },
+  {
+   "id": "NGC5195",
+   "name": "M51 companion galaxy",
+   "type": "galaxy",
+   "ra": 202.4979,
+   "dec": 47.26611
+  },
+  {
+   "id": "NGC6543",
+   "name": "Cat's Eye Nebula",
+   "type": "planetary_nebula",
+   "ra": 269.6392,
+   "dec": 66.63306
+  },
+  {
+   "id": "NGC6744",
+   "name": "NGC 6744",
+   "type": "galaxy",
+   "ra": 287.4417,
+   "dec": -63.85722
+  },
+  {
+   "id": "NGC6826",
+   "name": "Blinking Planetary",
+   "type": "planetary_nebula",
+   "ra": 296.2242,
+   "dec": 50.52528
+  },
+  {
+   "id": "NGC6960",
+   "name": "Veil Nebula",
+   "type": "supernova_remnant",
+   "ra": 312.75,
+   "dec": 31.16667
+  },
+  {
+   "id": "NGC7000",
+   "name": "North America Nebula",
+   "type": "nebula",
+   "ra": 314.7,
+   "dec": 44.51667
+  },
+  {
+   "id": "IC5070",
+   "name": "Pelican Nebula",
+   "type": "nebula",
+   "ra": 313.6667,
+   "dec": 44.35
+  },
+  {
+   "id": "NGC7009",
+   "name": "Saturn Nebula",
+   "type": "planetary_nebula",
+   "ra": 316.0455,
+   "dec": -11.36278
+  },
+  {
+   "id": "NGC7023",
+   "name": "Iris Nebula",
+   "type": "nebula",
+   "ra": 315.3958,
+   "dec": 68.16222
+  },
+  {
+   "id": "IC1396",
+   "name": "Elephant's Trunk region",
+   "type": "nebula",
+   "ra": 324.75,
+   "dec": 57.5
+  },
+  {
+   "id": "NGC7293",
+   "name": "Helix Nebula",
+   "type": "planetary_nebula",
+   "ra": 337.4108,
+   "dec": -20.83722
+  },
+  {
+   "id": "NGC7635",
+   "name": "Bubble Nebula",
+   "type": "nebula",
+   "ra": 350.1946,
+   "dec": 61.20028
+  },
+  {
+   "id": "NGC7662",
+   "name": "Blue Snowball",
+   "type": "planetary_nebula",
+   "ra": 351.6488,
+   "dec": 42.53528
+  },
+  {
+   "id": "NGC281",
+   "name": "Pacman Nebula",
+   "type": "nebula",
+   "ra": 10.7375,
+   "dec": 56.61667
+  }
+ ]
+}
