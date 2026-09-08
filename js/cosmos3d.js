@@ -11,6 +11,8 @@
 // nothing loads until the first flip of the dock switch.
 
 import { parseDesiWeb } from './desidata.js';
+import { buildDensityField } from './darkmatter.js';
+import { readPref, writePref } from './prefs.js';
 import { showToast, makeDismissable } from './ui.js';
 import { motionOK } from './motion.js';
 import { acquireView, releaseView } from './cameraowner.js';
@@ -48,6 +50,50 @@ void main() {
   vec3 quasar = vec3(0.45, 0.75, 1.00);   // hot accretion blue
   vec3 col = mix(galaxy, quasar, step(0.5, vType));
   gl_FragColor = vec4(col * core, core * 0.55 * vFade);
+}`;
+
+// The dark-matter field rides in its own pass: diffuse volumetric sprites
+// whose SIZE and COLOUR both climb with concentration, so a dense node reads
+// as a wide white-hot glow and a thin filament as a narrow purple thread.
+const DM_VERT = `
+attribute vec3 aPos;
+attribute float aDens;
+uniform mat4 uMvp;
+uniform float uPx;
+uniform float uDpr;
+varying float vDens;
+varying float vFade;
+void main() {
+  gl_Position = uMvp * vec4(aPos, 1.0);
+  float w = max(gl_Position.w, 1.0);
+  // Wider light IS higher concentration — the sprite grows with density.
+  gl_PointSize = clamp(uPx * (1400.0 + 5400.0 * aDens) / w, 2.0 * uDpr, 46.0 * uDpr);
+  vFade = clamp(2600.0 * (uPx / uDpr) / w, 0.30, 1.0);
+  vDens = aDens;
+}`;
+
+const DM_FRAG = `
+precision mediump float;
+varying float vDens;
+varying float vFade;
+uniform float uAlpha;
+void main() {
+  vec2 d = gl_PointCoord - vec2(0.5);
+  float r2 = dot(d, d);
+  if (r2 > 0.25) discard;
+  // Squared falloff: these are diffuse clouds, not point sources.
+  float g = smoothstep(0.25, 0.0, r2);
+  g *= g;
+  // The concentration ramp: dark purple → light pink → yellow → white.
+  vec3 c0 = vec3(0.17, 0.03, 0.40);
+  vec3 c1 = vec3(0.98, 0.55, 0.86);
+  vec3 c2 = vec3(1.00, 0.91, 0.38);
+  vec3 c3 = vec3(1.00, 1.00, 0.98);
+  float t = clamp(vDens, 0.0, 1.0);
+  vec3 col = t < 0.36
+    ? mix(c0, c1, t / 0.36)
+    : (t < 0.70 ? mix(c1, c2, (t - 0.36) / 0.34) : mix(c2, c3, (t - 0.70) / 0.30));
+  gl_FragColor = vec4(col * g, g * uAlpha * (0.25 + 0.75 * t) * vFade);
 }`;
 
 // ---- minimal mat4 (column-major, WebGL order) ----
@@ -95,6 +141,11 @@ let loading = null;       // in-flight dataset promise
 let gl = null, prog = null, canvas = null, legend = null, exitBtn = null;
 let pointCount = 0;
 let uMvp = null, uPx = null, uDpr = null;
+// Dark-matter pass: own program, own buffers, own uniforms.
+let dmProg = null, dmPosBuf = null, dmDensBuf = null, dmCount = 0;
+let dmUMvp = null, dmUPx = null, dmUDpr = null, dmUAlpha = null;
+let posBuf = null, typeBuf = null;
+let dmOn = false, dmToggle = null;
 let raf = null;
 let onUserExit = null;    // flips the dock switch back off
 
@@ -134,7 +185,19 @@ function buildDom() {
   exitBtn.className = 'glass-btn';
   exitBtn.textContent = 'Back to the sky';
   exitBtn.addEventListener('click', () => exitMode(true));
-  document.body.append(canvas, legend, exitBtn);
+  // Sub-layer switch. It belongs to the 3-D mode, not the sky dock: it is
+  // meaningless outside this view, so it lives and dies with it.
+  dmToggle = document.createElement('button');
+  dmToggle.id = 'cosmos-dm';
+  dmToggle.className = 'glass-btn';
+  dmToggle.setAttribute('aria-pressed', 'false');
+  const dmDot = document.createElement('span');
+  dmDot.className = 'cosmos-dm-dot';
+  const dmLabel = document.createElement('span');
+  dmLabel.textContent = 'Dark matter';
+  dmToggle.append(dmDot, dmLabel);
+  dmToggle.addEventListener('click', () => setDarkMatter(!dmOn));
+  document.body.append(canvas, legend, exitBtn, dmToggle);
   // A browser can evict the GL context (backgrounded mobile tab). Without
   // this, the loop kept drawing into a dead context and the takeover view
   // stayed permanently black. Recovery = full teardown; the next flip
@@ -143,7 +206,7 @@ function buildDom() {
     e.preventDefault();
     const wasActive = active;
     exitMode(false);
-    canvas.remove(); legend.remove(); exitBtn.remove();
+    canvas.remove(); legend.remove(); exitBtn.remove(); dmToggle.remove();
     built = false; gl = null; loading = null; lastFrameSig = '';
     if (wasActive) {
       onUserExit?.();
@@ -163,33 +226,65 @@ function initGL(data) {
     if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s) || 'shader');
     return s;
   };
-  prog = gl.createProgram();
-  gl.attachShader(prog, sh(gl.VERTEX_SHADER, VERT));
-  gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FRAG));
-  gl.linkProgram(prog);
-  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog) || 'link');
-  gl.useProgram(prog);
+  const link = (vsrc, fsrc) => {
+    const p = gl.createProgram();
+    gl.attachShader(p, sh(gl.VERTEX_SHADER, vsrc));
+    gl.attachShader(p, sh(gl.FRAGMENT_SHADER, fsrc));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p) || 'link');
+    return p;
+  };
 
-  const posBuf = gl.createBuffer();
+  prog = link(VERT, FRAG);
+  posBuf = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, posBuf);
   gl.bufferData(gl.ARRAY_BUFFER, data.xyz, gl.STATIC_DRAW);
-  const aPos = gl.getAttribLocation(prog, 'aPos');
-  gl.enableVertexAttribArray(aPos);
-  gl.vertexAttribPointer(aPos, 3, gl.FLOAT, false, 0, 0);
-
-  const typeBuf = gl.createBuffer();
+  typeBuf = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, typeBuf);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data.type), gl.STATIC_DRAW);
-  const aType = gl.getAttribLocation(prog, 'aType');
-  gl.enableVertexAttribArray(aType);
-  gl.vertexAttribPointer(aType, 1, gl.FLOAT, false, 0, 0);
-
   uMvp = gl.getUniformLocation(prog, 'uMvp');
   uPx = gl.getUniformLocation(prog, 'uPx');
   uDpr = gl.getUniformLocation(prog, 'uDpr');
+  pointCount = data.count;
+
+  // The density field is derived HERE, while the parsed positions are still
+  // in hand — the caller drops them right after to reclaim ~5 MB, and
+  // retaining them just for a toggle the user might never flip would give
+  // that saving back. ~150 ms, hidden inside a load that already took
+  // seconds; the result is ~18k cells, a rounding error on the GPU.
+  try {
+    const field = buildDensityField(data.xyz, data.count, { grid: 96, smooth: 3 });
+    if (field.n > 0) {
+      dmProg = link(DM_VERT, DM_FRAG);
+      dmPosBuf = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, dmPosBuf);
+      gl.bufferData(gl.ARRAY_BUFFER, field.pos, gl.STATIC_DRAW);
+      dmDensBuf = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, dmDensBuf);
+      gl.bufferData(gl.ARRAY_BUFFER, field.dens, gl.STATIC_DRAW);
+      dmUMvp = gl.getUniformLocation(dmProg, 'uMvp');
+      dmUPx = gl.getUniformLocation(dmProg, 'uPx');
+      dmUDpr = gl.getUniformLocation(dmProg, 'uDpr');
+      dmUAlpha = gl.getUniformLocation(dmProg, 'uAlpha');
+      dmCount = field.n;
+    }
+  } catch (err) {
+    dmCount = 0; // the galaxies alone are still a complete view
+  }
+
   gl.enable(gl.BLEND);
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE); // additive: dense filaments glow
-  pointCount = data.count;
+}
+
+// Bind one program's vertex attributes. Two programs share the context, so
+// the pointers must be re-established per pass — set-once-in-initGL state
+// belongs to whichever program happened to be bound last.
+function bindAttrib(program, buffer, name, size) {
+  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+  const loc = gl.getAttribLocation(program, name);
+  if (loc < 0) return;
+  gl.enableVertexAttribArray(loc);
+  gl.vertexAttribPointer(loc, size, gl.FLOAT, false, 0, 0);
 }
 
 function resize() {
@@ -213,7 +308,9 @@ function frame() {
   // At rest (Animations off, inertia decayed) the camera is bit-identical
   // frame to frame — redrawing 400k points anyway was the app's largest
   // steady battery drain. Skip until something actually moves.
-  const sig = `${cam.yaw.toFixed(5)},${cam.pitch.toFixed(5)},${cam.dist.toFixed(2)},${canvas.width}x${canvas.height}`;
+  // dmOn joins the signature: flipping the layer must force a repaint even
+  // when the camera has not moved a pixel.
+  const sig = `${cam.yaw.toFixed(5)},${cam.pitch.toFixed(5)},${cam.dist.toFixed(2)},${canvas.width}x${canvas.height},${dmOn ? 1 : 0}`;
   if (sig === lastFrameSig) return;
   lastFrameSig = sig;
 
@@ -221,11 +318,30 @@ function frame() {
   const eye = [cam.dist * cp * Math.cos(cam.yaw), cam.dist * cp * Math.sin(cam.yaw), cam.dist * sp];
   const aspect = canvas.width / Math.max(1, canvas.height);
   const mvp = mul4(perspective(1.05, aspect, 2, 40000), lookAt(eye, [0, 0, 0]));
+  const px = canvas.height / 900;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
   gl.clearColor(0.01, 0.014, 0.03, 1);
   gl.clear(gl.COLOR_BUFFER_BIT);
+
+  // Dark matter underneath: the galaxies are the visible tracers and must
+  // read ON TOP of the field they sit in, not be washed out by it.
+  if (dmOn && dmCount > 0 && dmProg) {
+    gl.useProgram(dmProg);
+    bindAttrib(dmProg, dmPosBuf, 'aPos', 3);
+    bindAttrib(dmProg, dmDensBuf, 'aDens', 1);
+    gl.uniformMatrix4fv(dmUMvp, false, mvp);
+    gl.uniform1f(dmUPx, px);
+    gl.uniform1f(dmUDpr, dpr);
+    gl.uniform1f(dmUAlpha, 0.30);
+    gl.drawArrays(gl.POINTS, 0, dmCount);
+  }
+
+  gl.useProgram(prog);
+  bindAttrib(prog, posBuf, 'aPos', 3);
+  bindAttrib(prog, typeBuf, 'aType', 1);
   gl.uniformMatrix4fv(uMvp, false, mvp);
-  gl.uniform1f(uPx, canvas.height / 900);
-  gl.uniform1f(uDpr, Math.min(window.devicePixelRatio || 1, 2));
+  gl.uniform1f(uPx, px);
+  gl.uniform1f(uDpr, dpr);
   gl.drawArrays(gl.POINTS, 0, pointCount);
 }
 
@@ -285,6 +401,18 @@ const onKey = (e) => {
 };
 const onResize = () => { if (active) resize(); };
 
+// Flip the dark-matter field. Remembered across sessions, like every other
+// layer choice in the app.
+function setDarkMatter(on) {
+  dmOn = !!on && dmCount > 0;
+  if (dmToggle) {
+    dmToggle.setAttribute('aria-pressed', String(dmOn));
+    dmToggle.classList.toggle('on', dmOn);
+  }
+  writePref('cosmosdm', dmOn);
+  lastFrameSig = ''; // the camera has not moved: force the repaint
+}
+
 function enterMode() {
   if (active) return; // a double-enter would orphan a second rAF loop
   // Claim the view: taking it over while time playback or Sky Now gyro is
@@ -298,6 +426,9 @@ function enterMode() {
   canvas.style.display = 'block';
   showLegend();
   exitBtn.style.display = 'flex';
+  // Offered only when the field actually built — never a switch that does
+  // nothing (a device that declined the second program still gets galaxies).
+  if (dmToggle) dmToggle.style.display = dmCount > 0 ? 'flex' : 'none';
   document.addEventListener('keydown', onKey, true);
   window.addEventListener('resize', onResize);
   resize();
@@ -317,6 +448,7 @@ function exitMode(byUser) {
   canvas.style.display = 'none';
   hideLegend(false);
   exitBtn.style.display = 'none';
+  if (dmToggle) dmToggle.style.display = 'none';
   if (byUser) onUserExit?.();
 }
 
@@ -354,7 +486,7 @@ export async function setCosmicWeb(on, { onExit } = {}) {
       initGL(data);
     } catch (err) {
       showToast('3-D view unavailable: this device declined a WebGL context.', 'error', 7000);
-      canvas.remove(); legend.remove(); exitBtn.remove();
+      canvas.remove(); legend.remove(); exitBtn.remove(); dmToggle.remove();
       built = false; gl = null;
       return false;
     }
@@ -363,16 +495,22 @@ export async function setCosmicWeb(on, { onExit } = {}) {
     strong.textContent = 'DESI DR1 — the cosmic web in 3-D';
     const p = document.createElement('p');
     p.textContent = `${pointCount.toLocaleString()} real galaxies & quasars from the largest 3-D map of the universe (a uniform sample of 18.7 million DESI redshifts). Earth sits at the center; distances follow from each redshift (Planck ΛCDM). Drag to orbit · pinch or scroll to fly.`;
+    // Say plainly what the dark-matter layer is and is not. Nobody has
+    // imaged dark matter; this is the density it is INFERRED to have from
+    // where the measured galaxies actually are.
+    const dmNote = document.createElement('p');
+    dmNote.textContent = 'Dark matter: no telescope sees it directly. Galaxies form inside dark-matter halos, so this layer maps the density they trace — corrected for the survey\u2019s reach, so it shows real structure rather than how many galaxies are simply nearer. Purple is faint, white is the densest.';
     const credit = document.createElement('p');
     credit.className = 'cosmos-credit';
-    credit.textContent = 'Data: DESI Collaboration DR1, via NOIRLab Astro Data Lab.';
+    credit.textContent = 'Data: DESI Collaboration DR1, via NOIRLab Astro Data Lab. Dark-matter field inferred from those positions.';
     const close = document.createElement('button');
     close.className = 'legend-close';
     close.setAttribute('aria-label', 'Dismiss the legend');
     close.innerHTML = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="7" y1="7" x2="17" y2="17"/><line x1="17" y1="7" x2="7" y2="17"/></svg>';
     close.addEventListener('click', () => hideLegend(true));
-    legend.append(strong, p, credit, close);
+    legend.append(strong, p, dmNote, credit, close);
     makeDismissable(legend, () => hideLegend(true), 'translateX(-50%)');
+    setDarkMatter(readPref('cosmosdm', false) === true);
     built = true;
     // The parsed arrays now live in GPU buffers; dropping the resolved
     // promise frees ~5 MB of heap. (Context loss rebuilds via a fresh

@@ -354,6 +354,42 @@ await test('object names: one canonical spelling across every lookup', async () 
   }
 });
 
+await test('dark-matter field: finds real overdensity, not the survey edge', async () => {
+  const { buildDensityField } = await import('../js/darkmatter.js');
+  // A uniform spherical shell PLUS one tight clump, both spanning the same
+  // radii. Raw counts would light up whatever is nearest; only a field that
+  // divides out the radial selection can pick the clump out of the shell.
+  let rng = 1;
+  const rand = () => ((rng = (rng * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
+  const pts = [];
+  for (let i = 0; i < 30000; i++) {
+    const r = 200 + rand() * 400, th = Math.acos(2 * rand() - 1), ph = rand() * 6.283185;
+    pts.push(r * Math.sin(th) * Math.cos(ph), r * Math.sin(th) * Math.sin(ph), r * Math.cos(th));
+  }
+  const CX = 300;
+  for (let i = 0; i < 8000; i++) {
+    pts.push(CX + (rand() - 0.5) * 40, (rand() - 0.5) * 40, (rand() - 0.5) * 40);
+  }
+  const n = pts.length / 3;
+  const f = buildDensityField(new Float32Array(pts), n, { grid: 48 });
+  assert.ok(f.n > 0, 'field produced no cells');
+
+  let best = 0;
+  for (let i = 0; i < f.n; i++) if (f.dens[i] > f.dens[best]) best = i;
+  const dx = f.pos[best * 3] - CX, dy = f.pos[best * 3 + 1], dz = f.pos[best * 3 + 2];
+  const miss = Math.sqrt(dx * dx + dy * dy + dz * dz);
+  assert.ok(miss < 3 * f.cell, `densest cell is ${miss.toFixed(0)} Mpc from the clump`);
+  near(f.dens[best], 1, 1e-6, 'peak normalizes to 1');
+
+  // Normalized contrast, and nothing emitted below the floor.
+  for (let i = 0; i < f.n; i++) {
+    assert.ok(f.dens[i] > 0 && f.dens[i] <= 1, `density out of range: ${f.dens[i]}`);
+  }
+  // Degenerate inputs must return an empty field, never throw.
+  assert.equal(buildDensityField(new Float32Array(0), 0).n, 0);
+  assert.equal(buildDensityField(null, 10).n, 0);
+});
+
 await test('DESI cosmic-web binary: parser unpacks and rejects correctly', async () => {
   const { parseDesiWeb, DESI_HEADER_BYTES, DESI_RECORD_BYTES } = await import('../js/desidata.js');
   // Build a two-point file exactly as tools/fetch_desi_web.py packs it.

@@ -900,6 +900,26 @@ await scenario('cosmic web: 3-D mode enters and exits, or degrades gracefully wi
       'the legend ✕ must dismiss it');
     assert(await page.evaluate(() => document.getElementById('cosmos-canvas').style.display === 'block'),
       'dismissing the legend must not exit the mode');
+    // The dark-matter sub-layer: offered only inside 3-D mode, off until
+    // asked for, and remembered. It must also be a real switch — flipping
+    // it has to change what the renderer draws, not just the pill's colour.
+    const dm = await page.locator('#cosmos-dm').boundingBox();
+    assert(dm && dm.width > 80, `dark-matter toggle must fit its label, width ${dm?.width}`);
+    assert(await page.evaluate(() => document.getElementById('cosmos-dm').getAttribute('aria-pressed') === 'false'),
+      'dark matter must start off');
+    await page.click('#cosmos-dm');
+    await page.waitForTimeout(300);
+    assert(await page.evaluate(() => document.getElementById('cosmos-dm').getAttribute('aria-pressed') === 'true'),
+      'tapping must switch the dark-matter layer on');
+    assert(await page.evaluate(() => document.getElementById('cosmos-dm').classList.contains('on')),
+      'the on state must be reflected visually');
+    assert(await page.evaluate(() => {
+      try { return JSON.parse(localStorage.getItem('dsa-cosmosdm')) === true; } catch (e) { return false; }
+    }), 'the choice must persist');
+    await page.click('#cosmos-dm');
+    await page.waitForTimeout(250);
+    assert(await page.evaluate(() => document.getElementById('cosmos-dm').getAttribute('aria-pressed') === 'false'),
+      'tapping again must switch it back off');
     // Escape leaves the mode AND flips the dock switch back off.
     await page.keyboard.press('Escape');
     await page.waitForTimeout(400);

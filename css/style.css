@@ -1390,6 +1390,35 @@ body.cosmos-on #aladin-lite-div, body.cosmos-on #overlay-canvas{ visibility: hid
 /* The base :active scale would REPLACE the centering translate and lurch
    the button sideways mid-press — compose both transforms instead. */
 #cosmos-exit:active{ transform: translateX(-50%) scale(0.95); }
+/* Dark-matter sub-layer switch: sits under "Back to the sky", inside the
+   3-D mode it belongs to. Carries text, so it overrides .glass-btn's fixed
+   icon-circle geometry the same way #cosmos-exit does. */
+#cosmos-dm{
+  display: none; position: fixed; z-index: 46;
+  top: calc(110px + var(--safe-top)); left: 50%; transform: translateX(-50%);
+  width: auto; height: 32px; padding: 0 13px; gap: 7px;
+  align-items: center;
+  font-size: 12px; font-weight: 600; white-space: nowrap;
+  color: var(--text-secondary);
+}
+#cosmos-dm:active{ transform: translateX(-50%) scale(0.95); }
+#cosmos-dm.on{ color: var(--text-primary); }
+/* The dot previews the ramp it switches on: faint purple through pink and
+   yellow to white at the densest. Off, it is a dim outline. */
+.cosmos-dm-dot{
+  width: 11px; height: 11px; border-radius: 50%;
+  background: conic-gradient(from 140deg, #2b0866, #fa8cd9, #ffe85e, #ffffff, #2b0866);
+  opacity: 0.32; flex: none;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.18) inset;
+  transition: opacity 0.18s ease, box-shadow 0.18s ease;
+}
+#cosmos-dm.on .cosmos-dm-dot{
+  opacity: 1;
+  box-shadow: 0 0 7px rgba(255, 214, 240, 0.65), 0 0 0 1px rgba(255,255,255,0.3) inset;
+}
+@media (prefers-reduced-motion: reduce){
+  .cosmos-dm-dot{ transition: none; }
+}
 #cosmos-legend{
   display: none; position: fixed; z-index: 45;
   left: 50%; transform: translateX(-50%);
