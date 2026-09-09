@@ -67,7 +67,12 @@ void main() {
   gl_Position = uMvp * vec4(aPos, 1.0);
   float w = max(gl_Position.w, 1.0);
   // Wider light IS higher concentration — the sprite grows with density.
-  gl_PointSize = clamp(uPx * (1400.0 + 5400.0 * aDens) / w, 2.0 * uDpr, 46.0 * uDpr);
+  // These coefficients are in Mpc-px units (size = uPx * K / w): the galaxy
+  // pass uses K=900 for a ~1px star, so a diffuse cloud that reads as a
+  // CLOUD needs K two orders larger. Anything smaller lands on the minimum
+  // clamp at every density and every distance, which renders the whole
+  // layer as invisible 2px grit — measured, not guessed.
+  gl_PointSize = clamp(uPx * (30000.0 + 210000.0 * aDens) / w, 3.0 * uDpr, 64.0 * uDpr);
   vFade = clamp(2600.0 * (uPx / uDpr) / w, 0.30, 1.0);
   vDens = aDens;
 }`;
@@ -89,10 +94,15 @@ void main() {
   vec3 c1 = vec3(0.98, 0.55, 0.86);
   vec3 c2 = vec3(1.00, 0.91, 0.38);
   vec3 c3 = vec3(1.00, 1.00, 0.98);
+  // Four bands, not three joins: yellow gets a PLATEAU rather than being a
+  // single crossing point, or it shows up as a few hundred pixels in the
+  // whole frame (measured) and the ramp reads as purple-pink-white.
   float t = clamp(vDens, 0.0, 1.0);
-  vec3 col = t < 0.36
-    ? mix(c0, c1, t / 0.36)
-    : (t < 0.70 ? mix(c1, c2, (t - 0.36) / 0.34) : mix(c2, c3, (t - 0.70) / 0.30));
+  vec3 col;
+  if (t < 0.30)      col = mix(c0, c1, t / 0.30);              // purple → pink
+  else if (t < 0.55) col = mix(c1, c2, (t - 0.30) / 0.25);     // pink → yellow
+  else if (t < 0.78) col = mix(c2, c2, 0.0);                   // yellow, held
+  else               col = mix(c2, c3, (t - 0.78) / 0.22);     // yellow → white
   gl_FragColor = vec4(col * g, g * uAlpha * (0.25 + 0.75 * t) * vFade);
 }`;
 
@@ -332,7 +342,7 @@ function frame() {
     gl.uniformMatrix4fv(dmUMvp, false, mvp);
     gl.uniform1f(dmUPx, px);
     gl.uniform1f(dmUDpr, dpr);
-    gl.uniform1f(dmUAlpha, 0.30);
+    gl.uniform1f(dmUAlpha, 0.26);
     gl.drawArrays(gl.POINTS, 0, dmCount);
   }
 

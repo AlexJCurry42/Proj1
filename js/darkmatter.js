@@ -26,8 +26,9 @@
  * @param {object} [opts]
  * @param {number} [opts.grid=56]    cells per axis over the bounding cube
  * @param {number} [opts.smooth=3]   separable box-blur passes (~Gaussian)
- * @param {number} [opts.floor=0.12] keep cells at/above this normalized value
+ * @param {number} [opts.floor=0.20] keep cells at/above this normalized value
  * @param {number} [opts.shells=48]  radial shells for the selection divide-out
+ * @param {number} [opts.quantile=0.99] contrast quantile mapped to full white
  * @returns {{pos:Float32Array, dens:Float32Array, n:number, cell:number}}
  *   pos: 3 floats per surviving cell (its center, Mpc)
  *   dens: 0..1 normalized density contrast, 1 = densest
@@ -36,7 +37,9 @@
 export function buildDensityField(xyz, count, opts = {}) {
   const grid = Math.max(8, Math.floor(opts.grid ?? 56));
   const smooth = Math.max(0, Math.floor(opts.smooth ?? 3));
-  const floor = opts.floor ?? 0.12;
+  // 0.20 keeps the faint purple threads while dropping the ~22k dimmest
+  // cells, which cost fill-rate on a phone and add nothing visible.
+  const floor = opts.floor ?? 0.20;
   const shells = Math.max(4, Math.floor(opts.shells ?? 48));
   if (!count || !xyz || xyz.length < count * 3) {
     return { pos: new Float32Array(0), dens: new Float32Array(0), n: 0, cell: 0 };
@@ -130,7 +133,7 @@ export function buildDensityField(xyz, count, opts = {}) {
 
   // ---- counts → contrast, then normalize to 0..1 ----
   const contrast = new Float32Array(N);
-  let peak = 0;
+  const nz = [];
   for (let i = 0; i < N; i++) {
     if (f[i] <= 0) continue;
     const s = Math.min(shells - 1, Math.floor((rOf[i] / maxR) * shells));
@@ -138,20 +141,35 @@ export function buildDensityField(xyz, count, opts = {}) {
     if (!(m > 0)) continue;
     // Overdensity only: underdense voids carry no light in this rendering.
     const c = f[i] / m - 1;
-    if (c > 0) { contrast[i] = c; if (c > peak) peak = c; }
+    if (c > 0) { contrast[i] = c; nz.push(c); }
   }
-  if (!(peak > 0)) return { pos: new Float32Array(0), dens: new Float32Array(0), n: 0, cell };
+  if (!nz.length) return { pos: new Float32Array(0), dens: new Float32Array(0), n: 0, cell };
+
+  // Normalize against a high QUANTILE, not the maximum. The contrast
+  // distribution is extremely skewed — one rare node is several times the
+  // next — so dividing by the peak squashed 91% of cells into the bottom
+  // fifth of the range (measured), and a ramp that should sweep purple →
+  // pink → yellow → white rendered as almost uniform purple. Against p99
+  // the median lands mid-ramp and the densest ~1% clamp to white, which is
+  // both the standard treatment for density maps and the honest one: the
+  // brightest cells really are the rare extreme, not the typical cell.
+  nz.sort((a, b) => a - b);
+  const norm = nz[Math.min(nz.length - 1, Math.floor(nz.length * (opts.quantile ?? 0.99)))];
+  if (!(norm > 0)) return { pos: new Float32Array(0), dens: new Float32Array(0), n: 0, cell };
+  for (let i = 0; i < N; i++) {
+    if (contrast[i] > 0) contrast[i] = Math.min(1, contrast[i] / norm);
+  }
 
   // ---- emit the cells worth drawing ----
   let n = 0;
-  for (let i = 0; i < N; i++) if (contrast[i] / peak >= floor) n++;
+  for (let i = 0; i < N; i++) if (contrast[i] >= floor) n++;
   const pos = new Float32Array(n * 3), dens = new Float32Array(n);
   let k = 0;
   for (let z = 0; z < grid; z++) {
     for (let y = 0; y < grid; y++) {
       for (let x = 0; x < grid; x++) {
         const i = at(x, y, z);
-        const d = contrast[i] / peak;
+        const d = contrast[i];
         if (d < floor) continue;
         pos[k * 3] = lo + (x + 0.5) * cell;
         pos[k * 3 + 1] = lo + (y + 0.5) * cell;

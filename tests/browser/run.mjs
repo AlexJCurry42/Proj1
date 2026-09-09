@@ -15,6 +15,7 @@
 //   actually lived; see docs/DEVICE-CHECKLIST.md for the on-device pass).
 
 import { createServer } from 'node:http';
+import zlib from 'node:zlib';
 import { readFile, mkdir, rm, copyFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -188,6 +189,50 @@ async function newPage(browser, baseURL, { geolocation = true, guide = false, vi
 
 // Dock-row helpers as real functions with arguments — no string-built code
 // anywhere in the suite (mirrors the app's own no-eval discipline).
+// ---- pixel truth for the 3-D view ----
+// The cosmic web is rendered entirely from bundled data by our own WebGL —
+// no tile CDN — so unlike the sky surveys its OUTPUT can actually be checked
+// here. A WebGL canvas clears its drawing buffer after compositing, so
+// readPixels from the page returns zeros; the composited PNG is the honest
+// source. Playwright emits 8-bit truecolour, the only case this decodes.
+function decodePng(buf) {
+  let o = 8, w = 0, h = 0, ct = 0, bd = 0;
+  const idat = [];
+  while (o < buf.length) {
+    const len = buf.readUInt32BE(o);
+    const type = buf.toString('ascii', o + 4, o + 8);
+    const data = buf.subarray(o + 8, o + 8 + len);
+    if (type === 'IHDR') { w = data.readUInt32BE(0); h = data.readUInt32BE(4); bd = data[8]; ct = data[9]; }
+    else if (type === 'IDAT') idat.push(data);
+    else if (type === 'IEND') break;
+    o += 12 + len;
+  }
+  if (bd !== 8 || (ct !== 6 && ct !== 2)) throw new Error(`unsupported png ct=${ct} bd=${bd}`);
+  const ch = ct === 6 ? 4 : 3;
+  const raw = zlib.inflateSync(Buffer.concat(idat));
+  const stride = w * ch, out = Buffer.alloc(h * stride);
+  let p = 0;
+  for (let y = 0; y < h; y++) {
+    const f = raw[p++];
+    const line = raw.subarray(p, p + stride); p += stride;
+    const cur = out.subarray(y * stride, (y + 1) * stride);
+    const prev = y ? out.subarray((y - 1) * stride, y * stride) : Buffer.alloc(stride);
+    for (let x = 0; x < stride; x++) {
+      const a = x >= ch ? cur[x - ch] : 0, b = prev[x], c = x >= ch ? prev[x - ch] : 0;
+      let v = line[x];
+      if (f === 1) v += a; else if (f === 2) v += b; else if (f === 3) v += (a + b) >> 1;
+      else if (f === 4) { const pa = Math.abs(b - c), pb = Math.abs(a - c), pc = Math.abs(a + b - 2 * c); v += (pa <= pb && pa <= pc) ? a : (pb <= pc ? b : c); }
+      cur[x] = v & 255;
+    }
+  }
+  return { w, h, ch, data: out };
+}
+const meanLuma = (img) => {
+  let sum = 0;
+  for (let i = 0; i < img.w * img.h; i++) sum += img.data[i * img.ch] + img.data[i * img.ch + 1] + img.data[i * img.ch + 2];
+  return sum / (img.w * img.h);
+};
+
 const flipRow = (page, label) => page.evaluate((lbl) => {
   const find = (l) => [...document.querySelectorAll('#layer-dock-list li')].find(
     (li) => li.querySelector('.toggle-text')?.textContent === l);
@@ -916,10 +961,32 @@ await scenario('cosmic web: 3-D mode enters and exits, or degrades gracefully wi
     assert(await page.evaluate(() => {
       try { return JSON.parse(localStorage.getItem('dsa-cosmosdm')) === true; } catch (e) { return false; }
     }), 'the choice must persist');
+    // …and it must actually CHANGE THE PICTURE. Asserting only the pill's
+    // own attributes once let a build ship where the layer rendered every
+    // sprite clamped to the 2px minimum — the switch flipped, the sky did
+    // not. This compares real composited pixels either side of the toggle.
+    const shotOn = decodePng(await page.locator('#cosmos-canvas').screenshot());
     await page.click('#cosmos-dm');
-    await page.waitForTimeout(250);
+    await page.waitForTimeout(600);
     assert(await page.evaluate(() => document.getElementById('cosmos-dm').getAttribute('aria-pressed') === 'false'),
       'tapping again must switch it back off');
+    const shotOff = decodePng(await page.locator('#cosmos-canvas').screenshot());
+    const lumaOn = meanLuma(shotOn), lumaOff = meanLuma(shotOff);
+    assert(lumaOn > lumaOff * 1.15,
+      `the dark-matter layer must visibly light the view: mean ${lumaOff.toFixed(1)} off vs ${lumaOn.toFixed(1)} on`);
+    // The light it adds must span the ramp, not arrive as one flat colour.
+    const A = shotOff.data, B = shotOn.data, ch = shotOff.ch;
+    let warm = 0, cool = 0, changed = 0;
+    for (let i = 0; i < shotOff.w * shotOff.h; i++) {
+      const dr = B[i * ch] - A[i * ch], dg = B[i * ch + 1] - A[i * ch + 1], db = B[i * ch + 2] - A[i * ch + 2];
+      if (Math.max(dr, dg, db) < 8) continue;
+      changed++;
+      if (dr > db) warm++; else cool++;   // yellow/white/pink vs purple/pink
+    }
+    assert(changed > shotOff.w * shotOff.h * 0.02,
+      `the layer must cover real area, only ${changed}px changed`);
+    assert(warm > 0 && cool > 0,
+      `the ramp must span warm and cool ends: warm ${warm}, cool ${cool}`);
     // Escape leaves the mode AND flips the dock switch back off.
     await page.keyboard.press('Escape');
     await page.waitForTimeout(400);
