@@ -44,17 +44,17 @@
    "source": "d3-celestial (Stellarium sky culture)"
   },
   "descriptions.json": {
-   "bytes": 165181,
-   "refreshed": "2026-08-03T06:37:28+00:00",
-   "run": "30790462557",
-   "sha256": "99eb5b617fd0b49fd8d6bc47d6eeeae7148d19ffee270d4959c48305cfcd731d",
+   "bytes": 166280,
+   "refreshed": "2026-09-16T02:01:36+00:00",
+   "run": "35045841315",
+   "sha256": "dcfd13fed3276445c3fa3bbcda525047de40ad421bff6949edd68d88bef47a21",
    "source": "English Wikipedia REST lead extracts (CC BY-SA 4.0), tools/fetch_descriptions.py"
   },
   "desi_web.bin": {
-   "bytes": 3200012,
-   "refreshed": "2026-07-25T22:37:55+00:00",
-   "run": "30177712565",
-   "sha256": "46f8f408976591f8dc4dc3bb14d239d92a8239e87edb618e07055c11b5f2243a",
+   "bytes": 10079013,
+   "refreshed": "2026-09-16T02:01:36+00:00",
+   "run": "35045841315",
+   "sha256": "77c01a0cbf4e9aa8224a2c4585220e011c59e59bc1c0bfac7abe360613ef2cf1",
    "source": "DESI DR1 zpix via NOIRLab Astro Data Lab TAP, tools/fetch_desi_web.py"
   },
   "exoplanets_snapshot.csv": {
@@ -73,9 +73,9 @@
   },
   "satellites_tle.txt": {
    "bytes": 152,
-   "refreshed": "2026-09-15T09:34:21+00:00",
-   "run": "34953223379",
-   "sha256": "a78f4d2ad26251724071d7e860922089d7d61cc9efda563ed6746eda0fb1c478",
+   "refreshed": "2026-09-16T02:01:36+00:00",
+   "run": "35045841315",
+   "sha256": "3d8af4e3030c3e2e3c16939313156dcb225c9fcdf46d5a0ad14755a931971f81",
    "source": "https://celestrak.org/NORAD/elements/gp.php?GROUP=stations&FORMAT=tle"
   }
  }
