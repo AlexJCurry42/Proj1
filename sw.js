@@ -21,7 +21,7 @@
 // constellations_lines/names/borders) here — they may not exist on a fresh
 // deploy and one 404 fails the entire install. Runtime caching covers them.
 // Bump together with js/version.js (shown in the About panel).
-const VERSION = 'dsa-shell-v111';
+const VERSION = 'dsa-shell-v112';
 
 const SHELL = [
   './',
@@ -44,7 +44,6 @@ const SHELL = [
   'js/objnames.js',
   'js/descriptions.js',
   'js/desidata.js',
-  'js/darkmatter.js',
   'js/cosmos3d.js',
   'js/observer.js',
   'js/overlay.js',

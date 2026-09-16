@@ -354,53 +354,11 @@ await test('object names: one canonical spelling across every lookup', async () 
   }
 });
 
-await test('dark-matter field: finds real overdensity, not the survey edge', async () => {
-  const { buildDensityField } = await import('../js/darkmatter.js');
-  // A uniform spherical shell PLUS one tight clump, both spanning the same
-  // radii. Raw counts would light up whatever is nearest; only a field that
-  // divides out the radial selection can pick the clump out of the shell.
-  let rng = 1;
-  const rand = () => ((rng = (rng * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
-  const pts = [];
-  for (let i = 0; i < 30000; i++) {
-    const r = 200 + rand() * 400, th = Math.acos(2 * rand() - 1), ph = rand() * 6.283185;
-    pts.push(r * Math.sin(th) * Math.cos(ph), r * Math.sin(th) * Math.sin(ph), r * Math.cos(th));
-  }
-  const CX = 300;
-  for (let i = 0; i < 8000; i++) {
-    pts.push(CX + (rand() - 0.5) * 40, (rand() - 0.5) * 40, (rand() - 0.5) * 40);
-  }
-  const n = pts.length / 3;
-  const f = buildDensityField(new Float32Array(pts), n, { grid: 48 });
-  assert.ok(f.n > 0, 'field produced no cells');
+await test('DESI cosmic-web binary: both formats unpack, and reject corruption', async () => {
+  const { parseDesiWeb, DESI_HEADER_BYTES, DESI_RECORD_BYTES, DESI_V2_HEADER_BYTES } =
+    await import('../js/desidata.js');
 
-  // Compare POPULATIONS, not the single argmax: densities are normalized
-  // against a high quantile, so the densest ~1% legitimately tie at 1.0 and
-  // which of them is "first" says nothing. What must hold is that the clump
-  // is far denser than everything around it.
-  let inSum = 0, inN = 0, outSum = 0, outN = 0;
-  for (let i = 0; i < f.n; i++) {
-    const dx = f.pos[i * 3] - CX, dy = f.pos[i * 3 + 1], dz = f.pos[i * 3 + 2];
-    if (Math.sqrt(dx * dx + dy * dy + dz * dz) < 2 * f.cell) { inSum += f.dens[i]; inN++; }
-    else { outSum += f.dens[i]; outN++; }
-  }
-  assert.ok(inN > 0, 'no cells landed on the clump at all');
-  const inMean = inSum / inN, outMean = outSum / Math.max(1, outN);
-  assert.ok(inMean > 2 * outMean,
-    `clump should dominate: ${inMean.toFixed(2)} vs ${outMean.toFixed(2)} elsewhere`);
-
-  // Normalized contrast, and nothing emitted below the floor.
-  for (let i = 0; i < f.n; i++) {
-    assert.ok(f.dens[i] > 0 && f.dens[i] <= 1, `density out of range: ${f.dens[i]}`);
-  }
-  // Degenerate inputs must return an empty field, never throw.
-  assert.equal(buildDensityField(new Float32Array(0), 0).n, 0);
-  assert.equal(buildDensityField(null, 10).n, 0);
-});
-
-await test('DESI cosmic-web binary: parser unpacks and rejects correctly', async () => {
-  const { parseDesiWeb, DESI_HEADER_BYTES, DESI_RECORD_BYTES } = await import('../js/desidata.js');
-  // Build a two-point file exactly as tools/fetch_desi_web.py packs it.
+  // ---- DSW1 (legacy, still the deployed file until the pipeline reruns) ----
   const scale = 0.21;
   const buf = new ArrayBuffer(DESI_HEADER_BYTES + 2 * DESI_RECORD_BYTES);
   const dv = new DataView(buf);
@@ -409,19 +367,60 @@ await test('DESI cosmic-web binary: parser unpacks and rejects correctly', async
   dv.setFloat32(8, scale, true);
   dv.setInt16(12, 1000, true); dv.setInt16(14, -2000, true); dv.setInt16(16, 30000, true); dv.setUint8(18, 0);
   dv.setInt16(20, -1, true); dv.setInt16(22, 0, true); dv.setInt16(24, 1, true); dv.setUint8(26, 1);
-  const d = parseDesiWeb(buf);
-  assert.equal(d.count, 2);
-  near(d.xyz[0], 1000 * scale, 0.01, 'x0');
-  near(d.xyz[1], -2000 * scale, 0.01, 'y0');
-  near(d.xyz[2], 30000 * scale, 0.5, 'z0');
-  assert.equal(d.type[0], 0);
-  assert.equal(d.type[1], 1);
-  // Malformed inputs must throw, never mis-render: wrong magic, wrong length.
+  const d1 = parseDesiWeb(buf);
+  assert.equal(d1.count, 2);
+  assert.equal(d1.version, 1);
+  near(d1.step, scale, 1e-6, 'legacy scale becomes the lattice step');
+  assert.deepEqual([...d1.origin], [0, 0, 0], 'legacy positions are absolute');
+  assert.equal(d1.q[0], 1000); assert.equal(d1.q[1], -2000); assert.equal(d1.q[2], 30000);
+  assert.equal(d1.type[0], 0); assert.equal(d1.type[1], 1);
   dv.setUint8(0, 88); // 'X'
   assert.throws(() => parseDesiWeb(buf), /magic/);
-  dv.setUint8(0, 'D'.charCodeAt(0));
-  dv.setUint32(4, 3, true); // claims more points than the buffer holds
-  assert.throws(() => parseDesiWeb(buf), /length/);
+
+  // ---- DSW2: build one the way tools/fetch_desi_web.py does, then read it ----
+  const pts = [[3, 1, 2, 0], [4, 1, 2, 1], [9, 7, 5, 0], [9, 7, 6, 1]]; // ascending-ish
+  const body = [];
+  const putVarint = (v) => {
+    let u = (v << 1) ^ (v >> 31); u >>>= 0;
+    while (u >= 0x80) { body.push((u & 0x7f) | 0x80); u = Math.floor(u / 128); }
+    body.push(u);
+  };
+  let px = 0, py = 0, pz = 0;
+  for (const [x, y, z] of pts) { putVarint(x - px); putVarint(y - py); putVarint(z - pz); px = x; py = y; pz = z; }
+  const bitsetBytes = Math.ceil(pts.length / 8);
+  const v2 = new ArrayBuffer(DESI_V2_HEADER_BYTES + body.length + bitsetBytes);
+  const w = new DataView(v2);
+  [..."DSW2"].forEach((c, i) => w.setUint8(i, c.charCodeAt(0)));
+  w.setUint32(4, pts.length, true);
+  w.setFloat32(8, -100, true); w.setFloat32(12, -200, true); w.setFloat32(16, -300, true);
+  w.setFloat32(20, 0.5, true);
+  w.setUint32(24, body.length, true);
+  body.forEach((b, i) => w.setUint8(DESI_V2_HEADER_BYTES + i, b));
+  pts.forEach((pt, i) => {
+    if (pt[3]) {
+      const o = DESI_V2_HEADER_BYTES + body.length + (i >> 3);
+      w.setUint8(o, w.getUint8(o) | (1 << (i & 7)));
+    }
+  });
+  const d2 = parseDesiWeb(v2);
+  assert.equal(d2.version, 2);
+  assert.equal(d2.count, pts.length);
+  near(d2.step, 0.5, 1e-6, 'step');
+  assert.deepEqual([...d2.origin], [-100, -200, -300], 'origin');
+  // Delta-decoding must rebuild the ABSOLUTE lattice coordinates.
+  pts.forEach((pt, i) => {
+    assert.equal(d2.q[i * 3], pt[0], `x${i}`);
+    assert.equal(d2.q[i * 3 + 1], pt[1], `y${i}`);
+    assert.equal(d2.q[i * 3 + 2], pt[2], `z${i}`);
+    assert.equal(d2.type[i], pt[3], `type${i}`);
+  });
+
+  // Corruption must throw rather than render nonsense: a truncated tail and
+  // a count the varint block cannot possibly satisfy.
+  assert.throws(() => parseDesiWeb(v2.slice(0, v2.byteLength - 1)), /length mismatch/);
+  const badCount = v2.slice(0);
+  new DataView(badCount).setUint32(4, pts.length + 50, true);
+  assert.throws(() => parseDesiWeb(badCount));
 });
 
 await test('version consistency: sw.js VERSION and js/version.js SHELL_VERSION match', async () => {

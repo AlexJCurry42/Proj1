@@ -945,48 +945,38 @@ await scenario('cosmic web: 3-D mode enters and exits, or degrades gracefully wi
       'the legend ✕ must dismiss it');
     assert(await page.evaluate(() => document.getElementById('cosmos-canvas').style.display === 'block'),
       'dismissing the legend must not exit the mode');
-    // The dark-matter sub-layer: offered only inside 3-D mode, off until
-    // asked for, and remembered. It must also be a real switch — flipping
-    // it has to change what the renderer draws, not just the pill's colour.
-    const dm = await page.locator('#cosmos-dm').boundingBox();
-    assert(dm && dm.width > 80, `dark-matter toggle must fit its label, width ${dm?.width}`);
-    assert(await page.evaluate(() => document.getElementById('cosmos-dm').getAttribute('aria-pressed') === 'false'),
-      'dark matter must start off');
-    await page.click('#cosmos-dm');
-    await page.waitForTimeout(300);
-    assert(await page.evaluate(() => document.getElementById('cosmos-dm').getAttribute('aria-pressed') === 'true'),
-      'tapping must switch the dark-matter layer on');
-    assert(await page.evaluate(() => document.getElementById('cosmos-dm').classList.contains('on')),
-      'the on state must be reflected visually');
-    assert(await page.evaluate(() => {
-      try { return JSON.parse(localStorage.getItem('dsa-cosmosdm')) === true; } catch (e) { return false; }
-    }), 'the choice must persist');
-    // …and it must actually CHANGE THE PICTURE. Asserting only the pill's
-    // own attributes once let a build ship where the layer rendered every
-    // sprite clamped to the 2px minimum — the switch flipped, the sky did
-    // not. This compares real composited pixels either side of the toggle.
-    const shotOn = decodePng(await page.locator('#cosmos-canvas').screenshot());
-    await page.click('#cosmos-dm');
-    await page.waitForTimeout(600);
-    assert(await page.evaluate(() => document.getElementById('cosmos-dm').getAttribute('aria-pressed') === 'false'),
-      'tapping again must switch it back off');
-    const shotOff = decodePng(await page.locator('#cosmos-canvas').screenshot());
-    const lumaOn = meanLuma(shotOn), lumaOff = meanLuma(shotOff);
-    assert(lumaOn > lumaOff * 1.15,
-      `the dark-matter layer must visibly light the view: mean ${lumaOff.toFixed(1)} off vs ${lumaOn.toFixed(1)} on`);
-    // The light it adds must span the ramp, not arrive as one flat colour.
-    const A = shotOff.data, B = shotOn.data, ch = shotOff.ch;
-    let warm = 0, cool = 0, changed = 0;
-    for (let i = 0; i < shotOff.w * shotOff.h; i++) {
-      const dr = B[i * ch] - A[i * ch], dg = B[i * ch + 1] - A[i * ch + 1], db = B[i * ch + 2] - A[i * ch + 2];
-      if (Math.max(dr, dg, db) < 8) continue;
-      changed++;
-      if (dr > db) warm++; else cool++;   // yellow/white/pink vs purple/pink
-    }
-    assert(changed > shotOff.w * shotOff.h * 0.02,
-      `the layer must cover real area, only ${changed}px changed`);
-    assert(warm > 0 && cool > 0,
-      `the ramp must span warm and cool ends: warm ${warm}, cool ${cool}`);
+
+    // Detail budget. The map is meant to be the full DESI catalog, which is
+    // far too many points to redraw every frame of a drag — so it thins
+    // while moving and must come back to FULL resolution once still. An
+    // earlier build keyed that off "camera moved at all", and because the
+    // idle drift never stops, the full-detail frame never landed and the
+    // map sat permanently at a quarter of what it had downloaded.
+    const draws = await page.evaluate(async () => {
+      const gl = document.getElementById('cosmos-canvas').getContext('webgl');
+      const proto = Object.getPrototypeOf(gl);
+      const orig = proto.drawArrays;
+      const seen = [];
+      proto.drawArrays = function (m, f, c) { seen.push(c); return orig.call(this, m, f, c); };
+      const c = document.getElementById('cosmos-canvas');
+      const r = c.getBoundingClientRect();
+      c.dispatchEvent(new PointerEvent('pointerdown', { clientX: r.left + 300, clientY: r.top + 350, pointerId: 1, bubbles: true }));
+      for (let i = 0; i < 20; i++) {
+        c.dispatchEvent(new PointerEvent('pointermove', { clientX: r.left + 300 + i * 7, clientY: r.top + 350 + i * 3, pointerId: 1, bubbles: true }));
+        await new Promise((z) => requestAnimationFrame(z));
+      }
+      c.dispatchEvent(new PointerEvent('pointerup', { clientX: r.left + 440, clientY: r.top + 410, pointerId: 1, bubbles: true }));
+      const moving = seen.slice();
+      seen.length = 0;
+      await new Promise((z) => setTimeout(z, 3500));
+      const settled = seen.slice();
+      proto.drawArrays = orig;
+      return { movingMax: moving.length ? Math.max(...moving) : 0,
+               settledMax: settled.length ? Math.max(...settled) : 0 };
+    });
+    assert(draws.settledMax > 0, 'no frame was drawn after the camera settled');
+    assert(draws.movingMax === 0 || draws.movingMax <= draws.settledMax,
+      `a moving frame must never draw more than the settled one: ${draws.movingMax} vs ${draws.settledMax}`);
     // Escape leaves the mode AND flips the dock switch back off.
     await page.keyboard.press('Escape');
     await page.waitForTimeout(400);

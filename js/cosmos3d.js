@@ -11,22 +11,27 @@
 // nothing loads until the first flip of the dock switch.
 
 import { parseDesiWeb } from './desidata.js';
-import { buildDensityField } from './darkmatter.js';
-import { readPref, writePref } from './prefs.js';
 import { showToast, makeDismissable } from './ui.js';
 import { motionOK } from './motion.js';
 import { acquireView, releaseView } from './cameraowner.js';
 
 const VERT = `
-attribute vec3 aPos;
+attribute vec3 aPos;    // LATTICE coordinates, not Mpc — see js/desidata.js
 attribute float aType;
 uniform mat4 uMvp;
+uniform vec3 uOrigin;   // lattice corner in Mpc
+uniform float uStep;    // Mpc per lattice unit
 uniform float uPx;      // viewport height in DEVICE px (size attenuation)
 uniform float uDpr;     // device-pixel ratio: keeps sprite size in CSS px
 varying float vType;
 varying float vFade;
 void main() {
-  gl_Position = uMvp * vec4(aPos, 1.0);
+  // Positions arrive quantized and are rebuilt here. That keeps a
+  // multi-million-point catalog at 6 bytes per point on the GPU instead of
+  // 12, and spares the main thread ever building a float array the size of
+  // the whole map.
+  vec3 world = uOrigin + aPos * uStep;
+  gl_Position = uMvp * vec4(world, 1.0);
   float w = max(gl_Position.w, 1.0);
   // Clamp bounds scale with DPR so a phone shows the same CSS-px sprites
   // as a laptop (raw device-px clamps halved them at dpr 2).
@@ -40,6 +45,7 @@ const FRAG = `
 precision mediump float;
 varying float vType;
 varying float vFade;
+uniform float uAlpha;
 void main() {
   // Soft round sprite — square points read as digital grit.
   vec2 d = gl_PointCoord - vec2(0.5);
@@ -49,61 +55,10 @@ void main() {
   vec3 galaxy = vec3(0.98, 0.88, 0.70);   // warm starlight
   vec3 quasar = vec3(0.45, 0.75, 1.00);   // hot accretion blue
   vec3 col = mix(galaxy, quasar, step(0.5, vType));
-  gl_FragColor = vec4(col * core, core * 0.55 * vFade);
-}`;
-
-// The dark-matter field rides in its own pass: diffuse volumetric sprites
-// whose SIZE and COLOUR both climb with concentration, so a dense node reads
-// as a wide white-hot glow and a thin filament as a narrow purple thread.
-const DM_VERT = `
-attribute vec3 aPos;
-attribute float aDens;
-uniform mat4 uMvp;
-uniform float uPx;
-uniform float uDpr;
-varying float vDens;
-varying float vFade;
-void main() {
-  gl_Position = uMvp * vec4(aPos, 1.0);
-  float w = max(gl_Position.w, 1.0);
-  // Wider light IS higher concentration — the sprite grows with density.
-  // These coefficients are in Mpc-px units (size = uPx * K / w): the galaxy
-  // pass uses K=900 for a ~1px star, so a diffuse cloud that reads as a
-  // CLOUD needs K two orders larger. Anything smaller lands on the minimum
-  // clamp at every density and every distance, which renders the whole
-  // layer as invisible 2px grit — measured, not guessed.
-  gl_PointSize = clamp(uPx * (30000.0 + 210000.0 * aDens) / w, 3.0 * uDpr, 64.0 * uDpr);
-  vFade = clamp(2600.0 * (uPx / uDpr) / w, 0.30, 1.0);
-  vDens = aDens;
-}`;
-
-const DM_FRAG = `
-precision mediump float;
-varying float vDens;
-varying float vFade;
-uniform float uAlpha;
-void main() {
-  vec2 d = gl_PointCoord - vec2(0.5);
-  float r2 = dot(d, d);
-  if (r2 > 0.25) discard;
-  // Squared falloff: these are diffuse clouds, not point sources.
-  float g = smoothstep(0.25, 0.0, r2);
-  g *= g;
-  // The concentration ramp: dark purple → light pink → yellow → white.
-  vec3 c0 = vec3(0.17, 0.03, 0.40);
-  vec3 c1 = vec3(0.98, 0.55, 0.86);
-  vec3 c2 = vec3(1.00, 0.91, 0.38);
-  vec3 c3 = vec3(1.00, 1.00, 0.98);
-  // Four bands, not three joins: yellow gets a PLATEAU rather than being a
-  // single crossing point, or it shows up as a few hundred pixels in the
-  // whole frame (measured) and the ramp reads as purple-pink-white.
-  float t = clamp(vDens, 0.0, 1.0);
-  vec3 col;
-  if (t < 0.30)      col = mix(c0, c1, t / 0.30);              // purple → pink
-  else if (t < 0.55) col = mix(c1, c2, (t - 0.30) / 0.25);     // pink → yellow
-  else if (t < 0.78) col = mix(c2, c2, 0.0);                   // yellow, held
-  else               col = mix(c2, c3, (t - 0.78) / 0.22);     // yellow → white
-  gl_FragColor = vec4(col * g, g * uAlpha * (0.25 + 0.75 * t) * vFade);
+  // Additive blending accumulates linearly with point count, so the per
+  // point weight has to fall as the catalog grows or a 3-million-point map
+  // is one white sheet. uAlpha carries that, set from the real count.
+  gl_FragColor = vec4(col * core, core * uAlpha * vFade);
 }`;
 
 // ---- minimal mat4 (column-major, WebGL order) ----
@@ -150,12 +105,15 @@ let reqSeq = 0;           // newest setCosmicWeb call wins across its awaits
 let loading = null;       // in-flight dataset promise
 let gl = null, prog = null, canvas = null, legend = null, exitBtn = null;
 let pointCount = 0;
-let uMvp = null, uPx = null, uDpr = null;
-// Dark-matter pass: own program, own buffers, own uniforms.
-let dmProg = null, dmPosBuf = null, dmDensBuf = null, dmCount = 0;
-let dmUMvp = null, dmUPx = null, dmUDpr = null, dmUAlpha = null;
+let uMvp = null, uPx = null, uDpr = null, uOrigin = null, uStep = null, uAlpha = null;
 let posBuf = null, typeBuf = null;
-let dmOn = false, dmToggle = null;
+let dataOrigin = [0, 0, 0], dataStep = 1, pointAlpha = 0.55;
+// While the camera is moving, draw every Nth point. The file is stored in
+// Morton (spatial) order, so a strided read is a SPATIALLY EVEN subsample,
+// not a corner of the volume — which is what makes this free: one stride
+// argument, no second buffer, no reordering.
+let lodStride = 1, lastDrawnStride = 0, lastCamSig = '';
+let prevYaw = 0, prevPitch = 0, prevDist = 0, driftTick = 0;
 let raf = null;
 let onUserExit = null;    // flips the dock switch back off
 
@@ -195,19 +153,7 @@ function buildDom() {
   exitBtn.className = 'glass-btn';
   exitBtn.textContent = 'Back to the sky';
   exitBtn.addEventListener('click', () => exitMode(true));
-  // Sub-layer switch. It belongs to the 3-D mode, not the sky dock: it is
-  // meaningless outside this view, so it lives and dies with it.
-  dmToggle = document.createElement('button');
-  dmToggle.id = 'cosmos-dm';
-  dmToggle.className = 'glass-btn';
-  dmToggle.setAttribute('aria-pressed', 'false');
-  const dmDot = document.createElement('span');
-  dmDot.className = 'cosmos-dm-dot';
-  const dmLabel = document.createElement('span');
-  dmLabel.textContent = 'Dark matter';
-  dmToggle.append(dmDot, dmLabel);
-  dmToggle.addEventListener('click', () => setDarkMatter(!dmOn));
-  document.body.append(canvas, legend, exitBtn, dmToggle);
+  document.body.append(canvas, legend, exitBtn);
   // A browser can evict the GL context (backgrounded mobile tab). Without
   // this, the loop kept drawing into a dead context and the takeover view
   // stayed permanently black. Recovery = full teardown; the next flip
@@ -216,8 +162,8 @@ function buildDom() {
     e.preventDefault();
     const wasActive = active;
     exitMode(false);
-    canvas.remove(); legend.remove(); exitBtn.remove(); dmToggle.remove();
-    built = false; gl = null; loading = null; lastFrameSig = '';
+    canvas.remove(); legend.remove(); exitBtn.remove();
+    built = false; gl = null; loading = null; lastCamSig = ''; lastDrawnStride = 0;
     if (wasActive) {
       onUserExit?.();
       showToast('The 3-D view lost its graphics context — flip the switch to re-enter.', 'info', 7000);
@@ -246,41 +192,31 @@ function initGL(data) {
   };
 
   prog = link(VERT, FRAG);
+  // Upload the quantized lattice and the type flags in their native widths:
+  // SHORT positions and a single BYTE per type. Expanding either to float
+  // here would triple the GPU cost of the map for no visual gain.
   posBuf = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, posBuf);
-  gl.bufferData(gl.ARRAY_BUFFER, data.xyz, gl.STATIC_DRAW);
+  gl.bufferData(gl.ARRAY_BUFFER, data.q, gl.STATIC_DRAW);
   typeBuf = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, typeBuf);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data.type), gl.STATIC_DRAW);
+  gl.bufferData(gl.ARRAY_BUFFER, data.type, gl.STATIC_DRAW);
   uMvp = gl.getUniformLocation(prog, 'uMvp');
   uPx = gl.getUniformLocation(prog, 'uPx');
   uDpr = gl.getUniformLocation(prog, 'uDpr');
+  uOrigin = gl.getUniformLocation(prog, 'uOrigin');
+  uStep = gl.getUniformLocation(prog, 'uStep');
+  uAlpha = gl.getUniformLocation(prog, 'uAlpha');
   pointCount = data.count;
+  dataOrigin = [data.origin[0], data.origin[1], data.origin[2]];
+  dataStep = data.step;
+  // Keep a moving frame near ~800k points however big the catalog gets.
+  lodStride = Math.max(1, Math.ceil(pointCount / 800000));
+  // Brightness per point falls as the count rises. Square-root rather than
+  // linear: linear makes a dense map dimmer than a sparse one overall, and
+  // the eye reads the cosmic web by contrast, not absolute level.
+  pointAlpha = Math.min(0.55, Math.max(0.07, 0.55 * Math.sqrt(400000 / Math.max(1, pointCount))));
 
-  // The density field is derived HERE, while the parsed positions are still
-  // in hand — the caller drops them right after to reclaim ~5 MB, and
-  // retaining them just for a toggle the user might never flip would give
-  // that saving back. ~150 ms, hidden inside a load that already took
-  // seconds; the result is ~18k cells, a rounding error on the GPU.
-  try {
-    const field = buildDensityField(data.xyz, data.count, { grid: 96, smooth: 3 });
-    if (field.n > 0) {
-      dmProg = link(DM_VERT, DM_FRAG);
-      dmPosBuf = gl.createBuffer();
-      gl.bindBuffer(gl.ARRAY_BUFFER, dmPosBuf);
-      gl.bufferData(gl.ARRAY_BUFFER, field.pos, gl.STATIC_DRAW);
-      dmDensBuf = gl.createBuffer();
-      gl.bindBuffer(gl.ARRAY_BUFFER, dmDensBuf);
-      gl.bufferData(gl.ARRAY_BUFFER, field.dens, gl.STATIC_DRAW);
-      dmUMvp = gl.getUniformLocation(dmProg, 'uMvp');
-      dmUPx = gl.getUniformLocation(dmProg, 'uPx');
-      dmUDpr = gl.getUniformLocation(dmProg, 'uDpr');
-      dmUAlpha = gl.getUniformLocation(dmProg, 'uAlpha');
-      dmCount = field.n;
-    }
-  } catch (err) {
-    dmCount = 0; // the galaxies alone are still a complete view
-  }
 
   gl.enable(gl.BLEND);
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE); // additive: dense filaments glow
@@ -289,12 +225,12 @@ function initGL(data) {
 // Bind one program's vertex attributes. Two programs share the context, so
 // the pointers must be re-established per pass — set-once-in-initGL state
 // belongs to whichever program happened to be bound last.
-function bindAttrib(program, buffer, name, size) {
+function bindAttrib(program, buffer, name, size, glType, stride) {
   gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
   const loc = gl.getAttribLocation(program, name);
   if (loc < 0) return;
   gl.enableVertexAttribArray(loc);
-  gl.vertexAttribPointer(loc, size, gl.FLOAT, false, 0, 0);
+  gl.vertexAttribPointer(loc, size, glType, false, stride, 0);
 }
 
 function resize() {
@@ -302,10 +238,11 @@ function resize() {
   canvas.width = Math.round(canvas.clientWidth * dpr);
   canvas.height = Math.round(canvas.clientHeight * dpr);
   gl.viewport(0, 0, canvas.width, canvas.height);
-  lastFrameSig = ''; // force a redraw at the new size
+  // Force a redraw at the new size (the canvas dims are part of the
+  // camera signature, but be explicit rather than rely on that).
+  lastCamSig = ''; lastDrawnStride = 0;
 }
 
-let lastFrameSig = '';
 function frame() {
   raf = requestAnimationFrame(frame);
   // Inertia + idle drift (drift only when animations are allowed).
@@ -313,16 +250,36 @@ function frame() {
   cam.pitch = Math.max(-1.45, Math.min(1.45, cam.pitch + vel.pitch));
   vel.yaw *= 0.92;
   vel.pitch *= 0.92;
-  if (motionOK() && performance.now() - lastInteract > 5000) cam.yaw += 0.0006;
+  // Idle drift, advanced in steps rather than every frame. The rate is the
+  // same to the eye; what changes is that three frames in four leave the
+  // camera bit-identical, so the rest-detection below skips them. At 400k
+  // points redrawing the drift every frame was merely wasteful — at three
+  // million it would be the single biggest battery cost in the app.
+  driftTick++;
+  if (motionOK() && performance.now() - lastInteract > 5000 && driftTick % 4 === 0) {
+    cam.yaw += 0.0024;
+  }
 
   // At rest (Animations off, inertia decayed) the camera is bit-identical
-  // frame to frame — redrawing 400k points anyway was the app's largest
-  // steady battery drain. Skip until something actually moves.
-  // dmOn joins the signature: flipping the layer must force a repaint even
-  // when the camera has not moved a pixel.
-  const sig = `${cam.yaw.toFixed(5)},${cam.pitch.toFixed(5)},${cam.dist.toFixed(2)},${canvas.width}x${canvas.height},${dmOn ? 1 : 0}`;
-  if (sig === lastFrameSig) return;
-  lastFrameSig = sig;
+  // frame to frame — redrawing the catalog anyway was the app's largest
+  // steady battery drain. Skip until something actually moves. When motion
+  // DOES stop, one full-detail frame still has to land: the last moving
+  // frame was drawn strided, so returning early there would leave the
+  // thinned-out version on screen for as long as the user sits still.
+  const sig = `${cam.yaw.toFixed(5)},${cam.pitch.toFixed(5)},${cam.dist.toFixed(2)},${canvas.width}x${canvas.height}`;
+  const changed = sig !== lastCamSig;
+  lastCamSig = sig;
+  // Thin the map only while it is moving FAST — a drag or a dolly, where the
+  // eye cannot resolve individual points anyway. Keying this off "moved at
+  // all" instead looked right and was not: the idle drift never stops, so
+  // the full-detail frame never landed and the map sat permanently at a
+  // quarter of the resolution it had just downloaded.
+  const speed = Math.abs(cam.yaw - prevYaw) + Math.abs(cam.pitch - prevPitch)
+    + Math.abs(cam.dist - prevDist) / Math.max(1, cam.dist);
+  prevYaw = cam.yaw; prevPitch = cam.pitch; prevDist = cam.dist;
+  const stride = (changed && speed > 0.004) ? lodStride : 1;
+  if (!changed && lastDrawnStride === 1) return;
+  lastDrawnStride = stride;
 
   const cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
   const eye = [cam.dist * cp * Math.cos(cam.yaw), cam.dist * cp * Math.sin(cam.yaw), cam.dist * sp];
@@ -333,26 +290,19 @@ function frame() {
   gl.clearColor(0.01, 0.014, 0.03, 1);
   gl.clear(gl.COLOR_BUFFER_BIT);
 
-  // Dark matter underneath: the galaxies are the visible tracers and must
-  // read ON TOP of the field they sit in, not be washed out by it.
-  if (dmOn && dmCount > 0 && dmProg) {
-    gl.useProgram(dmProg);
-    bindAttrib(dmProg, dmPosBuf, 'aPos', 3);
-    bindAttrib(dmProg, dmDensBuf, 'aDens', 1);
-    gl.uniformMatrix4fv(dmUMvp, false, mvp);
-    gl.uniform1f(dmUPx, px);
-    gl.uniform1f(dmUDpr, dpr);
-    gl.uniform1f(dmUAlpha, 0.26);
-    gl.drawArrays(gl.POINTS, 0, dmCount);
-  }
 
   gl.useProgram(prog);
-  bindAttrib(prog, posBuf, 'aPos', 3);
-  bindAttrib(prog, typeBuf, 'aType', 1);
+  bindAttrib(prog, posBuf, 'aPos', 3, gl.SHORT, stride * 6);
+  bindAttrib(prog, typeBuf, 'aType', 1, gl.UNSIGNED_BYTE, stride);
   gl.uniformMatrix4fv(uMvp, false, mvp);
   gl.uniform1f(uPx, px);
   gl.uniform1f(uDpr, dpr);
-  gl.drawArrays(gl.POINTS, 0, pointCount);
+  gl.uniform3f(uOrigin, dataOrigin[0], dataOrigin[1], dataOrigin[2]);
+  gl.uniform1f(uStep, dataStep);
+  // A strided frame draws 1/stride of the light, so lift each point to keep
+  // the map's brightness steady while the camera moves.
+  gl.uniform1f(uAlpha, pointAlpha * (stride > 1 ? Math.sqrt(stride) : 1));
+  gl.drawArrays(gl.POINTS, 0, Math.floor(pointCount / stride));
 }
 
 // ---- input: one-finger orbit, wheel / two-finger pinch dolly ----
@@ -411,18 +361,6 @@ const onKey = (e) => {
 };
 const onResize = () => { if (active) resize(); };
 
-// Flip the dark-matter field. Remembered across sessions, like every other
-// layer choice in the app.
-function setDarkMatter(on) {
-  dmOn = !!on && dmCount > 0;
-  if (dmToggle) {
-    dmToggle.setAttribute('aria-pressed', String(dmOn));
-    dmToggle.classList.toggle('on', dmOn);
-  }
-  writePref('cosmosdm', dmOn);
-  lastFrameSig = ''; // the camera has not moved: force the repaint
-}
-
 function enterMode() {
   if (active) return; // a double-enter would orphan a second rAF loop
   // Claim the view: taking it over while time playback or Sky Now gyro is
@@ -436,9 +374,6 @@ function enterMode() {
   canvas.style.display = 'block';
   showLegend();
   exitBtn.style.display = 'flex';
-  // Offered only when the field actually built — never a switch that does
-  // nothing (a device that declined the second program still gets galaxies).
-  if (dmToggle) dmToggle.style.display = dmCount > 0 ? 'flex' : 'none';
   document.addEventListener('keydown', onKey, true);
   window.addEventListener('resize', onResize);
   resize();
@@ -458,7 +393,6 @@ function exitMode(byUser) {
   canvas.style.display = 'none';
   hideLegend(false);
   exitBtn.style.display = 'none';
-  if (dmToggle) dmToggle.style.display = 'none';
   if (byUser) onUserExit?.();
 }
 
@@ -496,7 +430,7 @@ export async function setCosmicWeb(on, { onExit } = {}) {
       initGL(data);
     } catch (err) {
       showToast('3-D view unavailable: this device declined a WebGL context.', 'error', 7000);
-      canvas.remove(); legend.remove(); exitBtn.remove(); dmToggle.remove();
+      canvas.remove(); legend.remove(); exitBtn.remove();
       built = false; gl = null;
       return false;
     }
@@ -504,23 +438,17 @@ export async function setCosmicWeb(on, { onExit } = {}) {
     const strong = document.createElement('strong');
     strong.textContent = 'DESI DR1 — the cosmic web in 3-D';
     const p = document.createElement('p');
-    p.textContent = `${pointCount.toLocaleString()} real galaxies & quasars from the largest 3-D map of the universe (a uniform sample of 18.7 million DESI redshifts). Earth sits at the center; distances follow from each redshift (Planck ΛCDM). Drag to orbit · pinch or scroll to fly.`;
-    // Say plainly what the dark-matter layer is and is not. Nobody has
-    // imaged dark matter; this is the density it is INFERRED to have from
-    // where the measured galaxies actually are.
-    const dmNote = document.createElement('p');
-    dmNote.textContent = 'Dark matter: no telescope sees it directly. Galaxies form inside dark-matter halos, so this layer maps the density they trace — corrected for the survey\u2019s reach, so it shows real structure rather than how many galaxies are simply nearer. Purple is faint, white is the densest.';
+    p.textContent = `${pointCount.toLocaleString()} real galaxies & quasars from DESI Data Release 1 — the largest 3-D map of the universe ever made. Every point is a measured spectroscopic redshift, not a simulation. Earth sits at the center; distance follows from redshift (Planck ΛCDM). Drag to orbit · pinch or scroll to fly.`;
     const credit = document.createElement('p');
     credit.className = 'cosmos-credit';
-    credit.textContent = 'Data: DESI Collaboration DR1, via NOIRLab Astro Data Lab. Dark-matter field inferred from those positions.';
+    credit.textContent = 'Data: DESI Collaboration DR1, via NOIRLab Astro Data Lab.';
     const close = document.createElement('button');
     close.className = 'legend-close';
     close.setAttribute('aria-label', 'Dismiss the legend');
     close.innerHTML = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="7" y1="7" x2="17" y2="17"/><line x1="17" y1="7" x2="7" y2="17"/></svg>';
     close.addEventListener('click', () => hideLegend(true));
-    legend.append(strong, p, dmNote, credit, close);
+    legend.append(strong, p, credit, close);
     makeDismissable(legend, () => hideLegend(true), 'translateX(-50%)');
-    setDarkMatter(readPref('cosmosdm', false) === true);
     built = true;
     // The parsed arrays now live in GPU buffers; dropping the resolved
     // promise frees ~5 MB of heap. (Context loss rebuilds via a fresh
