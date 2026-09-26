@@ -1,0 +1,50 @@
+# Project Planetarium — static analysis: ESLint (security-invariant rules,
+# see eslint.config.mjs) plus CodeQL's JavaScript security queries.
+
+name: Static analysis
+
+on:
+  push:
+    paths:
+      - 'js/**'
+      - 'sw.js'
+      - 'tests/**'
+      - 'eslint.config.mjs'
+      - '.github/workflows/lint.yml'
+  schedule:
+    - cron: '30 6 * * 1' # weekly CodeQL pass even without pushes
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lint-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  eslint:
+    name: ESLint (no-dynamic-code invariants)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Lint
+        run: npx --yes eslint@9.39.0 .
+
+  codeql:
+    name: CodeQL security queries
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: javascript
+      - uses: github/codeql-action/analyze@v3
