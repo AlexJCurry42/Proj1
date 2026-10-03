@@ -1,0 +1,10 @@
+{
+  "name": "pocket-planetarium",
+  "private": true,
+  "type": "module",
+  "description": "Static, dependency-free sky atlas. This file exists so Node can run the test suite against the app's ES modules — there is still no build step and nothing to install.",
+  "scripts": {
+    "test": "node tests/unit.mjs",
+    "health": "node tests/health-check.mjs"
+  }
+}

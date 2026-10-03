@@ -1,0 +1,37 @@
+# Project Planetarium — deterministic unit suite (astro math, ephemeris,
+# clock, SGP4, coordinate parsing, version consistency). Dependency-free
+# Node, seconds to run, zero network — so it runs on EVERY code push and
+# can never be reddened by a provider outage (live checks are separate:
+# health-check.yml, on a schedule).
+
+name: Unit tests
+
+on:
+  push:
+    paths:
+      - 'js/**'
+      - 'sw.js'
+      - 'data/**'
+      - 'tests/**'
+      - '.github/workflows/unit-tests.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: unit-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run unit tests
+        run: node tests/unit.mjs
