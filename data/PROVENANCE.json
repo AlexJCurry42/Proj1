@@ -44,10 +44,10 @@
    "source": "d3-celestial (Stellarium sky culture)"
   },
   "descriptions.json": {
-   "bytes": 166280,
-   "refreshed": "2026-09-16T02:01:36+00:00",
-   "run": "35045841315",
-   "sha256": "dcfd13fed3276445c3fa3bbcda525047de40ad421bff6949edd68d88bef47a21",
+   "bytes": 166325,
+   "refreshed": "2026-10-03T09:11:04+00:00",
+   "run": "37111716859",
+   "sha256": "598a603ef68f39f1790a1fa9263ec9d319fcdec72caee3225f9f4f808967d1fa",
    "source": "English Wikipedia REST lead extracts (CC BY-SA 4.0), tools/fetch_descriptions.py"
   },
   "desi_web.bin": {
@@ -66,9 +66,9 @@
   },
   "ngc_full.json": {
    "bytes": 551185,
-   "refreshed": "2026-07-26T23:53:43+00:00",
-   "run": "30226032362",
-   "sha256": "4024cc81d944af0a7656ab89f1865941df4e4ce9d229548ba688df4ebcfa01c2",
+   "refreshed": "2026-10-03T09:11:04+00:00",
+   "run": "37111716859",
+   "sha256": "6e2536a3aa89fc04511404ccef2e69a6363846ab6de21a148ff2055a564c3b8d",
    "source": "https://raw.githubusercontent.com/mattiaverga/OpenNGC/master/database_files/NGC.csv"
   },
   "satellites_tle.txt": {
