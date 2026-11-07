@@ -1,0 +1,448 @@
+# Project Planetarium — THE data pipeline. Every repo-bundled dataset the
+# static app depends on is fetched, validated and committed here, in one
+# sequential job (the five separate workflows this replaced raced each
+# other's pushes on busy days). Which datasets run depends on the trigger:
+#   · daily cron          → ISS orbital elements (SGP4 accuracy decays in days)
+#   · weekly cron         → exoplanet snapshot (the archive has no CORS)
+#   · monthly cron        → OpenNGC, bright stars, constellations, object
+#                           descriptions (near-static)
+#   · dispatch / push     → everything (or a chosen subset via the input)
+# Each dataset's validation gate is unchanged from its original workflow: a
+# failed fetch or a suspicious file fails the run and nothing is committed.
+
+name: Refresh data snapshots
+
+on:
+  push:
+    branches: [claude/deep-sky-atlas-81s2ak]
+    paths:
+      - '.github/workflows/data-refresh.yml'
+      - 'tools/**'
+  schedule:
+    - cron: '41 4 * * *'  # daily → tles
+    - cron: '17 6 * * 1'  # Mondays → exoplanets
+    - cron: '7 3 3 * *'   # 3rd of the month → ngc brightstars constellations
+  workflow_dispatch:
+    inputs:
+      datasets:
+        description: 'Space-separated: tles exoplanets ngc brightstars constellations zones descriptions desi, or all'
+        default: 'all'
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: data-refresh # two refreshes racing each other's pushes helps no one
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Decide which datasets this trigger covers
+        env:
+          # Free text reaches the shell only through this env var — never by
+          # ${{ }} interpolation into script source, where a crafted value
+          # would BE shell code before the allowlist below could veto it.
+          RAW_SETS: ${{ inputs.datasets }}
+        run: |
+          case "${{ github.event_name }}:${{ github.event.schedule }}" in
+            schedule:'41 4 * * *') SETS='tles' ;;
+            schedule:'17 6 * * 1') SETS='exoplanets' ;;
+            schedule:'7 3 3 * *')  SETS='ngc brightstars constellations zones descriptions desi' ;;
+            workflow_dispatch:*)   SETS="$RAW_SETS" ;;
+            *)                     SETS='all' ;;
+          esac
+          [ "$SETS" = 'all' ] && SETS='tles exoplanets ngc brightstars constellations zones descriptions desi'
+          # Dispatch input is free text: allowlist every token so a typo (or
+          # anything stranger) fails loudly instead of silently no-opping —
+          # and so SETS can never smuggle shell metacharacters downstream.
+          for tok in $SETS; do
+            case "$tok" in
+              tles|exoplanets|ngc|brightstars|constellations|zones|descriptions|desi) ;;
+              *) echo "::error::unknown dataset '$tok'"; exit 1 ;;
+            esac
+          done
+          [ -n "${SETS// /}" ] || { echo "::error::datasets input resolved to nothing"; exit 1; }
+          echo "SETS=$SETS" >> "$GITHUB_ENV"
+          echo "refreshing: $SETS"
+
+      # ---------------------------------------------------- ISS TLE (daily) ---
+      # Only the ISS: the app's satellite layer was retired in favor of the
+      # station living inside the Solar System layer.
+      - name: ISS orbital elements from CelesTrak
+        if: contains(env.SETS, 'tles')
+        run: |
+          curl -fsS --retry 3 --retry-delay 20 --max-time 120 --max-filesize 2000000 \
+            'https://celestrak.org/NORAD/elements/gp.php?GROUP=stations&FORMAT=tle' -o /tmp/stations.tle
+          python3 - <<'EOF'
+          import re
+          lines = [l.rstrip() for l in open('/tmp/stations.tle') if l.strip()]
+          iss = None
+          for i in range(0, len(lines) - 2, 3):
+              name, l1, l2 = lines[i].strip(), lines[i+1], lines[i+2]
+              if 'ISS' in name and 'ZARYA' in name:
+                  iss = (name, l1, l2)
+                  break
+          assert iss, 'ISS (ZARYA) missing from the stations group'
+          assert re.match(r'^1 \d{5}', iss[1]) and re.match(r'^2 \d{5}', iss[2]), 'malformed ISS TLE'
+          with open('data/satellites_tle.txt', 'w') as f:
+              f.write(f'{iss[0]}\n{iss[1]}\n{iss[2]}\n')
+          print('wrote ISS TLE, epoch line:', iss[1][18:32])
+          EOF
+
+      # ------------------------------------------------ Exoplanets (weekly) ---
+      - name: Exoplanet snapshot from the NASA archive TAP
+        if: contains(env.SETS, 'exoplanets')
+        run: |
+          curl -fsS --retry 3 --retry-delay 10 --max-time 300 -G \
+            'https://exoplanetarchive.ipac.caltech.edu/TAP/sync' \
+            --data-urlencode 'query=select pl_name,hostname,ra,dec,discoverymethod,disc_year,sy_dist from pscomppars where ra is not null and dec is not null order by pl_name' \
+            --data-urlencode 'format=csv' \
+            -o data/exoplanets_snapshot.csv
+          head -1 data/exoplanets_snapshot.csv | grep -qi '^pl_name,'
+          lines=$(wc -l < data/exoplanets_snapshot.csv)
+          echo "rows: $lines"
+          test "$lines" -gt 4000
+
+      # -------------------------------------------------- OpenNGC (monthly) ---
+      - name: OpenNGC catalog, compacted
+        if: contains(env.SETS, 'ngc')
+        run: |
+          curl -fsS --retry 3 --retry-delay 15 --max-time 180 --max-filesize 30000000 \
+            'https://raw.githubusercontent.com/mattiaverga/OpenNGC/master/database_files/NGC.csv' \
+            -o /tmp/NGC.csv
+          python3 - <<'EOF'
+          import csv, json, math, os, re
+
+          # Object types worth plotting; duplicates/non-existent entries are
+          # dropped, bare stars kept out to avoid noise.
+          KEEP = {'G','GPair','GTrpl','GGroup','OCl','GCl','PN','SNR','Neb',
+                  'EmN','RfN','HII','Cl+N','DrkN','Ast','Nova'}
+
+          def hms_to_deg(s):
+              h, m, sec = s.split(':')
+              return (int(h) + int(m) / 60 + float(sec) / 3600) * 15
+
+          def dms_to_deg(s):
+              sign = -1 if s.strip().startswith('-') else 1
+              d, m, sec = s.strip().lstrip('+-').split(':')
+              return sign * (int(d) + int(m) / 60 + float(sec) / 3600)
+
+          objects = []
+          with open('/tmp/NGC.csv', newline='', encoding='utf-8') as f:
+              for row in csv.DictReader(f, delimiter=';'):
+                  t = row['Type'].strip()
+                  if t not in KEEP or not row['RA'] or not row['Dec']:
+                      continue
+                  m = re.match(r'^(NGC|IC)(\d+)(.*)$', row['Name'])
+                  name = (f"{m.group(1)} {int(m.group(2))}{m.group(3)}" if m else row['Name'])[:64]
+                  mag = None
+                  for col in ('V-Mag', 'B-Mag'):
+                      if row.get(col):
+                          # float() accepts 'nan'/'inf' WITHOUT raising, so a
+                          # poisoned upstream cell would sail through — reject
+                          # non-finite explicitly (else json.dump emits bare
+                          # NaN tokens that the browser's JSON.parse rejects,
+                          # bricking the layer).
+                          try:
+                              v = round(float(row[col]), 1)
+                              if math.isfinite(v): mag = v; break
+                          except ValueError: pass
+                  ra = round(hms_to_deg(row['RA']), 5)
+                  dec = round(dms_to_deg(row['Dec']), 5)
+                  if not (math.isfinite(ra) and math.isfinite(dec)):
+                      continue  # a NaN in any coordinate field: drop the row, don't ship it
+                  common = ((row.get('Common names') or '').split(',')[0].strip() or None)
+                  if common: common = common[:80]
+                  objects.append([name, t, ra, dec, mag, common])
+
+          assert len(objects) > 11000, f'only {len(objects)} objects parsed'
+          assert any(o[0] == 'NGC 224' for o in objects), 'M31/NGC 224 missing'
+          for o in objects[:2000]:
+              assert 0 <= o[2] < 360 and -90 <= o[3] <= 90, f'bad coords: {o}'
+
+          # allow_nan=False: fail the run loudly rather than commit a file
+          # with bare NaN/Infinity tokens (the isfinite filters above should
+          # already have caught every case; this is the last backstop).
+          json.dump(
+              {'_comment': 'Compact OpenNGC snapshot: [name, type, ra_deg, dec_deg, mag(V|B|null), common_name]. CC-BY-SA-4.0, github.com/mattiaverga/OpenNGC',
+               'objects': objects},
+              open('data/ngc_full.json', 'w'), ensure_ascii=False,
+              separators=(',', ':'), allow_nan=False)
+          size = os.path.getsize('data/ngc_full.json')
+          assert size < 3_000_000, f'ngc_full.json {size} bytes — implausibly large'
+          print(f'wrote {len(objects)} objects, {size} bytes')
+          EOF
+
+      # --------------------------------------------- Bright stars (monthly) ---
+      # Yale BSC (V ≤ 6.5) for the bright tier + Tycho-2 (VT ≤ 8.4) for the
+      # faint tier of the star-bloom overlay; two files so only the small one
+      # sits on the app's boot path.
+      - name: Bright stars from VizieR (BSC + Tycho-2)
+        if: contains(env.SETS, 'brightstars')
+        run: |
+          curl -fsS --retry 3 --retry-delay 15 --max-time 300 --max-filesize 20000000 -G \
+            'https://tapvizier.cds.unistra.fr/TAPVizieR/tap/sync' \
+            --data-urlencode 'request=doQuery' \
+            --data-urlencode 'lang=adql' \
+            --data-urlencode 'format=csv' \
+            --data-urlencode 'query=SELECT _RAJ2000, _DEJ2000, Vmag, "B-V" FROM "V/50/catalog" WHERE Vmag <= 6.5' \
+            -o /tmp/bsc.csv || \
+          curl -fsS --retry 3 --retry-delay 15 --max-time 300 --max-filesize 20000000 -G \
+            'https://tapvizier.cds.unistra.fr/TAPVizieR/tap/sync' \
+            --data-urlencode 'request=doQuery' \
+            --data-urlencode 'lang=adql' \
+            --data-urlencode 'format=csv' \
+            --data-urlencode 'query=SELECT RAJ2000, DEJ2000, Vmag, "B-V" FROM "V/50/catalog" WHERE Vmag <= 6.5' \
+            -o /tmp/bsc.csv
+          curl -fsS --retry 3 --retry-delay 15 --max-time 300 -G \
+            'https://tapvizier.cds.unistra.fr/TAPVizieR/tap/sync' \
+            --data-urlencode 'request=doQuery' \
+            --data-urlencode 'lang=adql' \
+            --data-urlencode 'format=csv' \
+            --data-urlencode 'query=SELECT RAmdeg, DEmdeg, VTmag, BTmag FROM "I/259/tyc2" WHERE VTmag <= 8.4' \
+            -o /tmp/tyc2.csv || true
+          python3 - <<'EOF'
+          import csv, json, math, re
+
+          # float('nan')/'inf' don't raise, so a poisoned upstream cell would
+          # slip past every try/except ValueError and land a bare NaN token
+          # in the committed JSON — which throws in the browser's JSON.parse,
+          # and brightstars.json is on the BOOT path. Reject non-finite.
+          def fin(x):
+              return x if math.isfinite(x) else None
+
+          def parse_pos(ra_s, de_s):
+              try:
+                  return float(ra_s), float(de_s)
+              except ValueError:
+                  pass
+              rp = re.split(r'[\s:]+', ra_s.strip())
+              dp = re.split(r'[\s:]+', de_s.strip())
+              ra = (float(rp[0]) + float(rp[1]) / 60 + float(rp[2]) / 3600) * 15
+              sign = -1 if dp[0].strip().startswith('-') else 1
+              de = sign * (abs(float(dp[0])) + float(dp[1]) / 60 + float(dp[2]) / 3600)
+              return ra, de
+
+          stars = []
+          with open('/tmp/bsc.csv') as f:
+              for row in csv.DictReader(f):
+                  keys = {k.lower().strip(): k for k in row}
+                  ra_k = keys.get('_raj2000') or keys.get('raj2000')
+                  de_k = keys.get('_dej2000') or keys.get('dej2000')
+                  try:
+                      ra, de = parse_pos(row[ra_k], row[de_k])
+                      v = float(row[keys['vmag']])
+                  except (TypeError, ValueError, KeyError, IndexError):
+                      continue
+                  if None in (fin(ra), fin(de), fin(v)):
+                      continue  # non-finite position/magnitude: drop the row
+                  try:
+                      bv = fin(round(float(row[keys['b-v']]), 2))
+                  except (TypeError, ValueError, KeyError):
+                      bv = None
+                  stars.append([round(ra, 4), round(de, 4), round(v, 2), bv])
+
+          assert len(stars) > 5000, f'only {len(stars)} stars parsed — V/50 schema drift?'
+          assert any(abs(s[0] - 101.287) < 0.05 and abs(s[1] + 16.716) < 0.05 for s in stars), 'Sirius missing'
+
+          tyc = 0
+          try:
+              with open('/tmp/tyc2.csv') as f:
+                  for row in csv.DictReader(f):
+                      keys = {k.lower().strip(): k for k in row}
+                      try:
+                          ra = float(row[keys['ramdeg']])
+                          de = float(row[keys['demdeg']])
+                          vt = float(row[keys['vtmag']])
+                      except (TypeError, ValueError, KeyError):
+                          continue
+                      if None in (fin(ra), fin(de), fin(vt)):
+                          continue  # non-finite: drop the row
+                      try:
+                          btvt = float(row[keys['btmag']]) - vt
+                          v = round(vt - 0.090 * btvt, 2)
+                          bv = fin(round(0.850 * btvt, 2))
+                      except (TypeError, ValueError, KeyError):
+                          v, bv = round(vt, 2), None
+                      if not math.isfinite(v):
+                          continue
+                      if v <= 6.5:
+                          continue  # the BSC tier already covers it
+                      stars.append([round(ra, 4), round(de, 4), v, bv])
+                      tyc += 1
+          except OSError:
+              pass
+          if tyc:
+              assert tyc > 15000, f'only {tyc} Tycho-2 stars — I/259 schema drift?'
+
+          stars.sort(key=lambda s: s[2])
+          bright = [s for s in stars if s[2] <= 6.5]
+          faint = [s for s in stars if s[2] > 6.5]
+          with open('data/brightstars.json', 'w') as f:
+              json.dump({'source': 'Yale Bright Star Catalogue (V/50) via VizieR TAP, V <= 6.5',
+                         'stars': bright}, f, separators=(',', ':'), allow_nan=False)
+          # FAIL CLOSED: the faint tier comes entirely from Tycho-2 (the BSC
+          # query caps at 6.5), so a total tyc2 outage means faint == [] —
+          # writing that would silently destroy the committed 55k-star file.
+          # Skip the write and keep the previous snapshot instead.
+          if tyc:
+              with open('data/brightstars_faint.json', 'w') as f:
+                  json.dump({'source': 'Tycho-2 (I/259) via VizieR TAP, 6.5 < V <= ~8.4 (VT/BT converted to V, B-V)',
+                             'stars': faint}, f, separators=(',', ':'), allow_nan=False)
+          else:
+              print('Tycho-2 unavailable this run: keeping the existing faint tier untouched')
+          print(f'wrote {len(bright)} bright + {len(faint)} faint stars ({tyc} from Tycho-2)')
+          EOF
+
+      # ------------------------------------------- Constellations (monthly) ---
+      - name: Constellation figures/names/boundaries from d3-celestial
+        if: contains(env.SETS, 'constellations')
+        run: |
+          BASE='https://raw.githubusercontent.com/ofrohn/d3-celestial/master/data'
+          curl -fsS --retry 3 --retry-delay 15 --max-time 120 --max-filesize 20000000 "$BASE/constellations.lines.json"   -o data/constellations_lines.json
+          curl -fsS --retry 3 --retry-delay 15 --max-time 120 --max-filesize 20000000 "$BASE/constellations.json"         -o data/constellations_names.json
+          curl -fsS --retry 3 --retry-delay 15 --max-time 120 --max-filesize 20000000 "$BASE/constellations.borders.json" -o data/constellations_borders.json
+          python3 - <<'EOF'
+          import json
+
+          lines = json.load(open('data/constellations_lines.json'))
+          assert lines.get('type') == 'FeatureCollection'
+          assert len(lines['features']) >= 85, f"only {len(lines['features'])} line features"
+          f0 = lines['features'][0]
+          assert f0['geometry']['type'] == 'MultiLineString'
+          seg = f0['geometry']['coordinates'][0][0]
+          assert len(seg) == 2 and -360 <= seg[0] <= 360 and -90 <= seg[1] <= 90
+
+          names = json.load(open('data/constellations_names.json'))
+          assert len(names['features']) >= 85
+          n0 = names['features'][0]
+          assert 'name' in n0['properties']
+          assert n0['geometry']['type'] == 'Point'
+
+          borders = json.load(open('data/constellations_borders.json'))
+          assert len(borders['features']) >= 48
+          print('all constellation files valid:',
+                len(lines['features']), 'figures,',
+                len(names['features']), 'names,',
+                len(borders['features']), 'border features')
+          EOF
+
+      # ----------------------------------- IAU constellation zones (monthly) ---
+      # Roman 1987 (VizieR VI/42): the official constellation-determination
+      # table — ~357 declination-ordered zones in B1875 coordinates. Feeds
+      # the detail panel's Constellation row (js/constellation.js).
+      - name: IAU constellation zone table (VI/42)
+        if: contains(env.SETS, 'zones')
+        run: |
+          curl -fsS --retry 3 --retry-delay 15 --max-time 120 --max-filesize 5000000 \
+            'https://cdsarc.cds.unistra.fr/ftp/VI/42/data.dat' -o /tmp/zones.dat
+          python3 - <<'EOF'
+          import json
+
+          zones = []
+          for line in open('/tmp/zones.dat'):
+              parts = line.split()
+              if len(parts) < 4:
+                  continue
+              ra_lo, ra_hi, dec_lo = (float(p) for p in parts[:3])
+              abbr = parts[3].strip()
+              assert 0 <= ra_lo <= 24 and 0 < ra_hi <= 24 and -90 <= dec_lo < 90, f'bad zone: {line!r}'
+              zones.append([ra_lo, ra_hi, dec_lo, abbr])
+
+          assert 300 < len(zones) < 420, f'{len(zones)} zones — VI/42 format drift?'
+          # The catalog is ordered north → south; the final row must be the
+          # all-RA Octans zone that closes the south pole.
+          assert zones[-1][2] <= -80 and zones[-1][0] == 0 and zones[-1][1] == 24, \
+              f'unexpected final zone: {zones[-1]}'
+          json.dump(
+              {'_comment': 'IAU constellation zones (Roman 1987, VizieR VI/42): [ra_low_h, ra_high_h, dec_low_deg, abbr], B1875.0, catalog order. Scan-first-match after precessing J2000->B1875.',
+               'zones': zones},
+              open('data/constellation_zones.json', 'w'), separators=(',', ':'))
+          print(f'wrote {len(zones)} zones')
+          EOF
+
+      # --------------------------------------- Object descriptions (monthly) ---
+      # Two-sentence English Wikipedia lead extracts for the ~1,000 most
+      # notable deep-sky objects, bundled so tapping around the sky teaches
+      # something at every stop (js/descriptions.js renders them with their
+      # CC BY-SA attribution links). Runs after the ngc step on purpose: it
+      # reads data/ngc_full.json to rank candidates.
+      - name: Bundled object descriptions from Wikipedia
+        if: contains(env.SETS, 'descriptions')
+        run: python3 tools/fetch_descriptions.py
+
+      # ------------------------------------------- DESI cosmic web (monthly) ---
+      # A uniform subsample of the DESI DR1 redshift catalog packed into the
+      # compact binary the 3-D mode streams (format: js/desidata.js). Every
+      # point is a real spectroscopic galaxy/quasar; the pipeline turns each
+      # redshift into a comoving position (Planck-2018 flat LCDM).
+      - name: DESI cosmic-web subsample from NOIRLab Astro Data Lab
+        if: contains(env.SETS, 'desi')
+        run: python3 tools/fetch_desi_web.py
+
+      # -------------------------------------------------------- Provenance ---
+      # Every Action-refreshed file gets a recorded origin: sha256, size,
+      # source URL, and the exact run that produced it. Upstreams like
+      # OpenNGC master move without versions — the hash trail is what makes
+      # "what changed, when, from where" answerable after the fact.
+      - name: Record provenance for refreshed files
+        run: |
+          python3 - <<'EOF'
+          import hashlib, json, os, datetime
+
+          SOURCES = {
+            'satellites_tle.txt':      'https://celestrak.org/NORAD/elements/gp.php?GROUP=stations&FORMAT=tle',
+            'exoplanets_snapshot.csv': 'https://exoplanetarchive.ipac.caltech.edu/TAP/sync (pscomppars)',
+            'ngc_full.json':           'https://raw.githubusercontent.com/mattiaverga/OpenNGC/master/database_files/NGC.csv',
+            'brightstars.json':        'VizieR TAP V/50 (Yale BSC)',
+            'brightstars_faint.json':  'VizieR TAP I/259 (Tycho-2)',
+            'constellations_lines.json':   'd3-celestial (Stellarium sky culture)',
+            'constellations_names.json':   'd3-celestial (Stellarium sky culture)',
+            'constellations_borders.json': 'd3-celestial (Stellarium sky culture)',
+            'constellation_zones.json':    'VizieR VI/42 (Roman 1987)',
+            'descriptions.json':           'English Wikipedia REST lead extracts (CC BY-SA 4.0), tools/fetch_descriptions.py',
+            'desi_web.bin':                'DESI DR1 zpix via NOIRLab Astro Data Lab TAP, tools/fetch_desi_web.py'
+          }
+          path = 'data/PROVENANCE.json'
+          prov = {}
+          if os.path.exists(path):
+              try: prov = json.load(open(path)).get('files', {})
+              except Exception: prov = {}
+          now = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds')
+          run = os.environ.get('GITHUB_RUN_ID', 'local')
+          for name, src in SOURCES.items():
+              f = os.path.join('data', name)
+              if not os.path.exists(f):
+                  continue
+              digest = hashlib.sha256(open(f, 'rb').read()).hexdigest()
+              if prov.get(name, {}).get('sha256') == digest:
+                  continue  # unchanged: keep its original provenance entry
+              prov[name] = {'sha256': digest, 'bytes': os.path.getsize(f),
+                            'source': src, 'refreshed': now, 'run': run}
+          json.dump({'_comment': 'Origin of every Action-refreshed data file: sha256, size, source, refresh time (UTC), workflow run id. Written by data-refresh.yml; entries persist until the file content actually changes.',
+                     'files': prov}, open(path, 'w'), indent=1, sort_keys=True)
+          print('provenance entries:', len(prov))
+          EOF
+
+      # ------------------------------------------------------------ Commit ---
+      - name: Commit everything that changed, once
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add data/
+          git diff --cached --quiet || git commit -m "Refresh data snapshots ($SETS) [skip ci]"
+          # A human push can land while this ran — or between our rebase and
+          # push. Retry the pair; -X theirs auto-resolves content conflicts
+          # in favor of the fresh data (delete/rename conflicts abort loudly).
+          for i in 1 2 3; do
+            git pull --rebase -X theirs origin "$GITHUB_REF_NAME" || { git rebase --abort; exit 1; }
+            git push && exit 0
+            [ "$i" = 3 ] && exit 1
+            sleep $((i * 15))
+          done

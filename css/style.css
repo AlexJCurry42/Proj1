@@ -1,0 +1,1416 @@
+/* ============================================================
+   Project Planetarium — Apple-native dark design system.
+   Full-bleed sky with floating frosted-glass panels, hairline
+   borders, iOS-style switches and sheets. Dark only (astronomy
+   tool); red-light night-vision mode layered on top.
+   ============================================================ */
+
+:root{
+  /* Native form controls (select popups, pickers, scrollbars) must render
+     dark too — otherwise option lists show white text on the OS's default
+     white popup background. */
+  color-scheme: dark;
+
+  /* Materials */
+  --material: rgba(24, 24, 30, 0.62);
+  --material-thick: rgba(22, 22, 28, 0.82);
+  --material-thin: rgba(28, 28, 36, 0.42);
+  --hairline: rgba(255, 255, 255, 0.10);
+  --hairline-strong: rgba(255, 255, 255, 0.16);
+
+  /* Text */
+  --text-primary: rgba(255, 255, 255, 0.94);
+  --text-secondary: rgba(235, 235, 245, 0.58);
+  --text-tertiary: rgba(235, 235, 245, 0.32);
+
+  /* System tints (iOS palette) */
+  --blue: #0a84ff;
+  --green: #30d158;
+  --red: #ff453a;
+  --orange: #ff9f0a;
+  --yellow: #ffd60a;
+  --purple: #bf5af2;
+
+  --radius-card: 20px;
+  --radius-control: 12px;
+  --shadow-card: 0 12px 40px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.3);
+
+  /* Motion: one spring for the whole app (iOS's standard curve) */
+  --spring: cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* 16px (was 26): backdrop blur is re-computed by the compositor every
+     frame the sky animates beneath, for every glass surface — the single
+     biggest UI-side GPU cost. 16px is visually near-identical on these
+     small panels and markedly cheaper on phones. */
+  --blur: saturate(180%) blur(16px) brightness(1.06);
+  /* Liquid glass: a diagonal specular sheen + hairline top highlight that
+     make panels read as curved, light-catching glass rather than flat tint */
+  --sheen: linear-gradient(158deg, rgba(255,255,255,0.10), rgba(255,255,255,0.02) 34%, rgba(255,255,255,0) 62%, rgba(255,255,255,0.04) 100%);
+  --liquid-edge: inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -1px 0 rgba(255,255,255,0.035);
+
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+}
+
+*{ box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body{
+  margin: 0; padding: 0; width: 100%; height: 100%;
+  background: #000;
+  color: var(--text-primary);
+  font-family: var(--font);
+  font-size: 14px;
+  letter-spacing: -0.01em;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+.visually-hidden{
+  position: absolute !important; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0,0,0,0); white-space: nowrap; border: 0; padding: 0; margin: -1px;
+}
+
+.skip-link{
+  position: absolute; left: -999px; top: 0; z-index: 1000;
+  background: var(--blue); color: #fff; padding: 8px 14px; border-radius: 999px;
+}
+.skip-link:focus{ left: 12px; top: calc(12px + var(--safe-top)); }
+
+button, select, input{ font-family: inherit; color: inherit; }
+
+/* Explicit option styling for engines that ignore color-scheme on popups
+   (older Chrome/Windows): dark rows, readable text. */
+select option, select optgroup{
+  background-color: #16161c;
+  color: #f2f2f7;
+}
+
+:focus-visible{ outline: 2px solid var(--blue); outline-offset: 2px; border-radius: 4px; }
+
+/* ================= Sky (full bleed, zero chrome) ================= */
+#sky-wrap{ position: fixed; inset: 0; }
+/* The div behind the sky is black so the void reads as space, but Aladin's
+   own canvases must NOT get a background: they are stacked transparent
+   layers (imagery below, markers above) and an opaque background on the
+   upper ones blacks out the sky imagery underneath. The engine option
+   backgroundColor handles the void around the sphere. */
+#aladin-lite-div{ width: 100%; height: 100%; background: #000; }
+
+/* The unified overlay engine: constellations, horizon & compass, satellites
+   and marker cross-fades all draw on this ONE canvas (one compositor buffer,
+   one animation loop — see js/overlay.js). */
+#overlay-canvas{
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  pointer-events: none; z-index: 4;
+}
+body.redlight #overlay-canvas{ filter: sepia(1) saturate(6) hue-rotate(-50deg) brightness(0.85); }
+
+/* ================= Shared materials ================= */
+.glass-panel{
+  background: var(--sheen), var(--material);
+  -webkit-backdrop-filter: var(--blur);
+  backdrop-filter: var(--blur);
+  border: 0.5px solid var(--hairline);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card), var(--liquid-edge);
+}
+
+.glass-btn{
+  position: relative;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; flex-shrink: 0;
+  border-radius: 999px; border: 0.5px solid var(--hairline);
+  background: var(--sheen), var(--material);
+  -webkit-backdrop-filter: var(--blur);
+  backdrop-filter: var(--blur);
+  box-shadow: var(--liquid-edge);
+  cursor: pointer;
+  color: var(--text-primary);
+  transition: transform 0.15s ease, background 0.2s ease;
+}
+/* The chrome reads ~10% smaller than it did, but the TAP target must not:
+   this transparent halo extends the clickable area 4px past the visible
+   glass on every side (a click on an overflowing pseudo-element still
+   counts as a click on its button), so a 36px button stays a 44px target. */
+.glass-btn::after{ content: ""; position: absolute; inset: -4px; border-radius: inherit; }
+.glass-btn:active{ transform: scale(0.92); }
+.glass-btn[aria-pressed="true"]{ background: rgba(255, 69, 58, 0.28); border-color: rgba(255, 69, 58, 0.5); }
+.glass-btn.small{ width: 30px; height: 30px; }
+.glass-btn.small .icon{ width: 14px; height: 14px; }
+
+.icon{
+  width: 16px; height: 16px;
+  fill: none; stroke: currentColor; stroke-width: 1.8;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+.icon-red{ color: var(--red); }
+
+/* View-mode toggle: dive-into-the-sphere icon by default, rise-out-of-the-
+   dome icon while inside. Lives on the LEFT, beside the brand. */
+#top-bar-left{ display: flex; align-items: center; gap: 8px; }
+#view-toggle .icon-dome{ display: none; }
+#view-toggle[aria-pressed="true"] .icon-globe{ display: none; }
+#view-toggle[aria-pressed="true"] .icon-dome{ display: block; }
+#view-toggle[aria-pressed="true"]{
+  background: rgba(10, 132, 255, 0.28);
+  border-color: rgba(10, 132, 255, 0.5);
+}
+/* In-place discovery (this replaced the old modal onboarding): until first
+   pressed, a key button quietly asks to be noticed — a slow breathing glow
+   with an occasional dip of its icon. One tap ends it forever (persisted).
+   The two nudged buttons breathe out of phase so they never pulse together. */
+.glass-btn.nudge{
+  border-color: rgba(10, 132, 255, 0.45);
+  animation: nudge-glow 3.2s ease-in-out infinite;
+}
+.glass-btn.nudge .icon{ animation: nudge-dip 3.2s ease-in-out infinite; }
+#cool-btn.nudge, #cool-btn.nudge .icon{ animation-delay: 1.6s; }
+@keyframes nudge-glow{
+  0%, 100%{ box-shadow: var(--liquid-edge), 0 0 0 0 rgba(10, 132, 255, 0); }
+  50%{ box-shadow: var(--liquid-edge), 0 0 14px 2px rgba(10, 132, 255, 0.35); }
+}
+@keyframes nudge-dip{
+  0%, 74%, 100%{ transform: translateY(0); }
+  82%{ transform: translateY(2px); }
+  90%{ transform: translateY(-1px); }
+}
+
+
+/* ================= Top bar ================= */
+#top-bar{
+  position: fixed; z-index: 60;
+  top: calc(10px + var(--safe-top));
+  left: calc(12px + var(--safe-left));
+  right: calc(12px + var(--safe-right));
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  pointer-events: none;
+}
+#top-bar > *{ pointer-events: auto; }
+
+/* Bottom bar: Sky Now left, search dead-center — the iOS Safari address-bar
+   position, where the thumb already lives. Grid keeps the search field
+   centered on the *screen* regardless of Sky Now's width. */
+#bottom-bar{
+  position: fixed; z-index: 60;
+  left: calc(12px + var(--safe-left));
+  right: calc(12px + var(--safe-right));
+  bottom: calc(12px + var(--safe-bottom));
+  display: grid; grid-template-columns: 1fr minmax(0, 520px) 1fr;
+  align-items: center; gap: 8px;
+  pointer-events: none;
+}
+#bottom-bar > *{ pointer-events: auto; }
+
+#search-form{
+  position: relative; grid-column: 2; min-width: 0; width: 100%;
+  height: 44px;
+  display: flex; align-items: center; gap: 8px;
+  padding: 0 14px;
+  border-radius: 999px; border: 0.5px solid var(--hairline);
+  background: var(--sheen), var(--material);
+  -webkit-backdrop-filter: var(--blur);
+  backdrop-filter: var(--blur);
+  box-shadow: var(--shadow-card), var(--liquid-edge);
+}
+.search-icon{ color: var(--text-secondary); flex-shrink: 0; width: 16px; height: 16px; }
+#search-input{
+  flex: 1; min-width: 0; height: 100%;
+  background: transparent; border: none; outline: none;
+  font-size: 15px; color: var(--text-primary);
+  -webkit-appearance: none; appearance: none;
+}
+#search-input::placeholder{ color: var(--text-tertiary); }
+#search-input::-webkit-search-cancel-button{ -webkit-appearance: none; }
+#search-form:focus-within{
+  border-color: rgba(10, 132, 255, 0.55);
+  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.15);
+}
+
+/* Search lives at the bottom now, so its lists open upward, like iOS. */
+.dropdown-list{
+  position: absolute; bottom: 52px; left: 0; right: 0; z-index: 70;
+  list-style: none; margin: 0; padding: 6px;
+  background: var(--material-thick);
+  -webkit-backdrop-filter: var(--blur);
+  backdrop-filter: var(--blur);
+  border: 0.5px solid var(--hairline); border-radius: 16px;
+  box-shadow: var(--shadow-card);
+  max-height: 40vh; overflow-y: auto;
+  transform-origin: bottom center;
+  animation: pop-in 0.2s var(--spring);
+}
+@keyframes pop-in{ from{ opacity: 0; transform: scale(0.97) translateY(4px); } }
+.dropdown-list li{
+  padding: 10px 12px; border-radius: 10px; cursor: pointer;
+  font-size: 14px; color: var(--text-primary);
+}
+.dropdown-list li:hover, .dropdown-list li.active{ background: rgba(255,255,255,0.08); }
+.dropdown-list .item-sub{ color: var(--text-tertiary); font-size: 12px; margin-top: 1px; }
+
+#top-bar-right{ display: flex; align-items: center; gap: 8px; }
+
+/* "Show me something cool": the serendipity button */
+#cool-btn{
+  width: auto; padding: 0 13px; gap: 6px;
+  font-size: 12.5px; font-weight: 600; white-space: nowrap;
+}
+#cool-btn .icon{ width: 15px; height: 15px; color: #ffd60a; }
+#cool-btn:active .icon{ transform: rotate(72deg) scale(1.2); transition: transform 0.3s var(--spring); }
+
+
+/* ================= Brand ================= */
+#brand-btn{
+  width: auto; padding: 0 14px 0 8px; gap: 8px;
+}
+.brand-logo{ width: 24px; height: 24px; border-radius: 7px; }
+.brand-name{
+  font-size: 13.5px; font-weight: 700; letter-spacing: -0.02em; white-space: nowrap;
+}
+
+/* ================= Layer dock (always-visible, left) ================= */
+#layer-dock{
+  position: fixed; z-index: 44;
+  top: calc(64px + var(--safe-top));
+  left: calc(12px + var(--safe-left));
+  width: 224px;
+  max-height: calc(100vh - 170px);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  padding: 4px 12px 8px;
+  border-radius: 18px;
+  transition: width 0.42s var(--spring),
+              max-height 0.42s var(--spring);
+}
+#layer-dock .fold-btn{
+  margin-left: -10px;
+  transition: margin-left 0.42s var(--spring);
+}
+#layer-dock-list{
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  /* Fixed content width: while the fold animates, rows slide behind the
+     clipped edge instead of reflowing and re-ellipsizing mid-animation. */
+  min-width: 200px;
+  transition: opacity 0.22s ease;
+}
+#layer-dock-list::-webkit-scrollbar{ width: 0; }
+/* Collapsed: the dock folds into a single pill, mirroring the spectrum rail. */
+#layer-dock.collapsed{ width: 56px; max-height: 78px; padding-bottom: 8px; }
+#layer-dock.collapsed #layer-dock-list{ opacity: 0; pointer-events: none; }
+#layer-dock.collapsed .fold-btn{ margin-left: -4px; } /* centered in the pill */
+#layer-dock.collapsed .fold-btn .icon{ transform: rotate(180deg); }
+
+/* iOS-style slider */
+input[type="range"]{
+  -webkit-appearance: none; appearance: none;
+  width: 100%; height: 28px; background: transparent; margin: 0; cursor: pointer;
+}
+input[type="range"]::-webkit-slider-runnable-track{
+  height: 4px; border-radius: 2px; background: rgba(120, 120, 128, 0.36);
+}
+input[type="range"]::-webkit-slider-thumb{
+  -webkit-appearance: none; appearance: none;
+  width: 22px; height: 22px; border-radius: 50%; background: #fff;
+  margin-top: -9px; box-shadow: 0 1px 4px rgba(0,0,0,0.4); border: none;
+}
+input[type="range"]::-moz-range-track{
+  height: 4px; border-radius: 2px; background: rgba(120, 120, 128, 0.36);
+}
+input[type="range"]::-moz-range-thumb{
+  width: 22px; height: 22px; border-radius: 50%; background: #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.4); border: none;
+}
+
+.hint{ font-size: 12px; color: var(--text-tertiary); line-height: 1.45; margin: 8px 0 0; }
+
+.sheet-grabber{ display: none; }
+
+/* Toggle rows with iOS switches */
+.toggle-list{ list-style: none; margin: 0; padding: 0; }
+/* Rows breathe in on first build: a quick staggered rise, then never again */
+.toggle-list li{ animation: row-in 0.38s var(--spring) backwards; }
+.toggle-list li:nth-child(2){ animation-delay: 0.03s; }
+.toggle-list li:nth-child(3){ animation-delay: 0.06s; }
+.toggle-list li:nth-child(4){ animation-delay: 0.09s; }
+.toggle-list li:nth-child(5){ animation-delay: 0.12s; }
+.toggle-list li:nth-child(6){ animation-delay: 0.15s; }
+.toggle-list li:nth-child(7){ animation-delay: 0.18s; }
+.toggle-list li:nth-child(8){ animation-delay: 0.21s; }
+.toggle-list li:nth-child(9){ animation-delay: 0.24s; }
+.toggle-list li:nth-child(10){ animation-delay: 0.27s; }
+.toggle-list li:nth-child(n+11){ animation-delay: 0.3s; }
+@keyframes row-in{ from{ opacity: 0; transform: translateY(6px); } }
+
+
+/* Quiet section headers inside the dock */
+.toggle-list li.dock-section{
+  display: block;
+  padding: 11px 2px 3px;
+  border-bottom: none;
+  font-size: 9.5px; font-weight: 700; letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  user-select: none;
+}
+.toggle-list li.dock-section:first-child{ padding-top: 4px; }
+.toggle-list li{
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 2px;
+  border-bottom: 0.5px solid rgba(255,255,255,0.06);
+}
+.toggle-list li:last-child{ border-bottom: none; }
+/* Nested sub-options (Boundaries, Clean bright stars): simple square
+   checkboxes, quieter than the full switches — slightly opaque by design
+   so they read as refinements of the row above, not peers. */
+.toggle-list li.toggle-sub{
+  padding: 5px 2px 7px 24px;
+  border-bottom-color: rgba(255,255,255,0.04);
+  opacity: 0.8;
+  transition: opacity 0.18s ease;
+}
+.toggle-list li.toggle-sub:hover{ opacity: 1; }
+.toggle-list li.toggle-sub .toggle-label{ font-size: 12.5px; color: var(--text-secondary); }
+.toggle-list li.toggle-sub .legend-dot{ width: 7px; height: 7px; box-shadow: 0 0 4px currentColor; }
+.toggle-list li.toggle-sub.disabled{ opacity: 0.35; pointer-events: none; }
+.legend-dot{
+  width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+  box-shadow: 0 0 6px currentColor;
+}
+.toggle-list .toggle-label{
+  flex: 1; min-width: 0; font-size: 13.5px; cursor: pointer;
+  display: flex; align-items: baseline; gap: 6px;
+}
+.toggle-list .toggle-text{
+  min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.toggle-list .toggle-count{
+  margin-left: auto; padding-right: 4px; flex-shrink: 0;
+  color: var(--text-tertiary); font-size: 11px; font-variant-numeric: tabular-nums;
+}
+
+.toggle-list input[type="checkbox"]:not(.sub){
+  -webkit-appearance: none; appearance: none;
+  width: 40px; height: 24px; border-radius: 999px; flex-shrink: 0;
+  background: rgba(120, 120, 128, 0.32);
+  position: relative; margin: 0; cursor: pointer;
+  transition: background 0.22s ease;
+}
+.toggle-list input[type="checkbox"]:not(.sub)::after{
+  content: ""; position: absolute; top: 2px; left: 2px;
+  width: 20px; height: 20px; border-radius: 999px;
+  background: #fff; box-shadow: 0 1.5px 4px rgba(0,0,0,0.35);
+  transition: transform 0.22s var(--spring), width 0.15s ease;
+}
+.toggle-list input[type="checkbox"]:not(.sub):checked{ background: var(--green); }
+.toggle-list input[type="checkbox"]:not(.sub):checked::after{ transform: translateX(16px); }
+/* iOS detail: the knob stretches while held, then settles */
+.toggle-list input[type="checkbox"]:not(.sub):active::after{ width: 24px; }
+.toggle-list input[type="checkbox"]:not(.sub):checked:active::after{ transform: translateX(12px); }
+
+/* Sub-option checkbox: a small square check, not a switch */
+.toggle-list input.sub{
+  -webkit-appearance: none; appearance: none;
+  width: 18px; height: 18px; border-radius: 5.5px; flex-shrink: 0;
+  border: 1.5px solid rgba(255,255,255,0.4);
+  background: transparent; position: relative; margin: 0; cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.toggle-list input.sub:checked{ background: var(--blue); border-color: var(--blue); }
+.toggle-list input.sub:checked::after{
+  content: ""; position: absolute; left: 5px; top: 1.5px;
+  width: 4.5px; height: 9px;
+  border: solid #fff; border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+/* ================= Detail panel ================= */
+#detail-panel{
+  position: fixed; z-index: 55;
+  top: calc(62px + var(--safe-top));
+  right: calc(12px + var(--safe-right));
+  bottom: calc(12px + var(--safe-bottom));
+  width: 340px;
+  overflow-y: auto;
+  padding: 18px 16px calc(18px + var(--safe-bottom));
+  -webkit-overflow-scrolling: touch;
+}
+@keyframes sheet-in{ from{ opacity: 0; transform: translateY(26px); } }
+
+#detail-panel[hidden]{ display: none; }
+/* Entrance (replays whenever unhidden). ONE definition on purpose: this
+   name was once declared twice with different bodies, and the silent
+   last-one-wins made the other motion permanently dead code. */
+#detail-panel:not([hidden]){ animation: panel-in 0.34s var(--spring); }
+@keyframes panel-in{
+  from{ opacity: 0; transform: translateY(16px) scale(0.985); }
+  to{ opacity: 1; transform: none; }
+}
+#detail-panel::-webkit-scrollbar{ width: 0; }
+#detail-close{ position: absolute; top: 12px; right: 12px; z-index: 2; }
+
+#detail-content h3{
+  margin: 0 36px 6px 0; font-size: 20px; font-weight: 700; letter-spacing: -0.02em;
+}
+#detail-content .dtype{
+  display: inline-block; margin-bottom: 12px;
+  background: rgba(10, 132, 255, 0.22); color: #79baff;
+  font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px;
+}
+#detail-content .drow{
+  display: flex; justify-content: space-between; gap: 12px;
+  font-size: 13.5px; padding: 8px 0;
+  border-bottom: 0.5px solid rgba(255,255,255,0.07);
+}
+#detail-content .drow span:first-child{ color: var(--text-secondary); flex-shrink: 0; }
+#detail-content .drow span:last-child{ text-align: right; font-variant-numeric: tabular-nums; }
+#detail-content .dlinks{ display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+#detail-content .dlinks a{
+  font-size: 13px; font-weight: 500; color: var(--blue); text-decoration: none;
+  background: rgba(10, 132, 255, 0.14);
+  padding: 7px 14px; border-radius: 999px;
+  transition: background 0.15s ease;
+}
+#detail-content .dlinks a:hover{ background: rgba(10, 132, 255, 0.28); }
+#detail-content .badge-eht{
+  display: inline-block; margin-left: 8px; vertical-align: middle;
+  background: rgba(255, 159, 10, 0.2); color: var(--orange);
+  border: 0.5px solid rgba(255, 159, 10, 0.45);
+  font-size: 10.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px;
+}
+#detail-content .approx-note{ color: var(--yellow); font-size: 12px; line-height: 1.45; margin-top: 10px; }
+#detail-loading{ color: var(--text-secondary); font-size: 13px; }
+
+/* Object media block (photograph / artist's impression / procedural render) */
+.render-wrap{ margin: 4px 0 14px; }
+.render-media{ min-height: 60px; }
+.render-canvas{
+  display: block; width: 100%; height: auto; aspect-ratio: 1;
+  border-radius: 16px;
+  background: radial-gradient(ellipse at center, rgba(20,22,32,0.9), rgba(4,5,10,0.95));
+  animation: fade-in 0.6s ease;
+}
+.render-photo{
+  display: block; width: 100%; height: auto; max-height: 340px;
+  object-fit: cover; border-radius: 16px;
+  background: rgba(8, 10, 16, 0.8);
+  animation: fade-in 0.6s ease;
+}
+@keyframes fade-in{ from{ opacity: 0; } }
+.render-blurb{ font-size: 13.5px; line-height: 1.5; color: var(--text-primary); margin: 12px 0 0; }
+.render-caption{ font-size: 11px; color: var(--text-tertiary); margin: 6px 0 0; }
+
+/* Bundled object descriptions (Wikipedia extracts, CC BY-SA 4.0): shown in
+   the detail panel's desc-slot and appended to the crosshair card. */
+.desc-slot{ margin: 12px 0 2px; }
+.obj-desc{ font-size: 13.5px; line-height: 1.5; color: var(--text-primary); margin: 0 0 3px; }
+.obj-desc-credit{
+  font-size: 10.5px; color: var(--text-tertiary);
+  text-decoration: none; white-space: nowrap;
+}
+.obj-desc-credit:hover{ text-decoration: underline; }
+
+/* ================= Zoom controls ================= */
+#zoom-stack{
+  position: fixed; z-index: 45;
+  right: calc(12px + var(--safe-right));
+  bottom: calc(68px + var(--safe-bottom)); /* clears the bottom search bar */
+  display: flex; flex-direction: column; gap: 8px;
+}
+
+/* ================= Spectrum rail (vertical, top-right) ================= */
+#spectrum-rail{
+  position: fixed; z-index: 46;
+  top: calc(64px + var(--safe-top));
+  right: calc(12px + var(--safe-right));
+  width: 56px;
+  height: min(480px, calc(100vh - 220px));
+  padding: 4px 0 12px;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  border-radius: 28px;
+  overflow: hidden;
+  transition: right 0.34s var(--spring),
+              height 0.42s var(--spring);
+}
+/* Collapsed: the rail folds into a single pill (chevron + identity glyph). */
+#spectrum-rail.collapsed{ height: 78px; padding-bottom: 8px; }
+#spectrum-rail.collapsed :is(.spectrum-end, #spectrum-track){ opacity: 0; pointer-events: none; }
+#spectrum-rail :is(.spectrum-end, #spectrum-track){ transition: opacity 0.22s ease; }
+#spectrum-rail.collapsed #spectrum-collapse .icon{ transform: rotate(180deg); }
+/* The chip is transient feedback: hidden at rest, shown while adjusting,
+   faded out 2 s after the adjustment settles (spectrum.js drives .visible).
+   Its exit is a fold, not just a fade: it shrinks and slides toward the
+   rail it belongs to, mirroring the rail's own collapse animation. */
+#spectrum-chip{
+  opacity: 0;
+  transition: right 0.34s var(--spring),
+              opacity 0.34s ease,
+              transform 0.42s var(--spring);
+}
+#spectrum-chip.visible{
+  opacity: 1;
+  transform: translateY(-50%) translateX(0) scale(1);
+}
+#spectrum-chip.collapsed{ opacity: 0 !important; }
+
+/* Shared fold affordance: the chevron that collapses rail and dock alike */
+.fold-btn{
+  position: relative;
+  width: 36px; height: 36px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: transparent; border: none; border-radius: 999px;
+  color: var(--text-secondary); cursor: pointer;
+}
+.fold-btn::after{ content: ""; position: absolute; inset: -4px; } /* keep the 44px tap target */
+.fold-btn .icon{
+  width: 15px; height: 15px;
+  transition: transform 0.42s var(--spring);
+}
+.fold-btn:active{ transform: scale(0.9); }
+#spectrum-rail.collapsed .fold-btn .icon{ transform: rotate(180deg); }
+
+/* Identity glyph on each collapsed pill: out of flow and invisible while the
+   panel is open, fading in under the chevron once it folds — so a closed
+   pill still says what it is. */
+.pill-glyph{
+  position: absolute; opacity: 0; pointer-events: none;
+  align-self: center; flex-shrink: 0;
+  margin-top: 2px;
+  transition: opacity 0.25s ease;
+}
+#layer-dock.collapsed .pill-glyph,
+#spectrum-rail.collapsed .pill-glyph{
+  position: static; opacity: 1;
+  transition-delay: 0.2s;
+}
+.dock-glyph{ width: 17px; height: 17px; color: var(--text-secondary); }
+.spectrum-glyph{
+  width: 5px; height: 20px; border-radius: 3px;
+  background: linear-gradient(180deg,
+    #a58bff 0%, #e9eef6 38%, #ffd9a0 68%, #c96a4a 100%);
+}
+
+/* The detail panel shares the right edge on desktop: the rail and the
+   bottom bar glide aside so nothing sits under the panel. */
+@media (min-width: 641px){
+  #detail-panel:not([hidden]) ~ #spectrum-rail{ right: calc(362px + var(--safe-right)); }
+  #detail-panel:not([hidden]) ~ #spectrum-chip{ right: calc(428px + var(--safe-right)); }
+  #detail-panel:not([hidden]) ~ #bottom-bar{ right: calc(362px + var(--safe-right)); }
+  #bottom-bar{ transition: right 0.34s var(--spring); }
+}
+.spectrum-end{
+  font-size: 8.5px; font-weight: 650; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--text-tertiary); flex-shrink: 0; user-select: none;
+}
+#spectrum-track{
+  position: relative; flex: 1; width: 100%;
+  touch-action: none; cursor: pointer;
+}
+#spectrum-track:focus-visible{ outline: none; }
+#spectrum-track:focus-visible #spectrum-thumb{
+  box-shadow: 0 1px 5px rgba(0,0,0,0.5), 0 0 0 3px rgba(10,132,255,0.6);
+}
+/* The electromagnetic spectrum itself: violet (short λ, top) → optical white
+   → deep radio red (long λ, bottom) */
+#spectrum-gradient{
+  position: absolute; top: 15px; bottom: 15px; left: 50%; transform: translateX(-50%);
+  width: 4px; border-radius: 2px;
+  background: linear-gradient(180deg,
+    #a58bff 0%, #7fa8ff 16.7%, #e9eef6 33.3%, #f2ede2 50%,
+    #ffd9a0 66.7%, #ff9d6b 83.3%, #c96a4a 100%);
+  opacity: 0.85;
+}
+#spectrum-dots{ position: absolute; inset: 0; }
+.spectrum-dot{
+  position: absolute; left: 50%; width: 7px; height: 7px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%; background: rgba(10, 12, 18, 0.85);
+  border: 1.5px solid rgba(255, 255, 255, 0.55);
+  transition: transform 0.2s var(--spring), border-color 0.2s ease;
+}
+.spectrum-dot.active{
+  transform: translate(-50%, -50%) scale(1.35);
+  border-color: #fff;
+}
+#spectrum-thumb{
+  position: absolute; left: 50%; top: 15px;
+  width: 30px; height: 30px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(circle at 34% 30%, #ffffff, #dfe4ee 78%);
+  box-shadow: 0 2px 7px rgba(0,0,0,0.55), 0 0 0 0.5px rgba(0,0,0,0.15),
+              inset 0 1px 0 rgba(255,255,255,0.9);
+  pointer-events: none;
+  transition: width 0.15s ease, height 0.15s ease;
+}
+#spectrum-track.dragging #spectrum-thumb{ width: 34px; height: 34px; }
+
+/* Floating label chip: rides alongside the thumb */
+#spectrum-chip{
+  position: fixed; z-index: 46;
+  right: calc(12px + 56px + 10px + var(--safe-right));
+  transform: translateY(-50%) translateX(10px) scale(0.88);
+  transform-origin: right center;
+  padding: 7px 12px; border-radius: 13px;
+  display: flex; flex-direction: column; align-items: flex-end; gap: 1px;
+  text-align: right; pointer-events: none;
+  max-width: min(240px, calc(100vw - 100px));
+}
+#spectrum-name{
+  font-size: 13.5px; font-weight: 650; letter-spacing: -0.01em; white-space: nowrap;
+}
+#spectrum-band{
+  font-size: 10.5px; color: var(--text-secondary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+}
+
+/* ================= Sky Now ================= */
+#bottom-left{
+  grid-column: 1; justify-self: start;
+  display: flex; align-items: center; gap: 8px;
+}
+#skynow-btn{
+  width: auto; padding: 0 14px; gap: 7px;
+  font-size: 13px; font-weight: 600;
+}
+#gyro-toggle[aria-pressed="true"]{
+  background: rgba(10, 132, 255, 0.30);
+  border-color: rgba(10, 132, 255, 0.55);
+}
+/* Acquiring: pulses from engage until the first sensor fix arrives */
+#gyro-toggle.acquiring{ animation: acquire-pulse 1.1s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+#gyro-toggle.acquiring .icon{ animation: acquire-spin 1.6s linear infinite; }
+@keyframes acquire-pulse{
+  0%{ box-shadow: 0 0 0 0 rgba(10, 132, 255, 0.45); }
+  70%{ box-shadow: 0 0 0 14px rgba(10, 132, 255, 0); }
+  100%{ box-shadow: 0 0 0 0 rgba(10, 132, 255, 0); }
+}
+@keyframes acquire-spin{ to{ transform: rotate(360deg); } }
+
+#skynow-btn .icon{ width: 15px; height: 15px; }
+#skynow-btn[aria-pressed="true"]{
+  background: rgba(10, 132, 255, 0.30);
+  border-color: rgba(10, 132, 255, 0.55);
+}
+@media (max-width: 640px){
+  #spectrum-rail{ height: min(320px, calc(100vh - 260px)); }
+}
+
+/* ================= Coordinates HUD =================
+   Not a bar — a whisper. One line of faint text tucked into the
+   bottom-right, above the search bar (left of the zoom buttons on
+   desktop): the view center's coordinates, nothing else. */
+#coords-hud{
+  position: fixed; z-index: 40;
+  right: calc(64px + var(--safe-right));
+  bottom: calc(70px + var(--safe-bottom));
+  font-size: 10px; font-weight: 500; letter-spacing: 0.02em;
+  color: rgba(235, 235, 245, 0.48);
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+  pointer-events: none; white-space: nowrap;
+}
+
+/* The engine's own location/FoV/status widgets are disabled via init
+   options; this is the backstop in case an engine update renames them. */
+#aladin-lite-div :is(.aladin-location, .aladin-fov, .aladin-status-bar){ display: none !important; }
+
+@keyframes card-in{ from{ opacity: 0; transform: scale(0.94) translateY(10px); } }
+
+.btn-primary{
+  border-radius: 999px; padding: 10px 20px; font-size: 14.5px; font-weight: 600;
+  cursor: pointer; border: none; transition: transform 0.12s ease, opacity 0.15s ease;
+  background: var(--blue); color: #fff;
+}
+.btn-primary:active{ transform: scale(0.96); }
+
+/* ================= About modal ================= */
+#about-modal{
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(0,0,0,0.5);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  display: flex; align-items: center; justify-content: center;
+}
+#about-modal[hidden]{ display: none; }
+#about-card{
+  position: relative; max-width: 560px; width: calc(100% - 48px);
+  max-height: min(78vh, 700px); overflow-y: auto; padding: 26px 24px;
+  background: var(--material-thick);
+  -webkit-overflow-scrolling: touch;
+  animation: card-in 0.4s var(--spring);
+}
+#about-close{ position: absolute; top: 14px; right: 14px; }
+#about-content h2{ font-size: 20px; font-weight: 700; letter-spacing: -0.02em; margin: 0 30px 12px 0; }
+#about-content h3{
+  font-size: 12px; font-weight: 600; color: var(--text-secondary);
+  text-transform: uppercase; letter-spacing: 0.06em; margin: 20px 0 6px;
+}
+#about-content p, #about-content li{ font-size: 13.5px; line-height: 1.55; color: var(--text-primary); }
+#about-content ul{ padding-left: 18px; margin: 6px 0; }
+#about-content a{ color: var(--blue); text-decoration: none; }
+
+/* ================= Toasts =================
+   Small and peripheral: a quiet caption that rises from the bottom-left,
+   just above the Sky Now button, never a banner across the sky. */
+#toast-container{
+  position: fixed; z-index: 300;
+  bottom: calc(66px + var(--safe-bottom));
+  left: calc(12px + var(--safe-left));
+  display: flex; flex-direction: column; gap: 8px; align-items: flex-start;
+  pointer-events: none; width: min(320px, calc(100% - 24px));
+  transition: bottom 0.2s ease;
+}
+/* The time panel opens bottom-left, right where toasts stack — lift the
+   toasts above it so an error toast can't cover the "Back to now" button
+   (both are pointer-interactive). #toast-container follows #time-panel in
+   the DOM, so the sibling combinator reaches it. */
+#time-panel:not([hidden]) ~ #toast-container{
+  bottom: calc(262px + var(--safe-bottom));
+}
+.toast{
+  pointer-events: auto;
+  background: var(--material-thick);
+  -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur);
+  border: 0.5px solid var(--hairline);
+  color: var(--text-secondary);
+  padding: 8px 13px; border-radius: 12px;
+  font-size: 12px; line-height: 1.4; max-width: 100%;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4), var(--liquid-edge);
+  animation: toast-in 0.28s var(--spring);
+}
+.toast.toast-error{ border-color: rgba(255, 69, 58, 0.5); color: var(--text-primary); }
+.toast.toast-info{ border-color: var(--hairline); }
+/* The ✕ sits inline with the text, quiet until touched — iOS-notification
+   style, not a bolted-on button. */
+.toast{ display: flex; align-items: flex-start; gap: 8px; }
+.toast .toast-msg{ flex: 1; min-width: 0; }
+.toast .toast-close{
+  flex: none; width: 20px; height: 20px; margin: -1px -4px 0 0;
+  display: grid; place-items: center;
+  border: 0; border-radius: 50%; padding: 0;
+  background: rgba(255, 255, 255, 0.09);
+  color: var(--text-tertiary); cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.toast .toast-close:hover{ background: rgba(255, 255, 255, 0.18); color: var(--text-primary); }
+.toast .toast-close .icon{ width: 10px; height: 10px; stroke-width: 2.4; }
+@keyframes toast-in{ from{ opacity: 0; transform: translateY(10px) scale(0.97); } to{ opacity: 1; transform: none; } }
+.toast.toast-out{ animation: toast-out 0.28s ease forwards; }
+@keyframes toast-out{ to{ opacity: 0; transform: translateY(8px) scale(0.97); } }
+
+/* ================= Fatal banner & debug console ================= */
+#fatal-banner{
+  position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  z-index: 150; max-width: 400px; width: calc(100% - 48px);
+  background: var(--material-thick);
+  -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur);
+  border: 0.5px solid rgba(255, 69, 58, 0.5); border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  padding: 24px 22px; text-align: center;
+}
+#fatal-banner h2{ color: var(--red); font-size: 17px; font-weight: 700; margin: 0 0 10px; }
+#fatal-banner p{ font-size: 13.5px; line-height: 1.5; color: var(--text-primary); }
+#fatal-banner .btn-primary{ margin-top: 10px; }
+
+#debug-pane{
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 400;
+  max-height: 38vh; overflow-y: auto;
+  background: rgba(0,0,0,0.92); color: #9dff9d;
+  border-top: 0.5px solid #333;
+  font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 10.5px;
+  padding: 6px 8px calc(6px + var(--safe-bottom)); white-space: pre-wrap; word-break: break-word;
+}
+#debug-pane div{ padding: 2px 0; border-bottom: 1px dotted #222; }
+
+/* ================= Red-light night-vision mode ================= */
+body.redlight #aladin-lite-div{ filter: sepia(1) saturate(6) hue-rotate(-50deg) brightness(0.85); }
+body.redlight :is(.glass-panel, .glass-btn, #search-form, .dropdown-list, .toast){
+  background: rgba(28, 4, 4, 0.75) !important;
+  border-color: rgba(255, 69, 58, 0.25) !important;
+}
+body.redlight #coords-hud{ color: rgba(255, 107, 96, 0.45); }
+body.redlight{ --text-primary: #ff6b60; --text-secondary: rgba(255, 107, 96, 0.6); --text-tertiary: rgba(255, 107, 96, 0.35); --blue: #ff6b60; --green: #a83a32; }
+body.redlight .render-canvas{ filter: sepia(1) saturate(4) hue-rotate(-50deg) brightness(0.8); }
+
+/* ================= Lightbox ================= */
+#lightbox{
+  position: fixed; inset: 0; z-index: 350;
+  background: rgba(0, 0, 0, 0.88);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 12px; padding: 24px; cursor: zoom-out;
+  animation: fade-in 0.25s ease;
+}
+#lightbox img{
+  max-width: 100%; max-height: 82vh; border-radius: 12px; cursor: default;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+}
+#lightbox p{ font-size: 12.5px; color: var(--text-secondary); text-align: center; margin: 0; max-width: 600px; }
+#lightbox-close{ position: absolute; top: calc(14px + var(--safe-top)); right: 14px; }
+
+/* ================= No-backdrop-filter fallback (older devices) ================= */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))){
+  .glass-panel, .glass-btn, #search-form, .dropdown-list, .toast{
+    background: rgba(18, 18, 24, 0.94) !important;
+  }
+}
+
+/* ================= Desktop hover refinements ================= */
+@media (hover: hover){
+  .glass-btn:hover{ background: rgba(255, 255, 255, 0.10); }
+  .toggle-list li{ border-radius: 10px; transition: background 0.15s ease; }
+  .toggle-list li:hover{ background: rgba(255, 255, 255, 0.035); }
+}
+
+/* ================= Animations off ================= */
+/* One global kill switch instead of per-site @media rules. js/motion.js puts
+   .reduce-motion on <body> when animations are off — by OS preference
+   (prefers-reduced-motion) or by the dock's Animations switch, whose user
+   choice overrides the OS in either direction. Durations go to ~0 rather
+   than `none` so animationend/transitionend listeners still fire. */
+body.reduce-motion *, body.reduce-motion *::before, body.reduce-motion *::after{
+  animation-duration: 0.001ms !important;
+  animation-delay: 0ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  transition-delay: 0ms !important;
+}
+
+/* ================= Phones (bottom sheets) ================= */
+@media (max-width: 640px){
+  #top-bar{ gap: 6px; }
+  #top-bar-right{ gap: 6px; }
+  /* Room for the serendipity button: About is reachable via the brand logo */
+  #about-toggle{ display: none; }
+  #cool-btn{ font-size: 12px; padding: 0 10px; gap: 6px; }
+
+  /* Full-width grabber = a generous drag/tap target for dismissing sheets */
+  .sheet-grabber{
+    display: block; width: 100%; padding: 10px 0 8px; flex-shrink: 0;
+    cursor: grab; touch-action: none;
+  }
+  .sheet-grabber::after{
+    content: ""; display: block; width: 36px; height: 5px; border-radius: 3px;
+    background: rgba(255,255,255,0.28); margin: 0 auto;
+  }
+
+  .brand-name{ display: none; }
+  #brand-btn{ width: 40px; padding: 0; }
+
+  #layer-dock{
+    /* Wide enough that the longest row ("Horizon & compass" + its count)
+       never ellipsizes — a truncated switch label reads as a broken UI. */
+    width: 222px;
+    max-height: calc(100vh - 320px);
+    padding: 2px 10px 6px;
+    border-radius: 16px;
+  }
+  #layer-dock .fold-btn{ margin-left: -8px; }
+  #layer-dock-list{ min-width: 202px; }
+  #layer-dock .toggle-label{ font-size: 13px; }
+
+  #detail-panel{
+    top: auto; left: 0; right: 0; bottom: 0; width: 100%;
+    max-height: 62vh;
+    border-radius: var(--radius-card) var(--radius-card) 0 0;
+    padding-top: 4px;
+    transition: transform 0.3s var(--spring);
+    overscroll-behavior-y: contain;
+    animation-name: sheet-in; /* phones: rise as a sheet, not a side panel */
+  }
+  #detail-close{ top: 14px; }
+
+  #coords-hud{ right: calc(12px + var(--safe-right)); font-size: 9px; }
+
+  /* Phone bottom bar: Sky Now + search share one row, search takes the rest */
+  #bottom-bar{
+    display: flex;
+    transition: opacity 0.3s ease, transform 0.3s var(--spring);
+  }
+  #search-form{ flex: 1; }
+  /* The detail sheet owns the bottom of a phone screen: the bar steps aside */
+  #detail-panel:not([hidden]) ~ #bottom-bar{
+    opacity: 0; pointer-events: none; transform: translateY(16px);
+  }
+
+  #zoom-stack{ display: none; } /* pinch is the natural gesture on phones */
+
+  /* The detail sheet fills the bottom of a phone; the time-panel popover
+     would float on top of it (both bottom-anchored). Move the time panel to
+     the top instead — it stays fully usable and they no longer overlap.
+     (#detail-panel precedes #time-panel in the DOM, so the sibling
+     combinator reaches it.) */
+  #detail-panel:not([hidden]) ~ #time-panel:not([hidden]){
+    bottom: auto; top: calc(64px + var(--safe-top));
+  }
+
+}
+
+/* ================= Time scrubber (clock button, popover, chip) ================= */
+#time-panel{
+  position: fixed; z-index: 60;
+  left: calc(12px + var(--safe-left));
+  bottom: calc(70px + var(--safe-bottom));
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 14px; width: 236px;
+  animation: pop-in 0.2s var(--spring);
+}
+#time-panel[hidden]{ display: none; }
+.time-title{ font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+.time-inputs{ display: flex; gap: 8px; }
+#time-date, #time-time{
+  height: 40px; padding: 0 8px; min-width: 0;
+  border-radius: 10px; border: 0.5px solid var(--hairline);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary); font: 500 13.5px var(--font);
+  color-scheme: dark; /* dark native picker on iOS/Android/desktop */
+}
+#time-date{ flex: 1.35; }
+#time-time{ flex: 1; }
+#time-now{ width: 100%; font-size: 13px; font-weight: 600; }
+
+/* Clock button glows amber while the sky is time-shifted */
+#time-btn.time-active{
+  background: rgba(255, 214, 10, 0.22);
+  border-color: rgba(255, 214, 10, 0.5);
+  color: #ffd60a;
+}
+
+/* Amber "you are time-traveling" chip, floating above the clock button */
+#time-chip{
+  position: fixed; z-index: 44;
+  left: calc(12px + var(--safe-left));
+  bottom: calc(70px + var(--safe-bottom));
+  padding: 6px 12px; border-radius: 999px;
+  border: 0.5px solid rgba(255, 214, 10, 0.45);
+  background: rgba(58, 47, 4, 0.55);
+  -webkit-backdrop-filter: var(--blur);
+  backdrop-filter: var(--blur);
+  box-shadow: var(--liquid-edge);
+  color: #ffd60a; font: 600 11.5px var(--font);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em; white-space: nowrap; cursor: pointer;
+  animation: pop-in 0.2s var(--spring);
+}
+#time-chip[hidden]{ display: none; }
+
+
+/* ================= Time-lapse playback ================= */
+#time-play-row{ display: flex; align-items: center; gap: 8px; }
+#time-play .icon-pause{ display: none; }
+#time-play.playing .icon-play{ display: none; }
+#time-play.playing .icon-pause{ display: block; }
+#time-play[aria-pressed="true"]{
+  background: rgba(255, 214, 10, 0.22);
+  border-color: rgba(255, 214, 10, 0.5);
+  color: #ffd60a;
+}
+/* Playback speed: one continuous slider, minutes -> hours -> infinity. */
+#time-speeds{ flex: 1; display: flex; flex-direction: column; gap: 2px; }
+#time-speed{
+  -webkit-appearance: none; appearance: none;
+  width: 100%; height: 26px; margin: 0;
+  background: transparent; cursor: pointer;
+}
+#time-speed::-webkit-slider-runnable-track{
+  height: 4px; border-radius: 2px;
+  background: linear-gradient(90deg, rgba(255, 214, 10, 0.18), rgba(255, 214, 10, 0.55));
+}
+#time-speed::-moz-range-track{
+  height: 4px; border-radius: 2px;
+  background: linear-gradient(90deg, rgba(255, 214, 10, 0.18), rgba(255, 214, 10, 0.55));
+}
+#time-speed::-webkit-slider-thumb{
+  -webkit-appearance: none; appearance: none;
+  width: 18px; height: 18px; margin-top: -7px; border-radius: 50%;
+  background: #fff; border: 0.5px solid rgba(0, 0, 0, 0.15);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+}
+#time-speed::-moz-range-thumb{
+  width: 18px; height: 18px; border-radius: 50%;
+  background: #fff; border: 0.5px solid rgba(0, 0, 0, 0.15);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+}
+.speed-scale{
+  display: flex; justify-content: space-between;
+  font: 600 10px var(--font); color: var(--text-tertiary);
+  padding: 0 2px;
+}
+.speed-scale span:last-child{ font-size: 12.5px; line-height: 1; }
+
+/* ================= Location consent card ================= */
+#loc-card{
+  position: fixed; z-index: 70;
+  left: 50%; transform: translateX(-50%);
+  bottom: calc(76px + var(--safe-bottom));
+  width: min(400px, calc(100vw - 24px));
+  padding: 14px 16px;
+  display: flex; flex-direction: column; gap: 12px;
+  animation: sheet-in 0.34s var(--spring);
+}
+#loc-card[hidden]{ display: none; }
+#loc-card .loc-icon{
+  width: 22px; height: 22px; color: var(--green);
+  position: absolute; top: 16px; left: 16px;
+}
+#loc-card .loc-text{
+  display: flex; flex-direction: column; gap: 4px;
+  padding-left: 34px;
+}
+#loc-card .loc-text strong{ font-size: 15px; letter-spacing: -0.01em; }
+#loc-card .loc-text span{ font-size: 12.5px; color: var(--text-secondary); line-height: 1.45; }
+#loc-card .loc-actions{ display: flex; gap: 8px; }
+#loc-card .loc-actions .glass-btn{ flex: 1; height: 36px; font: 600 13px var(--font); }
+#loc-card .loc-primary{
+  background: rgba(48, 209, 88, 0.24);
+  border-color: rgba(48, 209, 88, 0.5);
+  color: #7ee6a1;
+}
+
+/* ================= Center crosshair & object card ================= */
+/* Four hairline ticks with an open middle: marks the identification point
+   without ever covering the object being identified. */
+#crosshair{
+  position: fixed; z-index: 30; pointer-events: none;
+  left: 50%; top: 50%; width: 26px; height: 26px;
+  transform: translate(-50%, -50%);
+  background:
+    linear-gradient(rgba(235,235,245,0.42), rgba(235,235,245,0.42)) top center / 1px 7px no-repeat,
+    linear-gradient(rgba(235,235,245,0.42), rgba(235,235,245,0.42)) bottom center / 1px 7px no-repeat,
+    linear-gradient(rgba(235,235,245,0.42), rgba(235,235,245,0.42)) left center / 7px 1px no-repeat,
+    linear-gradient(rgba(235,235,245,0.42), rgba(235,235,245,0.42)) right center / 7px 1px no-repeat;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.8));
+}
+body.redlight #crosshair{
+  background:
+    linear-gradient(rgba(255,107,96,0.42), rgba(255,107,96,0.42)) top center / 1px 7px no-repeat,
+    linear-gradient(rgba(255,107,96,0.42), rgba(255,107,96,0.42)) bottom center / 1px 7px no-repeat,
+    linear-gradient(rgba(255,107,96,0.42), rgba(255,107,96,0.42)) left center / 7px 1px no-repeat,
+    linear-gradient(rgba(255,107,96,0.42), rgba(255,107,96,0.42)) right center / 7px 1px no-repeat;
+}
+
+/* The identification card floats top-center, clear of the crosshair. */
+#center-card{
+  position: fixed; z-index: 60;
+  left: 50%; transform: translateX(-50%);
+  top: calc(64px + var(--safe-top));
+  width: min(420px, calc(100vw - 24px));
+  padding: 12px 40px 12px 16px;
+  animation: pop-in 0.24s var(--spring);
+}
+/* Phones: top-center would sit ON the layer dock and eat its taps — the
+   card lives above the bottom bar instead, and steps over the location
+   consent card when both are up (first run). */
+@media (max-width: 640px){
+  #center-card{
+    top: auto;
+    bottom: calc(76px + var(--safe-bottom));
+  }
+  #loc-card:not([hidden]) ~ #center-card{
+    bottom: calc(196px + var(--safe-bottom));
+  }
+}
+/* An info readout must never sit on top of something the user is USING:
+   while the time panel, detail panel or about dialog is open, the card
+   steps aside (it returns the moment they close). */
+#time-panel:not([hidden]) ~ #center-card,
+#detail-panel:not([hidden]) ~ #center-card{ display: none; }
+/* #about-modal comes AFTER the card in the DOM, so a sibling combinator
+   can never reach it — :has() on body is the working form. */
+body:has(#about-modal:not([hidden])) #center-card{ display: none; }
+#center-card[hidden]{ display: none; }
+#center-card #center-close{ position: absolute; top: 8px; right: 8px; }
+#center-card .center-head{ display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+#center-card .center-dot{
+  width: 8px; height: 8px; border-radius: 50%; flex: none;
+  align-self: center; background: #7dd3ff;
+  box-shadow: 0 0 6px currentColor;
+}
+#center-card #center-name{ font-size: 15px; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#center-card #center-sub{ font-size: 11.5px; color: var(--text-tertiary); white-space: nowrap; }
+#center-card #center-sub[hidden]{ display: none; }
+#center-card #center-desc{
+  margin: 6px 0 0; font-size: 12.5px; line-height: 1.45;
+  color: var(--text-secondary);
+}
+#center-card #center-desc[hidden]{ display: none; }
+
+/* ================= First-run guided tour & shortcuts sheet ================= */
+/* The click-through tour (built by js/guide.js): a small glass callout with
+   page dots, Skip and Next, plus a sprung highlight ring that glides from
+   target to target. Never a modal wall — the sky stays live throughout. */
+#ui-guide{
+  position: fixed; z-index: 85;
+  width: min(300px, calc(100vw - 24px));
+  padding: 14px 16px 12px;
+  animation: sheet-in 0.34s var(--spring);
+  transition: top 0.45s var(--spring), bottom 0.45s var(--spring), left 0.45s var(--spring);
+}
+#ui-guide .guide-text{
+  margin: 0 0 10px;
+  font-size: 13.5px; line-height: 1.45; color: var(--text-primary);
+}
+#ui-guide .guide-row{ display: flex; align-items: center; gap: 10px; }
+#ui-guide .guide-dots{ display: flex; gap: 5px; flex: 1; }
+#ui-guide .guide-dots span{
+  width: 6px; height: 6px; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.22);
+  transition: background 0.25s ease;
+}
+#ui-guide .guide-dots span.on{ background: var(--blue); }
+#ui-guide .guide-skip{
+  background: none; border: none; cursor: pointer;
+  color: var(--text-tertiary); font: 500 12.5px var(--font);
+  padding: 6px 4px;
+}
+#ui-guide .guide-next{
+  border: none; border-radius: 999px; cursor: pointer;
+  padding: 7px 16px; background: var(--blue); color: #fff;
+  font: 600 13px var(--font);
+  transition: transform 0.12s ease;
+}
+#ui-guide .guide-next:active{ transform: scale(0.95); }
+#guide-ring{
+  position: fixed; z-index: 84; pointer-events: none;
+  border: 1.5px solid rgba(90, 200, 250, 0.85); border-radius: 16px;
+  box-shadow: 0 0 0 4px rgba(90, 200, 250, 0.16), 0 0 18px rgba(90, 200, 250, 0.3);
+  transition: all 0.45s var(--spring);
+}
+/* The tour owns the first-visit moment: the center-ID card waits. */
+body.guiding #center-card{ display: none; }
+/* The tour's Sky Now step points at the compass; if the user taps it mid-
+   tour the consent card would open UNDER the guide card (guide z85 >
+   loc-card z70). Keep the consent flow out of the way until the tour ends. */
+body.guiding #loc-card{ display: none; }
+
+#shortcuts-sheet .tips-title{ font-size: 14px; letter-spacing: -0.01em; }
+#shortcuts-sheet #shortcuts-close{ position: absolute; top: 8px; right: 8px; }
+#shortcuts-sheet{
+  position: fixed; z-index: 210;
+  left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: min(340px, calc(100vw - 32px));
+  padding: 14px 16px;
+  animation: pop-in 0.2s var(--spring);
+}
+#shortcuts-sheet[hidden]{ display: none; }
+#shortcuts-sheet .sc-rows{ margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+#shortcuts-sheet .sc-rows div{
+  display: flex; justify-content: space-between; gap: 12px;
+  font-size: 12.5px; color: var(--text-secondary);
+}
+#shortcuts-sheet .sc-rows div span:first-child{ color: var(--text-primary); }
+#shortcuts-sheet kbd{
+  font: 600 11px ui-monospace, "SF Mono", Menlo, monospace;
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.09);
+  border: 0.5px solid rgba(255, 255, 255, 0.18);
+  border-radius: 5px; padding: 1.5px 6px;
+}
+
+/* The coords readout is tappable (it explains RA/Dec) */
+#coords-hud{ pointer-events: auto; cursor: help; }
+
+/* ================= Easter egg now-playing chip ================= */
+#egg-player{
+  position: fixed; z-index: 46;
+  right: calc(12px + var(--safe-right));
+  bottom: calc(112px + var(--safe-bottom));
+  padding: 8px 10px;
+  display: flex; align-items: center; gap: 8px;
+  animation: pop-in 0.3s var(--spring);
+}
+#egg-player .egg-note{ font-size: 14px; color: #ffd60a; }
+#egg-player .egg-title{ font-size: 12px; color: var(--text-secondary); white-space: nowrap; }
+
+/* ================= Dock row loading shimmer ================= */
+/* A lazy layer is fetching after its first flip: the label breathes so the
+   wait reads as loading, not a dead switch. */
+.toggle-list li.loading .toggle-text{ animation: row-loading 1.1s ease-in-out infinite; }
+.toggle-list li.loading .toggle-count::after{ content: '…'; }
+@keyframes row-loading{
+  0%, 100%{ opacity: 1; }
+  50%{ opacity: 0.35; }
+}
+
+/* ================= Made in Heaven (Easter-egg ascension theme) ================= */
+/* While the egg plays (js/timeui.js puts .heaven on <body>), the whole UI
+   transforms: white-and-silver with vivid magenta glyphs and gold accents,
+   and every control wrapped in a breathing violet aura. Layered as pure CSS
+   over the existing chrome — removing the class restores everything, and the
+   global .reduce-motion kill switch stills all of it. */
+
+body.heaven{
+  --hairline: rgba(216, 131, 255, 0.30);
+  --hairline-strong: rgba(224, 140, 255, 0.42);
+}
+
+/* The aura: a violet flame glow that blooms in over ~1.6 s, then breathes.
+   Different cycle lengths per button group let the pulses drift naturally
+   out of phase instead of thumping in lockstep. */
+@keyframes heaven-aura-in{
+  from{ box-shadow: 0 0 0 rgba(216, 131, 255, 0), 0 0 0 rgba(159, 67, 242, 0), 0 0 0 rgba(98, 32, 196, 0); }
+  to  { box-shadow: 0 0 6px rgba(216, 131, 255, 0.50), 0 0 20px rgba(159, 67, 242, 0.38), 0 0 42px rgba(98, 32, 196, 0.28); }
+}
+@keyframes heaven-aura{
+  0%, 100%{ box-shadow: 0 0 6px rgba(216, 131, 255, 0.50), 0 0 20px rgba(159, 67, 242, 0.38), 0 0 42px rgba(98, 32, 196, 0.28); }
+  50%     { box-shadow: 0 0 12px rgba(240, 190, 255, 0.85), 0 0 34px rgba(190, 105, 255, 0.60), 0 0 64px rgba(130, 50, 230, 0.45); }
+}
+body.heaven :is(.glass-btn, #search-form, #time-chip, #egg-player){
+  border-color: rgba(224, 140, 255, 0.55);
+  transition: border-color 1.2s ease;
+  animation: heaven-aura-in 1.6s ease-out both, heaven-aura 2.6s ease-in-out 1.6s infinite;
+}
+body.heaven .glass-btn:nth-of-type(2n){ animation-duration: 1.6s, 3.0s; }
+body.heaven .glass-btn:nth-of-type(3n){ animation-duration: 1.6s, 3.5s; }
+
+/* Panels: violet-tinted glass, faded in rather than snapped. */
+body.heaven :is(.glass-panel, .dropdown-list, .toast){
+  background: linear-gradient(160deg, rgba(64, 28, 96, 0.38), rgba(20, 8, 40, 0.22)), var(--material);
+  border-color: rgba(216, 131, 255, 0.40);
+  transition: background 1.4s ease, border-color 1.4s ease;
+}
+
+/* NOTE: full-screen sky overlays (flame vignette, iridescent sweep, ripple
+   rings, warp spokes, meteors, activation flash) were built and then
+   deliberately REMOVED — they cluttered the sky the app exists to show.
+   The theme lives on the UI chrome only. */
+@keyframes heaven-spin{ to{ transform: rotate(360deg); } }
+
+/* A golden shimmer sweeps the white-and-gold track chip every few seconds. */
+@keyframes hv-shimmer{
+  from{ transform: translateX(-120%) skewX(-18deg); }
+  to  { transform: translateX(350%) skewX(-18deg); }
+}
+body.heaven #egg-player{ position: relative; overflow: hidden; }
+body.heaven #egg-player::before{
+  content: ''; position: absolute; top: 0; bottom: 0; left: 0; width: 40%;
+  pointer-events: none;
+  background: linear-gradient(105deg, transparent, rgba(245, 200, 76, 0.35) 50%, transparent);
+  animation: hv-shimmer 3.4s ease-in-out infinite;
+}
+
+/* The clock button's hands race — time itself is being wound forward. */
+body.heaven #time-btn .icon{ animation: heaven-spin 1.1s linear infinite; }
+
+/* Time controls: the amber time-travel accents ascend to magenta and gold. */
+body.heaven #time-btn.time-active,
+body.heaven #time-play[aria-pressed="true"]{
+  background: rgba(224, 77, 255, 0.24);
+  border-color: rgba(224, 77, 255, 0.55);
+  color: #efb8ff;
+}
+body.heaven #time-chip{
+  background: rgba(44, 16, 66, 0.62);
+  border-color: rgba(224, 140, 255, 0.60);
+  color: #efb8ff;
+}
+body.heaven #time-speed::-webkit-slider-runnable-track{
+  background: linear-gradient(90deg, rgba(245, 243, 250, 0.35), rgba(224, 77, 255, 0.70), rgba(123, 47, 247, 0.90));
+}
+body.heaven #time-speed::-moz-range-track{
+  background: linear-gradient(90deg, rgba(245, 243, 250, 0.35), rgba(224, 77, 255, 0.70), rgba(123, 47, 247, 0.90));
+}
+body.heaven #time-speed::-webkit-slider-thumb{
+  box-shadow: 0 0 10px rgba(224, 120, 255, 0.90), 0 1px 4px rgba(0, 0, 0, 0.45);
+}
+body.heaven #time-speed::-moz-range-thumb{
+  box-shadow: 0 0 10px rgba(224, 120, 255, 0.90), 0 1px 4px rgba(0, 0, 0, 0.45);
+}
+body.heaven .speed-scale{ color: rgba(233, 180, 255, 0.75); }
+body.heaven .speed-scale span:last-child{ color: #f5c84c; text-shadow: 0 0 8px rgba(245, 200, 76, 0.8); }
+
+/* The track chip becomes the centerpiece: Made-in-Heaven white and gold. */
+body.heaven #egg-player{
+  background: linear-gradient(150deg, rgba(250, 247, 255, 0.94), rgba(226, 214, 245, 0.88));
+  border-color: rgba(245, 200, 76, 0.85);
+}
+body.heaven #egg-player .egg-note{ color: #a832d6; }
+body.heaven #egg-player .egg-title{ color: #3c2a56; }
+body.heaven #egg-player .glass-btn{
+  color: #5c3f85;
+  background: rgba(120, 60, 200, 0.12);
+}
+
+/* Crosshair joins the palette. */
+body.heaven #crosshair{
+  background:
+    linear-gradient(rgba(238, 148, 255, 0.60), rgba(238, 148, 255, 0.60)) top center / 1px 7px no-repeat,
+    linear-gradient(rgba(238, 148, 255, 0.60), rgba(238, 148, 255, 0.60)) bottom center / 1px 7px no-repeat,
+    linear-gradient(rgba(238, 148, 255, 0.60), rgba(238, 148, 255, 0.60)) left center / 7px 1px no-repeat,
+    linear-gradient(rgba(238, 148, 255, 0.60), rgba(238, 148, 255, 0.60)) right center / 7px 1px no-repeat;
+}
+
+/* ================= Boot screen ================= */
+/* Above everything (incl. the lightbox at 350) — but removed from the DOM
+   the moment the sky is interactive, and BEFORE the fatal banner (z:150)
+   would need to show through. */
+#boot-screen{
+  position: fixed; inset: 0; z-index: 400;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 20px; background: #000;
+  transition: opacity 0.45s ease;
+}
+#boot-screen.boot-out{ opacity: 0; pointer-events: none; }
+.boot-title{
+  font: 600 13px var(--font); color: var(--text-tertiary);
+  letter-spacing: 0.22em; text-transform: uppercase;
+}
+.boot-bar{
+  width: min(220px, 60vw); height: 3px; border-radius: 2px;
+  background: rgba(255, 255, 255, 0.12); overflow: hidden;
+}
+.boot-fill{
+  width: 0%; height: 100%; border-radius: 2px;
+  background: linear-gradient(90deg, #7da2e8, #dfe9ff);
+  transition: width 0.25s ease;
+}
+
+/* ================= DESI cosmic web (3-D mode) ================= */
+/* A takeover view, not an overlay: the canvas covers the sky (which hides
+   itself via body.cosmos-on) while the UI chrome stays above, so the dock
+   switch that opened the mode remains reachable to close it. */
+#cosmos-canvas{
+  display: none; position: fixed; inset: 0; z-index: 30;
+  width: 100%; height: 100%;
+  cursor: grab; touch-action: none;
+  background: #030510;
+}
+#cosmos-canvas:active{ cursor: grabbing; }
+body.cosmos-on #aladin-lite-div, body.cosmos-on #overlay-canvas{ visibility: hidden; }
+#cosmos-exit{
+  display: none; position: fixed; z-index: 46;
+  top: calc(64px + var(--safe-top)); left: 50%; transform: translateX(-50%);
+  /* .glass-btn is a fixed 40px icon circle — this one carries text. */
+  width: auto; height: 36px; padding: 0 16px;
+  font-size: 13px; font-weight: 600; white-space: nowrap;
+}
+/* The base :active scale would REPLACE the centering translate and lurch
+   the button sideways mid-press — compose both transforms instead. */
+#cosmos-exit:active{ transform: translateX(-50%) scale(0.95); }
+#cosmos-legend{
+  display: none; position: fixed; z-index: 45;
+  left: 50%; transform: translateX(-50%);
+  bottom: calc(84px + var(--safe-bottom));
+  max-width: min(480px, calc(100vw - 32px));
+  padding: 12px 34px 12px 16px; /* right inset clears the ✕ */
+  font-size: 12.5px; line-height: 1.45; color: var(--text-secondary);
+}
+#cosmos-legend strong{ color: var(--text-primary); font-size: 13px; }
+#cosmos-legend p{ margin: 4px 0 0; }
+#cosmos-legend .cosmos-credit{ color: var(--text-tertiary); font-size: 10.5px; }
+/* Same dismissal contract as every other notification: an ✕ (toast-style,
+   quiet until touched) — and the card itself swipes away. */
+#cosmos-legend .legend-close{
+  position: absolute; top: 8px; right: 8px;
+  width: 22px; height: 22px;
+  display: grid; place-items: center;
+  border: 0; border-radius: 50%; padding: 0;
+  background: rgba(255, 255, 255, 0.09);
+  color: var(--text-tertiary); cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+#cosmos-legend .legend-close:hover{ background: rgba(255, 255, 255, 0.18); color: var(--text-primary); }
+#cosmos-legend .legend-close .icon{ width: 10px; height: 10px; stroke-width: 2.4; }
