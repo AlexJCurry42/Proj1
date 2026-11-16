@@ -58,10 +58,10 @@
    "source": "DESI DR1 zpix via NOIRLab Astro Data Lab TAP, tools/fetch_desi_web.py"
   },
   "exoplanets_snapshot.csv": {
-   "bytes": 514838,
-   "refreshed": "2026-11-09T16:08:10+00:00",
-   "run": "42651635451",
-   "sha256": "0968fc618afda06c511f5b09779752450f89b16ebe1812c7729cbe1d8662d29c",
+   "bytes": 515371,
+   "refreshed": "2026-11-16T15:36:22+00:00",
+   "run": "43898118082",
+   "sha256": "efba2fe19e304826a5a062c89f392bcd9814fd543f1c8dcbee426b3752acce2d",
    "source": "https://exoplanetarchive.ipac.caltech.edu/TAP/sync (pscomppars)"
   },
   "ngc_full.json": {
