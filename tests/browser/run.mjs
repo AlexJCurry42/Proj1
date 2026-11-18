@@ -983,6 +983,39 @@ await scenario('cosmic web: 3-D mode enters and exits, or degrades gracefully wi
     assert(await page.evaluate(() => document.getElementById('cosmos-canvas').style.display === 'block'),
       'dismissing the legend must not exit the mode');
 
+    // Earth is the view's anchor: three million points with nothing among
+    // them give the eye no centre, no sense of facing, no near and far.
+    // Assert the globe is actually submitted as geometry every frame (its
+    // sphere is the only indexed draw in this view) and that the legend is
+    // honest about the one thing that cannot be true of it — the scale.
+    const globe = await page.evaluate(async () => {
+      const gl = document.getElementById('cosmos-canvas').getContext('webgl');
+      const proto = Object.getPrototypeOf(gl);
+      const orig = proto.drawElements;
+      let calls = 0, verts = 0;
+      proto.drawElements = function (m, c, t, o) { calls++; verts = c; return orig.call(this, m, c, t, o); };
+      // Nudge the camera so fresh frames are drawn, then stop hooking.
+      const c = document.getElementById('cosmos-canvas');
+      const r = c.getBoundingClientRect();
+      c.dispatchEvent(new PointerEvent('pointerdown', { clientX: r.left + 300, clientY: r.top + 350, pointerId: 1, bubbles: true }));
+      for (let i = 0; i < 6; i++) {
+        c.dispatchEvent(new PointerEvent('pointermove', { clientX: r.left + 300 + i * 5, clientY: r.top + 350 + i * 2, pointerId: 1, bubbles: true }));
+        await new Promise((z) => requestAnimationFrame(z));
+      }
+      c.dispatchEvent(new PointerEvent('pointerup', { clientX: r.left + 330, clientY: r.top + 362, pointerId: 1, bubbles: true }));
+      await new Promise((z) => setTimeout(z, 400));
+      proto.drawElements = orig;
+      return { calls, verts, depth: !!gl.getContextAttributes().depth };
+    });
+    assert(globe.calls > 0, 'Earth never drew: the 3-D view has no anchor at its centre');
+    assert(globe.verts > 1000, `Earth should be a real sphere mesh, got ${globe.verts} indices`);
+    // Without a depth buffer every point draws over the globe and the map
+    // stays a flat sheet instead of a volume with a near and a far side.
+    assert(globe.depth, 'the 3-D context must have a depth buffer so Earth can occlude what is behind it');
+    const legendText = await page.evaluate(() => document.getElementById('cosmos-legend')?.textContent || '');
+    assert(/NOT to scale/.test(legendText), 'the legend must say the globe is not to scale');
+    assert(/north celestial pole/.test(legendText), 'the legend should say what IS true: the axis is real');
+
     // Detail budget. The map is meant to be the full DESI catalog, which is
     // far too many points to redraw every frame of a drag — so it thins
     // while moving and must come back to FULL resolution once still. An

@@ -11,6 +11,7 @@
 // nothing loads until the first flip of the dock switch.
 
 import { parseDesiWeb } from './desidata.js';
+import { initEarth } from './earth3d.js';
 import { showToast, makeDismissable } from './ui.js';
 import { motionOK } from './motion.js';
 import { acquireView, releaseView } from './cameraowner.js';
@@ -108,6 +109,7 @@ let pointCount = 0;
 let uMvp = null, uPx = null, uDpr = null, uOrigin = null, uStep = null, uAlpha = null;
 let posBuf = null, typeBuf = null;
 let dataOrigin = [0, 0, 0], dataStep = 1, pointAlpha = 0.55;
+let earth = null;
 // While the camera is moving, draw every Nth point. The file is stored in
 // Morton (spatial) order, so a strided read is a SPATIALLY EVEN subsample,
 // not a corner of the volume — which is what makes this free: one stride
@@ -173,7 +175,11 @@ function buildDom() {
 }
 
 function initGL(data) {
-  gl = canvas.getContext('webgl', { antialias: false, depth: false, alpha: true });
+  // depth:true so Earth can OCCLUDE the galaxies behind it. Without a depth
+  // buffer every point draws over the globe and the map stays a flat sheet;
+  // with one, the far half of the catalog goes behind Earth and the view
+  // finally has a near side and a far side.
+  gl = canvas.getContext('webgl', { antialias: false, depth: true, alpha: true });
   if (!gl) throw new Error('WebGL unavailable');
   const sh = (type, src) => {
     const s = gl.createShader(type);
@@ -220,6 +226,15 @@ function initGL(data) {
 
   gl.enable(gl.BLEND);
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE); // additive: dense filaments glow
+
+  // Earth is optional chrome: if it cannot be built the map still works, so
+  // a failure here must never take the 3-D mode down with it.
+  try {
+    earth = initEarth(gl);
+    earth.onReady = () => { lastCamSig = ''; lastDrawnStride = 0; };
+  } catch (err) {
+    earth = null;
+  }
 }
 
 // Bind one program's vertex attributes. Two programs share the context, so
@@ -288,10 +303,17 @@ function frame() {
   const px = canvas.height / 900;
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   gl.clearColor(0.01, 0.014, 0.03, 1);
-  gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
+  // Earth first, opaque, writing depth. Everything after it is depth-TESTED
+  // but does not write depth, so the globe hides the galaxies behind it while
+  // the points still blend freely among themselves.
+  if (earth) {
+    try { earth.draw(mvp, eye); } catch (err) { earth = null; }
+  }
 
   gl.useProgram(prog);
+  if (earth) { gl.enable(gl.DEPTH_TEST); gl.depthMask(false); }
   bindAttrib(prog, posBuf, 'aPos', 3, gl.SHORT, stride * 6);
   bindAttrib(prog, typeBuf, 'aType', 1, gl.UNSIGNED_BYTE, stride);
   gl.uniformMatrix4fv(uMvp, false, mvp);
@@ -303,6 +325,7 @@ function frame() {
   // the map's brightness steady while the camera moves.
   gl.uniform1f(uAlpha, pointAlpha * (stride > 1 ? Math.sqrt(stride) : 1));
   gl.drawArrays(gl.POINTS, 0, Math.floor(pointCount / stride));
+  if (earth) { gl.disable(gl.DEPTH_TEST); gl.depthMask(true); }
 }
 
 // ---- input: one-finger orbit, wheel / two-finger pinch dolly ----
@@ -439,15 +462,21 @@ export async function setCosmicWeb(on, { onExit } = {}) {
     strong.textContent = 'DESI DR1 — the cosmic web in 3-D';
     const p = document.createElement('p');
     p.textContent = `${pointCount.toLocaleString()} real galaxies & quasars from DESI Data Release 1 — the largest 3-D map of the universe ever made. Every point is a measured spectroscopic redshift, not a simulation. Earth sits at the center; distance follows from redshift (Planck ΛCDM). Drag to orbit · pinch or scroll to fly.`;
+    // Earth is the anchor, so say what is true about it and what is not.
+    const anchor = document.createElement('p');
+    anchor.textContent = 'Earth sits at the centre because every one of these distances was measured from here. '
+      + 'The globe is NOT to scale — at this span a true-size Earth would be far smaller than one pixel — but its '
+      + 'axis is real: the map\u2019s vertical is the north celestial pole, the way Earth\u2019s own axis points.';
     const credit = document.createElement('p');
     credit.className = 'cosmos-credit';
-    credit.textContent = 'Data: DESI Collaboration DR1, via NOIRLab Astro Data Lab.';
+    credit.textContent = 'Data: DESI Collaboration DR1, via NOIRLab Astro Data Lab. '
+      + 'Coastlines: Natural Earth (public domain).';
     const close = document.createElement('button');
     close.className = 'legend-close';
     close.setAttribute('aria-label', 'Dismiss the legend');
     close.innerHTML = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="7" y1="7" x2="17" y2="17"/><line x1="17" y1="7" x2="7" y2="17"/></svg>';
     close.addEventListener('click', () => hideLegend(true));
-    legend.append(strong, p, credit, close);
+    legend.append(strong, p, anchor, credit, close);
     makeDismissable(legend, () => hideLegend(true), 'translateX(-50%)');
     built = true;
     // The parsed arrays now live in GPU buffers; dropping the resolved
