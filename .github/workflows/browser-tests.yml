@@ -34,7 +34,12 @@ jobs:
       fail-fast: false   # a WebKit-only failure is exactly the signal we want to see whole
       matrix:
         engine: [chromium, webkit]
-    runs-on: ubuntu-latest
+    # Pinned, NOT ubuntu-latest. GitHub moved ubuntu-latest to Ubuntu 26.04,
+    # which the pinned Playwright refuses to install browsers on ("Playwright
+    # does not support webkit on ubuntu26.04-x64"), so both jobs died before
+    # running a single test. The browser the suite drives and the OS it drives
+    # it on are one pinned pair; bump them together, deliberately.
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
