@@ -423,6 +423,44 @@ await test('DESI cosmic-web binary: both formats unpack, and reject corruption',
   assert.throws(() => parseDesiWeb(badCount));
 });
 
+await test('survey table: every band loads from explicit mirrors, never a dead CDS host', async () => {
+  const { SURVEYS, surveyUrl, surveyIndex } = await import('../js/surveys.js');
+  const ids = SURVEYS.map((s) => s.id);
+  assert.equal(new Set(ids).size, ids.length, 'survey ids must be unique (they key permalinks and prefs)');
+  assert.ok(surveyIndex('P/2MASS/color') >= 0, '2MASS is the boot default and must stay on the rail');
+  for (const s of SURVEYS) {
+    assert.ok(Array.isArray(s.urls) && s.urls.length > 0, `${s.name} has no mirror to load from`);
+    for (const u of s.urls) {
+      const url = new URL(u);
+      assert.equal(url.protocol, 'https:', `${s.name}: ${u} must be https (mixed content is blocked)`);
+      // The engine used to resolve IDs to these hosts; every survey path on
+      // them 404s now. A URL here would bring the black sky straight back.
+      assert.ok(!/(^|\.)alasky(bis)?\.(cds\.)?unistra\.fr$/.test(url.host), `${s.name}: ${u} is a dead CDS host`);
+      assert.ok(!u.endsWith('/'), `${s.name}: ${u} — no trailing slash (the engine appends /properties)`);
+    }
+    assert.ok(s.minFov > 0, `${s.name}: minFov must be positive`);
+  }
+  assert.equal(surveyUrl('P/2MASS/color'), SURVEYS[surveyIndex('P/2MASS/color')].urls[0]);
+  assert.equal(surveyUrl('no/such/survey'), null);
+});
+
+await test('vendored engine: local patches are still applied', async () => {
+  // aladin.js is NOT byte-identical to upstream (js/vendor/aladin/PATCHES.md).
+  // Re-vendoring the engine silently drops these, so fail loudly instead.
+  const { readFileSync } = await import('node:fs');
+  const src = readFileSync(new URL('../js/vendor/aladin/aladin.js', import.meta.url), 'utf8');
+  assert.ok(src.includes('AladinLiteLogger-disabled-by-ProjectPlanetarium'),
+    'usage-beacon patch missing: the engine would report page URLs to CDS');
+  const m = src.match(/data:application\/wasm;base64,([A-Za-z0-9+/=]+)/);
+  assert.ok(m, 'embedded WASM core not found');
+  const wasm = Buffer.from(m[1], 'base64');
+  assert.ok(WebAssembly.validate(wasm), 'patched WASM core no longer validates');
+  const grey = Buffer.from('43cdcccc3d'.repeat(3) + '430000803f104c', 'hex');
+  const black = Buffer.from('4300000000'.repeat(3) + '430000803f104c', 'hex');
+  assert.equal(wasm.indexOf(grey), -1, 'void clear colour is gray again (0.1): the area around the sphere will not be black');
+  assert.ok(wasm.indexOf(black) >= 0, 'black void clear colour not found in the WASM core');
+});
+
 await test('version consistency: sw.js VERSION and js/version.js SHELL_VERSION match', async () => {
   // The two constants are hand-synced (a worker script can't import an ES
   // module); this test is the drift guard — CI fails any commit that bumps

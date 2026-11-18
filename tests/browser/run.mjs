@@ -351,6 +351,36 @@ await scenario('boot cover: lifts even if the app never reports ready', async ()
   await ctx.close();
 });
 
+// The void around the sphere must be TRUE black — pixels off on an OLED
+// panel — not the engine's hard-coded rgb(26,26,26) WebGL clear colour,
+// which the vendored copy patches out (js/vendor/aladin/PATCHES.md). A
+// portrait viewport leaves unambiguous void above and below the sphere;
+// the app chrome, the overlay layer and the attribution logo are hidden so
+// only the sky renderer's own pixels are measured.
+await scenario('sky: the void around the sphere is pure black', async () => {
+  const { ctx, page } = await newPage(browser, baseURL, { viewport: { width: 430, height: 900 } });
+  await page.waitForTimeout(1500);
+  await page.evaluate(() => {
+    document.querySelectorAll('body > *:not(#sky-wrap), #overlay-canvas, .aladin-logo')
+      .forEach((e) => { e.style.visibility = 'hidden'; });
+  });
+  await page.waitForTimeout(500);
+  const img = decodePng(await page.screenshot());
+  let lit = 0, brightest = 0;
+  for (const [y0, y1] of [[0, 180], [720, 900]]) {
+    for (let y = y0; y < y1; y++) {
+      for (let x = 0; x < img.w; x++) {
+        const i = (y * img.w + x) * img.ch;
+        const v = Math.max(img.data[i], img.data[i + 1], img.data[i + 2]);
+        if (v > 0) lit++;
+        if (v > brightest) brightest = v;
+      }
+    }
+  }
+  assert(lit === 0, `void must be pure black: ${lit} non-black pixels, brightest channel ${brightest}`);
+  await ctx.close();
+});
+
 await scenario('location consent: boot never asks; Sky Now anchors the card', async () => {
   const { ctx, page } = await newPage(browser, baseURL, { geolocation: false });
   await page.waitForTimeout(1200);

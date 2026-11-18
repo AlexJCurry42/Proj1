@@ -15,6 +15,7 @@ import {
 import { initUiGuide } from './guide.js';
 import { primeConstellations } from './constellation.js';
 import { SURVEYS, STOP, MAX_VALUE, DEFAULT_VALUE, initSpectrumBar } from './spectrum.js';
+import { surveyUrl } from './surveys.js';
 import { readPref, writePref } from './prefs.js';
 import { initMarkerFades } from './markerfade.js';
 import { initMotion } from './motion.js';
@@ -73,7 +74,18 @@ async function main() {
   const linkedView = parseViewHash();
   const linkedIdx = SURVEYS.findIndex(s => s.id === linkedView?.survey);
   const legacyIdx = SURVEYS.findIndex(s => s.id === readPref('survey', null));
-  const prefSpectrum = readPref('spectrum', null);
+  let prefSpectrum = readPref('spectrum', null);
+  // The rail lost its DESI Legacy Surveys stop (no host serves it any more —
+  // js/surveys.js), so every stop after it moved up one. A position saved on
+  // the old 8-stop rail would otherwise land one band off (a saved 2MASS
+  // would open on AllWISE). Convert once: DESI itself maps to DSS2, its
+  // optical neighbour, which now holds the same position.
+  if (typeof prefSpectrum === 'number' && readPref('rail7', false) !== true) {
+    const old = Math.round(prefSpectrum / STOP);
+    prefSpectrum = (old >= 4 ? old - 1 : old) * STOP;
+    writePref('spectrum', prefSpectrum);
+  }
+  writePref('rail7', true);
   // 2MASS (near-infrared) is the default survey. Existing installs carry a
   // saved spectrum position from the DSS2-default era, so the new default is
   // applied ONCE via a migration flag — after that, the user's own choice
@@ -121,7 +133,9 @@ async function main() {
     // suspenders: the logger URL is also neutered in the vendored bundle,
     // since that host serves real tiles and can't be blocked by CSP.)
     log: false,
-    survey: startSurvey,
+    // A URL, not the registry ID: the engine's own ID resolution only ever
+    // reaches CDS's hosts, whose survey paths now 404 (js/surveys.js).
+    survey: surveyUrl(startSurvey),
     fov: viewMode === 'inside' ? 240 : 180,
     projection: viewMode === 'inside' ? 'STG' : 'SIN',
     showFullscreenControl: false,
@@ -135,8 +149,10 @@ async function main() {
     showStatusBar: false,
     showProjectionControl: false,
     cooFrame: 'ICRS',
-    // Pure black around the celestial sphere — the sky should feel infinite,
-    // not like a globe floating on a gray card.
+    // Black INSIDE the sphere, where no tile has painted yet. Despite the
+    // name this does not touch the void AROUND the sphere — that is the WebGL
+    // clear colour, hard-coded gray in the engine and patched to true black
+    // in the vendored copy (js/vendor/aladin/PATCHES.md).
     backgroundColor: '#000000'
   });
   try { aladin.setBackgroundColor?.('#000000'); } catch (err) { /* option above covers newer builds */ }
@@ -229,33 +245,67 @@ async function main() {
   // rest with it. If none paint either, say so plainly rather than leaving a
   // black disc and no explanation.
   (() => {
-    let hipsErrors = 0, recovering = false;
-    const isHips = (m) => /HiPS|does not refer to a found CDS ID|points to a HiPS/i.test(String(m || ''));
-    const note = (m) => { if (isHips(m)) hipsErrors++; };
+    // SUCCESS has a reliable signal, and it is the one that matters most: the
+    // engine only requests TILES from a source after that source's descriptor
+    // parsed, so a resource-timing entry for a tile under the active URL
+    // means the sky is live there. Once seen, the watchdog stops for good —
+    // it must never swap away a sky that is painting.
+    //
+    // FAILURE is either an error naming the active URL ("HiPS not found at
+    // url …" — a URL-loaded layer fails once, cleanly), or silence: one
+    // mirror (MAST) simply hangs rather than failing, which left an earlier
+    // version waiting on it forever. Silence only counts as failure where
+    // success is observable at all; without resource timing, the watchdog
+    // acts on explicit errors alone rather than risk swapping a working sky.
+    let activeUrl = surveyUrl(startSurvey);
+    let failed = false, live = false, recovering = false, since = Date.now();
+    let canSeeSuccess = false;
+    const isTileOf = (name, base) => !!base && name.startsWith(base + '/') && !/\/properties(\?|$)/.test(name);
+    try {
+      new PerformanceObserver((list) => {
+        for (const e of list.getEntries()) if (isTileOf(e.name, activeUrl)) live = true;
+      }).observe({ type: 'resource', buffered: true });
+      canSeeSuccess = true;
+    } catch (err) { /* no resource timing: errors only */ }
+    const note = (m) => {
+      const t = String(m || '');
+      if (activeUrl && /HiPS/i.test(t) && t.includes(activeUrl)) failed = true;
+    };
     window.addEventListener('error', (e) => note(e?.message || e?.error?.message));
     window.addEventListener('unhandledrejection', (e) => note(e?.reason?.message || e?.reason));
 
-    const order = ['P/DSS2/color', 'P/PanSTARRS/DR1/color-z-zg-g', 'P/2MASS/color', 'P/allWISE/color']
-      .filter((id) => id !== startSurvey);
+    // The same survey on another host first — the realistic failure is ONE
+    // host going down, and a mirror keeps the user on the band they chose.
+    // Then other all-sky surveys, each on its own mirrors.
+    const order = [];
+    const boot = SURVEYS.find((sv) => sv.id === startSurvey);
+    (boot ? boot.urls.slice(1) : []).forEach((url) => order.push({ id: startSurvey, url }));
+    for (const id of ['P/DSS2/color', 'P/2MASS/color', 'P/allWISE/color']) {
+      if (id === startSurvey) continue;
+      const sv = SURVEYS.find((x) => x.id === id);
+      (sv ? sv.urls : []).forEach((url) => order.push({ id, url }));
+    }
     let i = 0;
+    const PATIENCE = 14000;   // descriptor + first tile, on a slow phone link
     const attempt = () => {
-      // Below this the sky is loading normally: the engine throws a couple of
-      // these even on a healthy start (a probe for a survey variant it does
-      // not end up using), so a hair trigger would swap a working sky away.
-      if (hipsErrors < 4) { setTimeout(attempt, 6000); return; }
+      if (live) return;                                      // painting: done for good
+      const silentTooLong = canSeeSuccess && Date.now() - since > PATIENCE;
+      if (!failed && !silentTooLong) { setTimeout(attempt, 1000); return; }
       if (i >= order.length) {
         if (!recovering) {
           recovering = true;
-          showToast('The sky imagery is not loading. The survey servers are not answering from this network — a content blocker, a captive Wi-Fi portal, or an outage upstream. Everything else still works.', 'error', 15000);
+          showToast('The sky imagery is not loading. None of the survey servers are answering from this network — a content blocker, a captive Wi-Fi portal, or an outage upstream. Everything else still works.', 'error', 15000);
         }
         return;
       }
-      const id = order[i++];
-      hipsErrors = 0;              // give the next host a clean slate to prove itself
-      try { spectrum.forceBase(id); } catch (err) { /* try the next one */ }
-      setTimeout(attempt, 8000);
+      const next = order[i++];
+      activeUrl = next.url;
+      failed = false;              // the next host gets a clean slate to prove itself
+      since = Date.now();
+      try { spectrum.forceBase(next.id, next.url); } catch (err) { failed = true; }
+      setTimeout(attempt, 1000);
     };
-    setTimeout(attempt, 9000);
+    setTimeout(attempt, 1000);
   })();
 
   // Bright stars in DSS2 show orange/blue/black blotched cores at ANY zoom

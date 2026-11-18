@@ -25,17 +25,10 @@ const CELESTRAK = 'https://celestrak.org/NORAD/elements/gp.php';
 const MOCSERVER = 'https://alasky.cds.unistra.fr/MocServer/query';
 const COMMONS_FILEPATH = 'https://commons.wikimedia.org/wiki/Special:FilePath/';
 
-// The eight HiPS imagery surveys on the spectrum rail (js/spectrum.js).
-const HIPS_SURVEYS = [
-  'P/Fermi/color',
-  'P/SDSS9/color',
-  'P/PanSTARRS/DR1/color-z-zg-g',
-  'P/DESI-Legacy-Surveys/DR10/color',
-  'P/DSS2/color',
-  'P/2MASS/color',
-  'P/allWISE/color',
-  'P/NVSS'
-];
+// The imagery surveys on the spectrum rail. Imported, not copied: the table
+// this checks is the one the app loads (js/surveys.js is DOM-free).
+import { SURVEYS } from '../js/surveys.js';
+const HIPS_SURVEYS = SURVEYS.map((sv) => sv.id);
 
 // Availability vs drift: a timeout, 5xx or 429 means the SERVICE is having
 // a moment — the runner reports it as a warning and moves on. Only a
@@ -196,6 +189,43 @@ check('CDS MocServer — all 7 spectrum-rail HiPS surveys exist', async () => {
     e.transient = true;
     throw e;
   }
+});
+
+// THE GATE for imagery. Every URL the app will actually load (js/surveys.js)
+// is fetched the way a browser fetches it — Origin header, descriptor AND a
+// real tile, CORS on both. A band with no working mirror is a band that
+// paints black, so that is drift and fails the run; a dead SECONDARY mirror
+// is reported but tolerated, because the app falls through to the next.
+check('Spectrum rail — every band has a live, CORS-enabled mirror', async () => {
+  const ORIGIN = 'https://alexjcurry42.github.io';
+  const probe = async (url) => {
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), 20000);
+    try {
+      const res = await fetch(url, { headers: { 'user-agent': UA, origin: ORIGIN }, signal: ctl.signal });
+      const body = res.ok && /properties$/.test(url) ? await res.text() : '';
+      return { status: res.status, cors: res.headers.get('access-control-allow-origin'), body };
+    } catch (err) { return { status: 0, cors: null, body: '', err: err.message }; } finally { clearTimeout(t); }
+  };
+  const dead = [], degraded = [];
+  for (const sv of SURVEYS) {
+    let live = 0;
+    const notes = [];
+    for (const base of sv.urls) {
+      const host = new URL(base).host;
+      const pr = await probe(`${base}/properties`);
+      if (pr.status !== 200 || !/hips_/i.test(pr.body)) { notes.push(`${host}: descriptor ${pr.status || pr.err}`); continue; }
+      if (!pr.cors) { notes.push(`${host}: descriptor has no CORS header`); continue; }
+      const fmt = (/hips_tile_format\s*=\s*(\S+)/.exec(pr.body) || [])[1] || 'jpeg';
+      const tile = await probe(`${base}/Norder3/Dir0/Npix0.${fmt === 'png' ? 'png' : 'jpg'}`);
+      if (tile.status !== 200 || !tile.cors) { notes.push(`${host}: tile ${tile.status || tile.err} cors=${tile.cors || 'none'}`); continue; }
+      live++;
+    }
+    console.log(`      ${sv.name.padEnd(11)} ${live}/${sv.urls.length} mirrors live${notes.length ? '  (' + notes.join('; ') + ')' : ''}`);
+    if (!live) dead.push(`${sv.name}: ${notes.join('; ')}`);
+    else if (live < sv.urls.length) degraded.push(sv.name);
+  }
+  if (dead.length) throw new Error(`bands with NO live mirror (these paint black): ${dead.join(' | ')}`);
 });
 
 // Registered is not the same as SERVING. The check above only proves each

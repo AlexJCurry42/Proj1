@@ -22,17 +22,9 @@
 // blue and black blotches — so the app stops where the data does.
 import { motionOK } from './motion.js';
 import { spectrumShift } from './sound.js';
+import { SURVEYS } from './surveys.js';
 
-export const SURVEYS = [
-  { id: 'P/Fermi/color', name: 'Fermi', band: 'Gamma-ray — the violent universe', minFov: 1.0 },
-  { id: 'P/SDSS9/color', name: 'SDSS9', band: 'Optical — Sloan digital survey', minFov: 0.05 },
-  { id: 'P/PanSTARRS/DR1/color-z-zg-g', name: 'Pan-STARRS', band: 'Optical — deep CCD survey', minFov: 0.03 },
-  { id: 'P/DESI-Legacy-Surveys/DR10/color', name: 'DESI LS', band: 'Optical — deepest wide imaging (grz)', minFov: 0.03 },
-  { id: 'P/DSS2/color', name: 'DSS2', band: 'Optical — the classic all-sky view', minFov: 0.1 },
-  { id: 'P/2MASS/color', name: '2MASS', band: 'Near-infrared — through the dust', minFov: 0.14 },
-  { id: 'P/allWISE/color', name: 'AllWISE', band: 'Mid-infrared — warm dust & AGN glow', minFov: 0.2 },
-  { id: 'P/NVSS', name: 'NVSS', band: 'Radio — jets, lobes & remnants', minFov: 0.6 }
-];
+export { SURVEYS };
 
 export const STOP = 100;
 export const MAX_VALUE = (SURVEYS.length - 1) * STOP;
@@ -142,7 +134,7 @@ export function initSpectrumBar(aladin, { onSettle, collapsed = false, onCollaps
     const name = 'dsa-blend-' + (++layerSeq);
     let layer = null;
     try {
-      layer = aladin.setOverlayImageLayer(SURVEYS[idx].id, name)
+      layer = aladin.setOverlayImageLayer(SURVEYS[idx].urls[0], name)
         || aladin.getOverlayImageLayer?.(name);
     } catch (err) { layer = null; }
     if (!layer) {
@@ -394,15 +386,16 @@ export function initSpectrumBar(aladin, { onSettle, collapsed = false, onCollaps
     // on an empty base. When NOTHING has painted there is no picture to
     // protect and no overlay to collide with, so re-pointing the base is both
     // safe and the only way back.
-    forceBase(id) {
+    forceBase(id, url) {
       const i = SURVEYS.findIndex((sv) => sv.id === id);
       if (i < 0) return false;
+      url = url || SURVEYS[i].urls[0];
       settleFade();
       const prev = liveLayer;
       liveLayer = null;
       dropLayer(prev);
       try {
-        aladin.setBaseImageLayer(id);
+        aladin.setBaseImageLayer(url);
       } catch (err) {
         return false;
       }

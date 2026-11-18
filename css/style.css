@@ -96,8 +96,10 @@ select option, select optgroup{
 /* The div behind the sky is black so the void reads as space, but Aladin's
    own canvases must NOT get a background: they are stacked transparent
    layers (imagery below, markers above) and an opaque background on the
-   upper ones blacks out the sky imagery underneath. The engine option
-   backgroundColor handles the void around the sphere. */
+   upper ones blacks out the sky imagery underneath. Note the engine's
+   backgroundColor option colours the INSIDE of the sphere, not the void
+   around it — that is the WebGL clear colour, hard-coded gray in the engine
+   and patched to black in the vendored copy (js/vendor/aladin/PATCHES.md). */
 #aladin-lite-div{ width: 100%; height: 100%; background: #000; }
 
 /* The unified overlay engine: constellations, horizon & compass, satellites
