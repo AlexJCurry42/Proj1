@@ -233,20 +233,41 @@ check('HiPS imagery — each survey\u2019s own server still serves its descripto
     }
     if (!mirrors.length) { broken.push(`${id} (no service URL in record)`); continue; }
 
+    // Every mirror is tested, not just the first that answers, and tested
+    // the way a BROWSER will use it: with an Origin header, recording the
+    // Access-Control-Allow-Origin on both the descriptor and a real tile. A
+    // mirror that serves Node but not a cross-origin page is no mirror at
+    // all for this app — WebGL cannot texture from a tile without CORS.
     let ok = null;
     const tried = [];
+    const ORIGIN = 'https://alexjcurry42.github.io';
+    const probe = async (url) => {
+      const ctl = new AbortController();
+      const t = setTimeout(() => ctl.abort(), 20000);
+      try {
+        const res = await fetch(url, { headers: { 'user-agent': UA, origin: ORIGIN }, signal: ctl.signal, redirect: 'follow' });
+        const body = res.ok && /properties$/.test(url) ? await res.text() : '';
+        return { status: res.status, cors: res.headers.get('access-control-allow-origin') || 'NONE', body };
+      } catch (err) {
+        return { status: 0, cors: 'n/a', body: '', err: err.message };
+      } finally { clearTimeout(t); }
+    };
     for (const base of mirrors) {
       const host = (() => { try { return new URL(base).host; } catch (e) { return base; } })();
-      try {
-        const text = await getText(`${base}/properties`);
-        if (/hips_/i.test(text)) { ok = base; break; }
-        tried.push(`${host}: not a HiPS descriptor`);
-      } catch (err) {
-        tried.push(`${host}: ${err.message}`);
+      const pr = await probe(`${base}/properties`);
+      if (pr.status !== 200 || !/hips_/i.test(pr.body)) {
+        tried.push(`${host}: ${pr.status || pr.err}`);
+        continue;
       }
+      const fmt = (/hips_tile_format\s*=\s*(\S+)/.exec(pr.body) || [])[1] || 'jpeg';
+      const ext = fmt === 'jpeg' ? 'jpg' : fmt;
+      const tile = await probe(`${base}/Norder3/Dir0/Npix0.${ext}`);
+      const line = `${base}  [properties cors=${pr.cors}; tile ${tile.status || tile.err} cors=${tile.cors}; fmt=${fmt}]`;
+      serving.push(`${id} -> ${line}`);
+      ok = ok || base;
     }
-    if (ok) serving.push(`${id} -> ${ok}`);
-    else broken.push(`${id} [${mirrors.length} mirror(s)] ${tried.join(' ; ')}`);
+    if (!ok) broken.push(`${id} [${mirrors.length} mirror(s)] ${tried.join(' ; ')}`);
+    else if (tried.length) broken.push(`${id} (dead mirrors) ${tried.join(' ; ')}`);
   }
   // Printed either way: when the sky is black this list is the first thing
   // worth reading, and it is useless if it only appears on failure. The
@@ -259,6 +280,41 @@ check('HiPS imagery — each survey\u2019s own server still serves its descripto
     const e = new Error(`no spectrum survey served its descriptor on any mirror — the sky cannot paint.`);
     e.transient = down.length > 0 && broken.length === 0;
     throw e;
+  }
+});
+
+// Discovery, not a gate: Pan-STARRS and DESI Legacy Surveys had no live
+// mirror under the IDs the rail uses. Search the registry for any OTHER
+// colour HiPS of the same surveys and report which actually serve with CORS,
+// so the rail can be pointed at something real instead of a dead ID.
+check('HiPS discovery — live colour alternatives for Pan-STARRS and DESI LS', async () => {
+  const ORIGIN = 'https://alexjcurry42.github.io';
+  const probe = async (url) => {
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), 20000);
+    try {
+      const res = await fetch(url, { headers: { 'user-agent': UA, origin: ORIGIN }, signal: ctl.signal });
+      const body = res.ok && /properties$/.test(url) ? await res.text() : '';
+      return { status: res.status, cors: res.headers.get('access-control-allow-origin') || 'NONE', body };
+    } catch (err) { return { status: 0, cors: 'n/a', body: '' }; } finally { clearTimeout(t); }
+  };
+  for (const pat of ['*PanSTARRS*', '*DESI*Legacy*', '*DECaLS*']) {
+    let recs = [];
+    try {
+      recs = await getJSON(`${MOCSERVER}?ID=${encodeURIComponent(pat)}&get=record&fmt=json&dataproduct_type=image`);
+    } catch (err) { console.log(`      ${pat}: registry ${err.message}`); continue; }
+    for (const r of (Array.isArray(recs) ? recs : []).slice(0, 25)) {
+      if (!/colou?r/i.test(r.ID || '')) continue;
+      const mirrors = Object.keys(r).filter((k) => /^hips_service_url/.test(k)).map((k) => String(r[k]).replace(/\/+$/, ''));
+      for (const base of mirrors) {
+        const pr = await probe(`${base}/properties`);
+        if (pr.status !== 200 || !/hips_/i.test(pr.body)) continue;
+        const fmt = (/hips_tile_format\s*=\s*(\S+)/.exec(pr.body) || [])[1] || 'jpeg';
+        const ext = fmt.split(/\s/)[0] === 'png' ? 'png' : 'jpg';
+        const tile = await probe(`${base}/Norder3/Dir0/Npix0.${ext}`);
+        console.log(`      ALT ${r.ID} -> ${base}  [props cors=${pr.cors}; tile ${tile.status} cors=${tile.cors}; fmt=${fmt}]`);
+      }
+    }
   }
 });
 
