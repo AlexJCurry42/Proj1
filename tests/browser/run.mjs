@@ -144,7 +144,12 @@ const INIT = () => {
 // bare fetch errors proved flaky under real conditions (async stacks can
 // thread engine failures through app frames; WebKit omits stacks
 // entirely). App-side fetch bugs are covered by behavior asserts instead.
-const IGNORE_ERR = /HiPS|CDS ID|Failed to fetch|points to a HiPS|NetworkError|Load failed/i;
+// Network noise from the VENDORED ENGINE's own third-party survey fetches,
+// which this sandbox cannot reach. The last two are WebKit's wording for
+// the same blocked cross-origin request that Chromium reports as "Failed to
+// fetch" — without them the suite was red on webkit for four releases while
+// chromium passed, which is exactly the engine the users are on.
+const IGNORE_ERR = /HiPS|CDS ID|Failed to fetch|points to a HiPS|NetworkError|Load failed|access control checks|not allowed by Access-Control-Allow-Origin/i;
 
 async function newPage(browser, baseURL, { geolocation = true, guide = false, viewport = { width: 600, height: 700 } } = {}) {
   const ctx = await browser.newContext({ viewport });
@@ -311,6 +316,38 @@ await scenario('boot: lean fetch budget, no dead chrome, zero errors (granted ge
   assert(await page.evaluate(() => !document.getElementById('boot-screen')),
     'boot screen must remove itself once the sky is interactive');
   assert(page.__errors.length === 0, `page errors: ${page.__errors.join('; ')}`);
+  await ctx.close();
+});
+
+// The boot cover is an OPAQUE, full-screen, z-400 div, and the fatal-error
+// banner sits BENEATH it at z-150. It used to lift only when BOTH the chrome
+// reported ready and the sky began painting; only the second had a ceiling.
+// So anything that stopped app.js reaching done() left that cover up for
+// good: a black screen, no text, no way out, with a working app behind it.
+// This drives exactly that case — app.js never loads — and requires the
+// cover to come off anyway and leave something actionable on screen.
+await scenario('boot cover: lifts even if the app never reports ready', async () => {
+  const ctx = await browser.newContext({ viewport: { width: 600, height: 700 } });
+  const page = await ctx.newPage();
+  await page.route('**/js/app.js', (r) => r.abort());
+  await page.goto(`${baseURL}/engine-test.html`, { waitUntil: 'domcontentloaded' });
+
+  // Before the hard ceiling the cover is still up — that is the old,
+  // permanent state, so assert it to prove the ceiling is what frees it.
+  await page.waitForTimeout(5200);
+  assert(await page.evaluate(() => !!document.getElementById('boot-screen')),
+    'cover should still be up at 5 s: the sky ceiling alone must not free it');
+
+  await page.waitForFunction(() => !document.getElementById('boot-screen'), null, { timeout: 15000 })
+    .catch(() => { throw new Error('the boot cover never lifted — a stalled app leaves a black screen'); });
+
+  const help = await page.evaluate(() => {
+    const b = document.getElementById('boot-help');
+    return b ? { text: b.textContent, buttons: [...b.querySelectorAll('button')].map((x) => x.textContent) } : null;
+  });
+  assert(help, 'a stalled start must say so, not just drop the user on a blank page');
+  assert(help.buttons.length >= 2 && help.buttons.some((t) => /reset/i.test(t)),
+    `recovery must offer a reset: got ${JSON.stringify(help.buttons)}`);
   await ctx.close();
 });
 
