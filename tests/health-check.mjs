@@ -211,33 +211,52 @@ check('CDS MocServer — all 7 spectrum-rail HiPS surveys exist', async () => {
 check('HiPS imagery — each survey\u2019s own server still serves its descriptor', async () => {
   const serving = [], broken = [], down = [];
   for (const id of HIPS_SURVEYS) {
-    let base = null;
+    // Ask for the WHOLE record, not one field. A HiPS is normally published
+    // on several hosts and the registry lists them as hips_service_url,
+    // hips_service_url_1, _2 … Reading only the first meant one host
+    // restructuring looked like the survey being gone, when a mirror may
+    // still serve it — and a mirror that serves is a sky that paints.
+    let mirrors = [];
     try {
-      const url = `${MOCSERVER}?ID=*${encodeURIComponent(id)}&get=record&fmt=json&fields=ID,hips_service_url`;
+      const url = `${MOCSERVER}?ID=*${encodeURIComponent(id)}&get=record&fmt=json`;
       const records = await getJSON(url);
-      const hit = (Array.isArray(records) ? records : []).find((r) => r.ID && r.ID.endsWith(id) && r.hips_service_url);
-      base = hit && String(hit.hips_service_url).replace(/\/+$/, '');
+      const hit = (Array.isArray(records) ? records : []).find((r) => r.ID && r.ID.endsWith(id));
+      if (hit) {
+        mirrors = Object.keys(hit)
+          .filter((k) => /^hips_service_url/.test(k))
+          .map((k) => String(hit[k]).replace(/\/+$/, ''))
+          .filter(Boolean);
+      }
     } catch (err) {
       down.push(`${id} (registry: ${err.message})`);
       continue;
     }
-    if (!base) { broken.push(`${id} (no service URL)`); continue; }
-    const host = (() => { try { return new URL(base).host; } catch (e) { return base; } })();
-    try {
-      const text = await getText(`${base}/properties`);
-      if (/hips_/i.test(text)) serving.push(`${id} @ ${host}`);
-      else broken.push(`${id} @ ${host} (properties did not look like HiPS)`);
-    } catch (err) {
-      (err.transient ? down : broken).push(`${id} @ ${host} (${err.message})`);
+    if (!mirrors.length) { broken.push(`${id} (no service URL in record)`); continue; }
+
+    let ok = null;
+    const tried = [];
+    for (const base of mirrors) {
+      const host = (() => { try { return new URL(base).host; } catch (e) { return base; } })();
+      try {
+        const text = await getText(`${base}/properties`);
+        if (/hips_/i.test(text)) { ok = base; break; }
+        tried.push(`${host}: not a HiPS descriptor`);
+      } catch (err) {
+        tried.push(`${host}: ${err.message}`);
+      }
     }
+    if (ok) serving.push(`${id} -> ${ok}`);
+    else broken.push(`${id} [${mirrors.length} mirror(s)] ${tried.join(' ; ')}`);
   }
-  // Printed either way: when the sky goes black this list is the first thing
-  // worth reading, and it is useless if it only appears on failure.
-  console.log(`      serving: ${serving.length ? serving.join(', ') : 'NONE'}`);
-  if (broken.length) console.log(`      NOT serving: ${broken.join(' | ')}`);
+  // Printed either way: when the sky is black this list is the first thing
+  // worth reading, and it is useless if it only appears on failure. The
+  // arrow form is deliberate — a URL that serves is directly pastable into
+  // the app's survey table.
+  console.log(`      SERVING: ${serving.length ? serving.join('\n               ') : 'NONE'}`);
+  if (broken.length) console.log(`      NOT serving: ${broken.join('\n                   ')}`);
   if (down.length) console.log(`      unreachable from CI: ${down.join(' | ')}`);
   if (!serving.length) {
-    const e = new Error(`no spectrum survey served its descriptor — the sky cannot paint. ${broken.concat(down).join(' | ')}`);
+    const e = new Error(`no spectrum survey served its descriptor on any mirror — the sky cannot paint.`);
     e.transient = down.length > 0 && broken.length === 0;
     throw e;
   }
