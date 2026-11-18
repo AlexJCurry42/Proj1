@@ -599,7 +599,14 @@ await scenario('spectrum: a band change never tears down the base (no black flas
   await page.evaluate(() => {
     const a = window.__aladin;
     window.__ev = [];
-    const mine = () => new Error().stack.includes('/js/spectrum.js');
+    // Band changes must never re-set the base. forceBase is the one exception
+    // and is excluded deliberately: it exists ONLY for the case where nothing
+    // ever painted, where there is no picture to protect, and the sky
+    // watchdog calls it to escape a permanently black sphere.
+    const mine = () => {
+      const st = new Error().stack || '';
+      return st.includes('/js/spectrum.js') && !st.includes('forceBase');
+    };
     const ob = a.setBaseImageLayer.bind(a);
     a.setBaseImageLayer = (...la) => {
       if (mine()) window.__ev.push(['base', String(la[0]?.id || la[0])]);
@@ -1037,16 +1044,25 @@ await scenario('cosmic web: 3-D mode enters and exits, or degrades gracefully wi
       }
       c.dispatchEvent(new PointerEvent('pointerup', { clientX: r.left + 440, clientY: r.top + 410, pointerId: 1, bubbles: true }));
       const moving = seen.slice();
+      const movingMax = moving.length ? Math.max(...moving) : 0;
       seen.length = 0;
-      await new Promise((z) => setTimeout(z, 3500));
-      const settled = seen.slice();
+      // Wait for the full-detail frame rather than guessing how long inertia
+      // takes. A fixed pause raced the frame rate: once Earth was added each
+      // frame costs more, so the same 3.5 s covered fewer frames and caught
+      // the map still thinned out. The invariant is that full detail ARRIVES.
+      const deadline = Date.now() + 20000;
+      let settledMax = 0;
+      while (Date.now() < deadline) {
+        settledMax = seen.length ? Math.max(...seen) : 0;
+        if (settledMax >= movingMax && settledMax > 0) break;
+        await new Promise((z) => setTimeout(z, 250));
+      }
       proto.drawArrays = orig;
-      return { movingMax: moving.length ? Math.max(...moving) : 0,
-               settledMax: settled.length ? Math.max(...settled) : 0 };
+      return { movingMax, settledMax };
     });
     assert(draws.settledMax > 0, 'no frame was drawn after the camera settled');
-    assert(draws.movingMax === 0 || draws.movingMax <= draws.settledMax,
-      `a moving frame must never draw more than the settled one: ${draws.movingMax} vs ${draws.settledMax}`);
+    assert(draws.movingMax === 0 || draws.settledMax >= draws.movingMax,
+      `full detail must come back once the camera settles: settled ${draws.settledMax} vs moving ${draws.movingMax}`);
     // Escape leaves the mode AND flips the dock switch back off.
     await page.keyboard.press('Escape');
     await page.waitForTimeout(400);

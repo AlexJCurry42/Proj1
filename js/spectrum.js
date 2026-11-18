@@ -88,7 +88,7 @@ export function initSpectrumBar(aladin, { onSettle, collapsed = false, onCollaps
   const bootIdx = SURVEYS.findIndex(s => s.id === baseSurveyId);
   // -1 would mean 'no stop matches the base', making the base unreachable
   // and stranding an overlay forever; fall back to the documented default.
-  const baseIdx = bootIdx >= 0 ? bootIdx : Math.round(DEFAULT_VALUE / STOP);
+  let baseIdx = bootIdx >= 0 ? bootIdx : Math.round(DEFAULT_VALUE / STOP);
   let appliedIdx = baseIdx;      // what the rail has committed
   let liveLayer = null;          // the overlay on screen, or null = base showing
   let layerSeq = 0;
@@ -387,6 +387,32 @@ export function initSpectrumBar(aladin, { onSettle, collapsed = false, onCollaps
   // runs its own fade between base layers, so the reveal stays smooth
   // without this module orchestrating a blend overlay.
   const api = {
+    // RECOVERY ONLY. In normal use the rail never re-sets the base — that is
+    // the whole reason a band change cannot flash black any more. But that
+    // also means a boot survey which never loads leaves the sphere black with
+    // nothing able to rescue it: every later selection is an overlay stacked
+    // on an empty base. When NOTHING has painted there is no picture to
+    // protect and no overlay to collide with, so re-pointing the base is both
+    // safe and the only way back.
+    forceBase(id) {
+      const i = SURVEYS.findIndex((sv) => sv.id === id);
+      if (i < 0) return false;
+      settleFade();
+      const prev = liveLayer;
+      liveLayer = null;
+      dropLayer(prev);
+      try {
+        aladin.setBaseImageLayer(id);
+      } catch (err) {
+        return false;
+      }
+      baseIdx = i;
+      appliedIdx = i;
+      value = target = i * STOP;   // keep the rail honest about what is showing
+      applyEngine(value);
+      paint(value);
+      return true;
+    },
     setValue(v, { settle = false } = {}) {
       // A direct set supersedes any in-flight glide: the single tick loop
       // always eases toward the latest `target`.

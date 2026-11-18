@@ -209,6 +209,55 @@ async function main() {
   spectrum.setValue(initialSpectrum);
   view.applyFovLimits();
 
+  // ----------------------------------------------------- Sky watchdog ---
+  // The sky IS the app. If the boot survey's server never answers, the
+  // celestial sphere is simply black — every control works, coordinates
+  // update, the horizon draws, and there is nothing on it. That used to be
+  // self-correcting because changing bands re-set the base layer; since the
+  // rail stopped doing that (so a band change can never flash black), nothing
+  // re-points the base and the black sphere is permanent.
+  //
+  // The signal matters more than the reaction. The obvious candidate,
+  // AL:Resource.fetched, is NOT a sign the sky painted: with the tile host
+  // unreachable it still fired 257 times in 42 seconds, the first inside half
+  // a second, because it reports fetches ATTEMPTED. Keying off it meant the
+  // watchdog believed the sky was fine and never ran. What the engine does
+  // report truthfully is failure: a survey it cannot load throws a HiPS error
+  // every time it retries. So count those, and act once they are clearly not
+  // stopping — then walk a fallback list of all-sky surveys on DIFFERENT
+  // hosts, because one host moving or failing CORS does not usually take the
+  // rest with it. If none paint either, say so plainly rather than leaving a
+  // black disc and no explanation.
+  (() => {
+    let hipsErrors = 0, recovering = false;
+    const isHips = (m) => /HiPS|does not refer to a found CDS ID|points to a HiPS/i.test(String(m || ''));
+    const note = (m) => { if (isHips(m)) hipsErrors++; };
+    window.addEventListener('error', (e) => note(e?.message || e?.error?.message));
+    window.addEventListener('unhandledrejection', (e) => note(e?.reason?.message || e?.reason));
+
+    const order = ['P/DSS2/color', 'P/PanSTARRS/DR1/color-z-zg-g', 'P/2MASS/color', 'P/allWISE/color']
+      .filter((id) => id !== startSurvey);
+    let i = 0;
+    const attempt = () => {
+      // Below this the sky is loading normally: the engine throws a couple of
+      // these even on a healthy start (a probe for a survey variant it does
+      // not end up using), so a hair trigger would swap a working sky away.
+      if (hipsErrors < 4) { setTimeout(attempt, 6000); return; }
+      if (i >= order.length) {
+        if (!recovering) {
+          recovering = true;
+          showToast('The sky imagery is not loading. The survey servers are not answering from this network — a content blocker, a captive Wi-Fi portal, or an outage upstream. Everything else still works.', 'error', 15000);
+        }
+        return;
+      }
+      const id = order[i++];
+      hipsErrors = 0;              // give the next host a clean slate to prove itself
+      try { spectrum.forceBase(id); } catch (err) { /* try the next one */ }
+      setTimeout(attempt, 8000);
+    };
+    setTimeout(attempt, 9000);
+  })();
+
   // Bright stars in DSS2 show orange/blue/black blotched cores at ANY zoom
   // deep enough to resolve them. That is the survey data, not a bug: the
   // stars saturated the photographic emulsion, the red and blue plates were

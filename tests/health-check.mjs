@@ -198,6 +198,51 @@ check('CDS MocServer — all 7 spectrum-rail HiPS surveys exist', async () => {
   }
 });
 
+// Registered is not the same as SERVING. The check above only proves each
+// survey still has a record in the registry; a user whose sky is black does
+// not care about records. This one resolves each survey to the host the
+// engine would actually use and asks that host for the descriptor the
+// browser needs before it can draw a single tile — which is the difference
+// between "the catalogue lists it" and "the sky paints".
+//
+// It reports PER SURVEY, because the app only needs one that works: the boot
+// survey is what fills the sphere, so knowing which hosts answer tells us
+// what to boot on. Any survey answering is a pass; total silence is drift.
+check('HiPS imagery — each survey\u2019s own server still serves its descriptor', async () => {
+  const serving = [], broken = [], down = [];
+  for (const id of HIPS_SURVEYS) {
+    let base = null;
+    try {
+      const url = `${MOCSERVER}?ID=*${encodeURIComponent(id)}&get=record&fmt=json&fields=ID,hips_service_url`;
+      const records = await getJSON(url);
+      const hit = (Array.isArray(records) ? records : []).find((r) => r.ID && r.ID.endsWith(id) && r.hips_service_url);
+      base = hit && String(hit.hips_service_url).replace(/\/+$/, '');
+    } catch (err) {
+      down.push(`${id} (registry: ${err.message})`);
+      continue;
+    }
+    if (!base) { broken.push(`${id} (no service URL)`); continue; }
+    const host = (() => { try { return new URL(base).host; } catch (e) { return base; } })();
+    try {
+      const text = await getText(`${base}/properties`);
+      if (/hips_/i.test(text)) serving.push(`${id} @ ${host}`);
+      else broken.push(`${id} @ ${host} (properties did not look like HiPS)`);
+    } catch (err) {
+      (err.transient ? down : broken).push(`${id} @ ${host} (${err.message})`);
+    }
+  }
+  // Printed either way: when the sky goes black this list is the first thing
+  // worth reading, and it is useless if it only appears on failure.
+  console.log(`      serving: ${serving.length ? serving.join(', ') : 'NONE'}`);
+  if (broken.length) console.log(`      NOT serving: ${broken.join(' | ')}`);
+  if (down.length) console.log(`      unreachable from CI: ${down.join(' | ')}`);
+  if (!serving.length) {
+    const e = new Error(`no spectrum survey served its descriptor — the sky cannot paint. ${broken.concat(down).join(' | ')}`);
+    e.transient = down.length > 0 && broken.length === 0;
+    throw e;
+  }
+});
+
 // The Gaia DR3 progressive catalog (js/catalogs.js initGaiaHips). The axel
 // host can be unreachable from Node on CI runners even while browsers load
 // it fine (certificate-chain and network-path quirks), so a direct failure
