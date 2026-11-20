@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<!-- Content-Security-Policy, meta-delivered (GitHub Pages can't set
+     headers). The XSS-relevant locks are strict: scripts only from this
+     origin — the sky engine is BUNDLED, so no CDN appears in script-src
+     ('wasm-unsafe-eval' is required for its WebAssembly) — no
+     object/embed, no base hijack, no inline scripts (the boot bar and SW
+     bootstrap are external files for exactly this reason). img/connect stay broad by design — HiPS surveys resolve
+     to many mirrors and Commons photos redirect to upload.wikimedia.org;
+     locking script execution, not data loading, is what defuses XSS.
+     frame-ancestors can't be set from a meta tag, so it is omitted. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' data: https:; media-src 'self'; font-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'" />
+<!-- No Referer header on any outbound request: sky-data providers learn
+     which tiles/objects are asked for, never which view URL asked. -->
+<meta name="referrer" content="no-referrer" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="theme-color" content="#000000" />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="apple-touch-icon" href="assets/icon-180.png" />
+<link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png" />
+<title>Project Planetarium</title>
+<meta name="description" content="Project Planetarium — stars, galaxies, nebulae, exoplanets and black holes across the whole sky, powered by Aladin Lite and CDS/NASA data." />
+
+<!-- Warm up the critical origins: the HiPS tile server gets a full
+     preconnect; services queried later get cheap DNS prefetch. (The
+     exoplanet archive is deliberately absent — its TAP has no CORS, so
+     the browser never contacts it; only the Action does.) -->
+<link rel="preconnect" href="https://alasky.cds.unistra.fr" crossorigin />
+<link rel="dns-prefetch" href="https://axel.u-strasbg.fr" />
+<link rel="dns-prefetch" href="https://simbad.cds.unistra.fr" />
+<link rel="dns-prefetch" href="https://cds.unistra.fr" />
+<link rel="dns-prefetch" href="https://tapvizier.cds.unistra.fr" />
+<link rel="dns-prefetch" href="https://commons.wikimedia.org" />
+<link rel="dns-prefetch" href="https://upload.wikimedia.org" />
+
+<!-- No external engine stylesheet: the bundled v3.9 build injects its own
+     styles from JS, and the app hides all engine chrome regardless. -->
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<!-- Boot screen: painted before any script has even downloaded, so the
+     first thing a visitor sees is a live loading bar rather than a black
+     void. Driven inline (window.__boot) because app.js may itself still be
+     in flight; app.js reports real milestones and removes it when the sky
+     is interactive. -->
+<div id="boot-screen" aria-hidden="true">
+  <div class="boot-title">Project Planetarium</div>
+  <div class="boot-bar"><div class="boot-fill" id="boot-fill"></div></div>
+</div>
+<!-- Classic blocking script: runs right here, before anything below parses
+     (external rather than inline so the CSP needs no 'unsafe-inline'). -->
+<script src="js/bootbar.js"></script>
+
+<a class="skip-link" href="#aladin-lite-div">Skip to sky view</a>
+
+<!-- Full-bleed sky -->
+<!-- tabindex=-1: the skip link must actually MOVE keyboard focus here. -->
+<main id="sky-wrap"><div id="aladin-lite-div" tabindex="-1"></div></main>
+
+<!-- Center crosshair: four faint ticks marking the identification point -->
+<div id="crosshair" aria-hidden="true"></div>
+
+
+<!-- Floating top controls -->
+<header id="top-bar">
+  <div id="top-bar-left">
+    <button id="brand-btn" class="glass-btn" aria-label="About Project Planetarium">
+      <img src="assets/icon-192.png" alt="" class="brand-logo" width="24" height="24" />
+      <span class="brand-name">Project&nbsp;Planetarium</span>
+    </button>
+    <button id="view-toggle" class="glass-btn" aria-pressed="false" aria-label="Switch between orbiting the sky and standing inside it" title="Step inside the sky">
+      <!-- Outside (globe) mode: an arrow diving INTO the sphere — press to enter -->
+      <svg class="icon icon-globe" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13.5" r="6.6"/><ellipse cx="12" cy="13.5" rx="6.6" ry="2.4"/><line x1="12" y1="1.6" x2="12" y2="7"/><path d="M9.7 4.7L12 7l2.3-2.3"/></svg>
+      <!-- Inside (planetarium) mode: an arrow rising OUT of the dome — press to orbit -->
+      <svg class="icon icon-dome" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 17.5a7.5 7.5 0 0 1 15 0"/><circle cx="12" cy="20" r="1.5" fill="currentColor" stroke="none"/><line x1="12" y1="12.5" x2="12" y2="7"/><path d="M9.7 9.3L12 7l2.3 2.3"/></svg>
+    </button>
+  </div>
+
+  <div id="top-bar-right">
+    <button id="share-btn" class="glass-btn" aria-label="Share this view" title="Share this view">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"/><path d="M8 7l4-4 4 4"/><rect x="5" y="11" width="14" height="10" rx="3"/></svg>
+    </button>
+    <button id="cool-btn" class="glass-btn wide" aria-label="Fly to a random spectacular place in the sky">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.7 5.3L19 10l-5.3 1.7L12 17l-1.7-5.3L5 10l5.3-1.7z"/><path d="M18.5 15.5l.7 2.3 2.3.7-2.3.7-.7 2.3-.7-2.3-2.3-.7 2.3-.7z"/></svg>
+      <span class="cool-label">Show&nbsp;me&nbsp;something&nbsp;cool</span>
+    </button>
+    <button id="redlight-toggle" class="glass-btn" aria-pressed="false" aria-label="Toggle red-light night-vision mode" title="Red-light mode">
+      <svg class="icon icon-red" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="6.5" fill="currentColor" stroke="none"/></svg>
+    </button>
+    <button id="about-toggle" class="glass-btn" aria-label="About and credits" title="About &amp; credits">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><line x1="12" y1="11" x2="12" y2="16"/><line x1="12" y1="7.6" x2="12" y2="7.7"/></svg>
+    </button>
+  </div>
+</header>
+
+<!-- Layer dock: always-visible overlay along the left, one switch per celestial family -->
+<nav id="layer-dock" class="glass-panel" aria-label="Celestial layers">
+  <button id="dock-collapse" class="fold-btn" aria-label="Collapse the layers menu" aria-expanded="true">
+    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5-5 5 5"/><path d="M7 19l5-5 5 5"/></svg>
+  </button>
+  <svg class="pill-glyph icon dock-glyph" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4.5l8 4.4-8 4.4-8-4.4z"/><path d="M4 14.2l8 4.4 8-4.4"/></svg>
+  <ul id="layer-dock-list" class="toggle-list"></ul>
+</nav>
+
+<!-- Object detail panel -->
+<aside id="detail-panel" class="glass-panel" aria-label="Object details" hidden>
+  <div class="sheet-grabber" aria-hidden="true"></div>
+  <button id="detail-close" class="glass-btn small" aria-label="Close details">
+    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="7" y1="7" x2="17" y2="17"/><line x1="17" y1="7" x2="7" y2="17"/></svg>
+  </button>
+  <div id="detail-content"></div>
+</aside>
+
+<!-- Spectrum rail: every survey on one vertical track, gamma-ray (top) to radio (bottom) -->
+<div id="spectrum-rail" class="glass-panel" role="group" aria-label="Sky imagery across the electromagnetic spectrum">
+  <button id="spectrum-collapse" class="fold-btn" aria-label="Collapse the spectrum control" aria-expanded="true">
+    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5-5 5 5"/><path d="M7 19l5-5 5 5"/></svg>
+  </button>
+  <span class="pill-glyph spectrum-glyph" aria-hidden="true"></span>
+  <span class="spectrum-end" aria-hidden="true">γ-ray</span>
+  <div id="spectrum-track" role="slider" tabindex="0" aria-orientation="vertical"
+       aria-valuemin="0" aria-valuemax="600" aria-valuenow="300"
+       aria-label="Blend between sky surveys, gamma-ray at the top to radio at the bottom">
+    <div id="spectrum-gradient" aria-hidden="true"></div>
+    <div id="spectrum-dots" aria-hidden="true"></div>
+    <div id="spectrum-thumb" aria-hidden="true"></div>
+  </div>
+  <span class="spectrum-end" aria-hidden="true">Radio</span>
+</div>
+<div id="spectrum-chip" class="glass-panel" aria-hidden="true">
+  <span id="spectrum-name">DSS2</span>
+  <span id="spectrum-band">Optical — the classic all-sky view</span>
+</div>
+
+<!-- Bottom bar: Sky Now on the left, search front-and-center (iOS Safari style) -->
+<div id="bottom-bar">
+  <div id="bottom-left">
+    <button id="skynow-btn" class="glass-btn wide" aria-label="Show my sky right now">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5l18-8-8 18-2.2-7.8L3 11.5z"/></svg>
+      <span class="skynow-label">Sky&nbsp;Now</span>
+    </button>
+    <button id="gyro-toggle" class="glass-btn" aria-pressed="false" aria-label="Toggle gyroscope sky tracking" title="Follow my phone's motion">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M15.4 8.6l-1.8 4.8-4.8 1.8 1.8-4.8z"/></svg>
+    </button>
+    <button id="time-btn" class="glass-btn" aria-pressed="false" aria-label="Show the sky at another date and time" title="Time travel">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3.2 2"/></svg>
+    </button>
+  </div>
+  <form id="search-form" role="search" autocomplete="off">
+    <svg class="icon search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><line x1="15.8" y1="15.8" x2="20" y2="20"/></svg>
+    <label for="search-input" class="visually-hidden">Search an object or coordinates</label>
+    <input id="search-input" type="search" placeholder="Search the sky" aria-label="Search an object or coordinates" enterkeyhint="search" role="combobox" aria-expanded="false" aria-autocomplete="list" />
+    <ul id="search-history" class="dropdown-list" role="listbox" aria-label="Recent searches" hidden></ul>
+    <ul id="search-suggestions" class="dropdown-list" role="listbox" aria-label="Suggestions" hidden></ul>
+  </form>
+  <span aria-hidden="true"></span>
+</div>
+
+<!-- Zoom controls -->
+<div id="zoom-stack">
+  <button id="zoom-in" class="glass-btn" aria-label="Zoom in">
+    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="12" y1="6" x2="12" y2="18"/><line x1="6" y1="12" x2="18" y2="12"/></svg>
+  </button>
+  <button id="zoom-out" class="glass-btn" aria-label="Zoom out">
+    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="6" y1="12" x2="18" y2="12"/></svg>
+  </button>
+</div>
+
+<!-- View-center coordinates: a single whisper of text -->
+<span id="coords-hud" aria-live="off"></span>
+
+<!-- Time scrubber: popover above the clock button; amber chip while shifted -->
+<div id="time-panel" class="glass-panel" role="dialog" aria-label="Show the sky at another time" hidden>
+  <span class="time-title" id="time-title">Show the sky at&hellip;</span>
+  <!-- Separate fields: nudging the TIME must never open a calendar. -->
+  <div class="time-inputs">
+    <input id="time-date" type="date" aria-label="Date to show the sky for" />
+    <input id="time-time" type="time" aria-label="Time of day to show the sky for" />
+  </div>
+  <div id="time-play-row">
+    <button id="time-play" class="glass-btn small" aria-pressed="false" aria-label="Play time forward" title="Time-lapse">
+      <svg class="icon icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5l11 6.5-11 6.5z"/></svg>
+      <svg class="icon icon-pause" viewBox="0 0 24 24" aria-hidden="true"><line x1="9" y1="6" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="18"/></svg>
+    </button>
+    <div id="time-speeds">
+      <input id="time-speed" type="range" min="0" max="1000" value="500"
+             aria-label="Playback speed, from real time up to the maximum" />
+      <div class="speed-scale" aria-hidden="true"><span>1×</span><span>hr</span><span>∞</span></div>
+    </div>
+  </div>
+  <button id="time-now" class="glass-btn small wide">Back to now</button>
+</div>
+
+<!-- Location consent: the app asks in its own words BEFORE any browser
+     geolocation prompt; the real prompt is anchored to the accept tap. -->
+<div id="loc-card" class="glass-panel" role="dialog" aria-label="Use your location?" hidden>
+  <svg class="icon loc-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-6.5-5.6-6.5-10.2a6.5 6.5 0 0 1 13 0C18.5 15.4 12 21 12 21z"/><circle cx="12" cy="10.5" r="2.4"/></svg>
+  <div class="loc-text">
+    <strong>See your own sky?</strong>
+    <span>Your location draws your horizon, compass and zenith on the sky — used on this device only, never sent anywhere.</span>
+  </div>
+  <div class="loc-actions">
+    <button id="loc-accept" class="glass-btn small wide loc-primary">Use my location</button>
+    <button id="loc-decline" class="glass-btn small wide">Not now</button>
+  </div>
+</div>
+<button id="time-chip" hidden aria-label="The sky is time-shifted — tap to adjust or reset"></button>
+
+<!-- First-run guided tour: built dynamically by js/guide.js — a click-through
+     callout with a highlight ring, replacing the old static tips card. -->
+
+<!-- Keyboard shortcuts / controls sheet (press ?) -->
+<div id="shortcuts-sheet" class="glass-panel" role="dialog" aria-label="Controls and keyboard shortcuts" hidden>
+  <button id="shortcuts-close" class="glass-btn small" aria-label="Close shortcuts">
+    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="7" y1="7" x2="17" y2="17"/><line x1="17" y1="7" x2="7" y2="17"/></svg>
+  </button>
+  <strong class="tips-title">Controls</strong>
+  <div class="sc-rows">
+    <div><span>Drag</span><span>Pan the sky</span></div>
+    <div><span>Pinch / scroll</span><span>Zoom</span></div>
+    <div><span>Two-finger twist</span><span>Rotate the view</span></div>
+    <div><kbd>/</kbd><span>Search</span></div>
+    <div><kbd>+</kbd> <kbd>−</kbd><span>Zoom in / out</span></div>
+    <div><kbd>Esc</kbd><span>Close panels</span></div>
+    <div><kbd>?</kbd><span>This sheet</span></div>
+  </div>
+</div>
+
+<!-- Center-object card: names whatever known object sits under the
+     crosshair (with its description when one is known), regardless of
+     which layers are switched on. Placed AFTER the location card so CSS
+     can shift it up when both are visible on a phone. -->
+<div id="center-card" class="glass-panel" role="status" hidden>
+  <button id="center-close" class="glass-btn small" aria-label="Dismiss">
+    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="7" y1="7" x2="17" y2="17"/><line x1="17" y1="7" x2="7" y2="17"/></svg>
+  </button>
+  <div class="center-head">
+    <span class="center-dot" aria-hidden="true"></span>
+    <strong id="center-name"></strong>
+    <span id="center-sub"></span>
+  </div>
+  <p id="center-desc"></p>
+</div>
+
+<!-- About & credits -->
+<div id="about-modal" role="dialog" aria-label="About and credits" hidden>
+  <div id="about-card" class="glass-panel">
+    <button id="about-close" class="glass-btn small" aria-label="Close about dialog">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="7" y1="7" x2="17" y2="17"/><line x1="17" y1="7" x2="7" y2="17"/></svg>
+    </button>
+    <div id="about-content"></div>
+  </div>
+</div>
+
+<!-- Toasts -->
+<div id="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+<!-- The sky engine, BUNDLED (v3.9.0-beta, LGPL-3.0-or-later) — no mutable
+     CDN /latest/ URL can change the app unreviewed, and offline startup is
+     complete. Module scripts run in order: A exists before app.js runs. -->
+<script type="module" src="js/vendor/aladin/loader.js"></script>
+<!-- Service-worker bootstrap: loaded from THIS page (always network-first,
+     always fresh) so update detection never depends on cached JS. External
+     rather than inline for the CSP; see js/swboot.js for the full story. -->
+<script src="js/swboot.js"></script>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

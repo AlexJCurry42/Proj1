@@ -1,0 +1,680 @@
+{
+  "_comment": "Curated 'Tour' fly-to destinations shown in the top-bar dropdown. fov_deg is the target field of view in degrees after the fly-to animation.",
+  "destinations": [
+    {
+      "id": "sgra",
+      "name": "Sagittarius A* (Galactic Center)",
+      "ra": 266.41683,
+      "dec": -29.007811,
+      "fov_deg": 1.0,
+      "caption": "The Milky Way's own supermassive black hole, 4.3 million solar masses packed inside a region smaller than Mercury's orbit. The Event Horizon Telescope released its shadow image in 2022 after tracking stars whip around it for decades.",
+      "survey": "P/2MASS/color"
+    },
+    {
+      "id": "m87",
+      "name": "M87 & its black hole",
+      "ra": 187.70593,
+      "dec": 12.391123,
+      "fov_deg": 0.5,
+      "caption": "This giant elliptical galaxy in Virgo hosts M87*, a 6.5-billion-solar-mass black hole and the very first one ever photographed, in the EHT's landmark 2019 image. Its relativistic jet stretches thousands of light-years into intergalactic space.",
+      "survey": "P/PanSTARRS/DR1/color-z-zg-g"
+    },
+    {
+      "id": "orion",
+      "name": "Orion Nebula (M42)",
+      "ra": 83.82208,
+      "dec": -5.391111,
+      "fov_deg": 1.5,
+      "caption": "A stellar nursery visible to the naked eye, roughly 1,344 light-years away. Ultraviolet light from the young Trapezium cluster at its heart ionizes the surrounding gas, making it glow.",
+      "survey": "P/DSS2/color"
+    },
+    {
+      "id": "andromeda",
+      "name": "Andromeda Galaxy (M31)",
+      "ra": 10.68458,
+      "dec": 41.269167,
+      "fov_deg": 3.0,
+      "caption": "Our nearest large galactic neighbor, about 2.5 million light-years away and on a slow collision course with the Milky Way. It's the most distant object easily visible to the naked eye.",
+      "survey": "P/DSS2/color"
+    },
+    {
+      "id": "pillars",
+      "name": "Pillars of Creation (M16, Eagle Nebula)",
+      "ra": 274.7,
+      "dec": -13.816667,
+      "fov_deg": 0.3,
+      "caption": "Towering columns of cold gas and dust sculpted by radiation from nearby young stars, made famous by Hubble's 1995 image and later re-imaged in infrared by JWST. New stars are actively forming inside these pillars.",
+      "survey": "P/DSS2/color"
+    },
+    {
+      "id": "cygx1",
+      "name": "Cygnus X-1",
+      "ra": 299.59033,
+      "dec": 35.201611,
+      "fov_deg": 0.5,
+      "caption": "One of the first objects ever accepted as a black hole, discovered via its X-ray emission in the early 1970s. It's a ~21-solar-mass black hole devouring material from a massive blue supergiant companion star.",
+      "survey": "P/DSS2/color"
+    },
+    {
+      "id": "hudf",
+      "name": "Hubble Ultra Deep Field position",
+      "ra": 53.1625,
+      "dec": -27.791389,
+      "fov_deg": 0.1,
+      "caption": "A small patch of Fornax that looked nearly empty to the naked eye but revealed roughly 10,000 galaxies when Hubble stared at it for over 11 days of exposure time, some seen as they were less than a billion years after the Big Bang.",
+      "survey": "P/PanSTARRS/DR1/color-z-zg-g"
+    },
+    {
+      "id": "crab",
+      "name": "Crab Nebula (M1)",
+      "ra": 83.63308,
+      "dec": 22.0145,
+      "fov_deg": 0.3,
+      "caption": "The expanding remnant of a supernova witnessed by astronomers worldwide in 1054 CE. At its center spins the Crab Pulsar, a neutron star rotating about 30 times per second.",
+      "survey": "P/PanSTARRS/DR1/color-z-zg-g"
+    },
+    {
+      "id": "pleiades",
+      "name": "Pleiades (M45)",
+      "ra": 56.85,
+      "dec": 24.116667,
+      "fov_deg": 2.5,
+      "caption": "The Seven Sisters — the sky's most famous star cluster, about 444 light-years away. Its hot young blue stars are drifting through a chance cloud of dust that scatters their light into wispy blue reflection nebulae.",
+      "survey": "P/DSS2/color"
+    },
+    {
+      "id": "horsehead",
+      "name": "Horsehead Nebula (B33)",
+      "ra": 85.24583,
+      "dec": -2.458333,
+      "fov_deg": 0.5,
+      "caption": "A chess-knight silhouette of cold dust rearing in front of the glowing hydrogen curtain IC 434, just south of Orion's Belt. The whole head spans about 3.5 light-years.",
+      "survey": "P/DSS2/color"
+    },
+    {
+      "id": "carina",
+      "name": "Carina Nebula (NGC 3372)",
+      "ra": 161.28,
+      "dec": -59.866667,
+      "fov_deg": 2.5,
+      "caption": "A southern star factory four times larger than Orion, home to Eta Carinae — a doomed star of roughly 100 solar masses that briefly became the sky's second-brightest during its 1840s eruption. JWST's 'Cosmic Cliffs' image is a corner of this nebula.",
+      "survey": "P/DSS2/color"
+    },
+    {
+      "id": "ring",
+      "name": "Ring Nebula (M57)",
+      "ra": 283.39625,
+      "dec": 33.029175,
+      "fov_deg": 0.12,
+      "caption": "A dying Sun-like star's cast-off outer layers, glowing as a luminous ring about one light-year across in Lyra. In a few billion years the Sun will build something much like this.",
+      "survey": "P/PanSTARRS/DR1/color-z-zg-g"
+    },
+    {
+      "id": "whirlpool",
+      "name": "Whirlpool Galaxy (M51)",
+      "ra": 202.46958,
+      "dec": 47.195258,
+      "fov_deg": 0.35,
+      "caption": "The archetypal grand-design spiral, its arms lit up by star formation triggered by the small companion galaxy tugging at its edge. It was the first 'nebula' ever seen to have spiral structure, by Lord Rosse in 1845.",
+      "survey": "P/SDSS9/color"
+    },
+    {
+      "id": "sombrero",
+      "name": "Sombrero Galaxy (M104)",
+      "ra": 189.99763,
+      "dec": -11.623054,
+      "fov_deg": 0.3,
+      "caption": "A galaxy seen almost edge-on, its brilliant bulge ringed by a dark brim of dust. It hosts a billion-solar-mass central black hole — one of the most massive in our cosmic neighborhood.",
+      "survey": "P/PanSTARRS/DR1/color-z-zg-g"
+    },
+    {
+      "id": "helix",
+      "name": "Helix Nebula (NGC 7293)",
+      "ra": 337.41083,
+      "dec": -20.837222,
+      "fov_deg": 0.6,
+      "caption": "The nearest bright planetary nebula, about 650 light-years away — often called the 'Eye of God'. Its comet-like knots, each the size of a solar system, number in the tens of thousands.",
+      "survey": "P/DSS2/color"
+    },
+    {
+      "id": "lagoon",
+      "name": "Lagoon Nebula (M8)",
+      "ra": 270.90417,
+      "dec": -24.386667,
+      "fov_deg": 1.2,
+      "caption": "A naked-eye star nursery in Sagittarius, toward the center of the Milky Way. Its glowing hydrogen is carved by winds from the young cluster NGC 6530 forming inside it.",
+      "survey": "P/DSS2/color"
+    },
+    {
+      "id": "tarantula",
+      "name": "Tarantula Nebula (30 Doradus)",
+      "ra": 84.66,
+      "dec": -69.1,
+      "fov_deg": 1.2,
+      "caption": "The most violent star-forming region in the entire Local Group, in the Large Magellanic Cloud. If it sat where Orion's nebula does, it would cast shadows at night and cover a quarter of the sky's width.",
+      "survey": "P/DSS2/color"
+    },
+    {
+      "id": "gw170817",
+      "name": "GW170817 kilonova site (NGC 4993)",
+      "ra": 197.44875,
+      "dec": -23.38389,
+      "fov_deg": 0.3,
+      "caption": "On 17 August 2017 two neutron stars merged in this galaxy — the first cosmic event ever seen in both gravitational waves and light. The blast forged heavy elements like gold and platinum, and its remnant is likely the lightest black hole known.",
+      "survey": "P/PanSTARRS/DR1/color-z-zg-g"
+    },
+    {
+      "id": "omegacen",
+      "name": "Omega Centauri (NGC 5139)",
+      "ra": 201.69683,
+      "dec": -47.479472,
+      "fov_deg": 0.8,
+      "caption": "Ten million stars in a ball — the Milky Way's largest globular cluster, possibly the stripped core of a dwarf galaxy we swallowed long ago. Through binoculars it looks like a slightly fuzzy 4th-magnitude star.",
+      "survey": "P/DSS2/color"
+    },
+    {
+      "id": "47tuc",
+      "name": "47 Tucanae",
+      "ra": 6.0224,
+      "dec": -72.0814,
+      "fov_deg": 0.8,
+      "survey": "P/DSS2/color",
+      "caption": "A million ancient stars in a ball so dense that collisions forge exotic 'blue straggler' stars — the southern sky's second-greatest globular cluster."
+    },
+    {
+      "id": "trifid",
+      "name": "Trifid Nebula (M20)",
+      "ra": 270.5921,
+      "dec": -23.03,
+      "fov_deg": 0.6,
+      "survey": "P/DSS2/color",
+      "caption": "Three nebula types in one: pink emission, blue reflection, and the dark dust lanes that slice it into its trifid shape."
+    },
+    {
+      "id": "omega",
+      "name": "Omega Nebula (M17)",
+      "ra": 275.1958,
+      "dec": -16.1717,
+      "fov_deg": 0.7,
+      "survey": "P/DSS2/color",
+      "caption": "A checkmark of glowing hydrogen hiding one of the youngest star clusters known, deep in the Sagittarius star clouds."
+    },
+    {
+      "id": "dumbbell",
+      "name": "Dumbbell Nebula (M27)",
+      "ra": 299.9016,
+      "dec": 22.7211,
+      "fov_deg": 0.3,
+      "survey": "P/PanSTARRS/DR1/color-z-zg-g",
+      "caption": "The first planetary nebula ever discovered (1764) — a dying star's exhaled shells, bright enough for binoculars."
+    },
+    {
+      "id": "catseye",
+      "name": "Cat's Eye Nebula (NGC 6543)",
+      "ra": 269.6392,
+      "dec": 66.6332,
+      "fov_deg": 0.12,
+      "survey": "P/PanSTARRS/DR1/color-z-zg-g",
+      "caption": "Eleven concentric shells puffed off every 1,500 years by a dying star — one of the most intricate nebulae Hubble ever imaged."
+    },
+    {
+      "id": "veil",
+      "name": "Veil Nebula",
+      "ra": 313.0,
+      "dec": 31.72,
+      "fov_deg": 2.2,
+      "survey": "P/DSS2/color",
+      "caption": "The shredded lacework of a star that exploded 10,000 years ago, still expanding across six Moon-widths of Cygnus."
+    },
+    {
+      "id": "northamerica",
+      "name": "North America Nebula (NGC 7000)",
+      "ra": 314.75,
+      "dec": 44.37,
+      "fov_deg": 3.0,
+      "survey": "P/DSS2/color",
+      "caption": "A glowing continent of hydrogen beside Deneb — its 'Gulf of Mexico' is carved by a foreground dust cloud."
+    },
+    {
+      "id": "rosette",
+      "name": "Rosette Nebula",
+      "ra": 97.98,
+      "dec": 4.95,
+      "fov_deg": 1.8,
+      "survey": "P/DSS2/color",
+      "caption": "A cosmic rose 130 light-years across; the cluster of newborn stars at its heart has hollowed out the bloom's center."
+    },
+    {
+      "id": "flame",
+      "name": "Flame Nebula (NGC 2024)",
+      "ra": 85.427,
+      "dec": -1.85,
+      "fov_deg": 0.6,
+      "survey": "P/2MASS/color",
+      "caption": "In infrared light the dust curtain parts, revealing the buried newborn star cluster that optical telescopes can't see."
+    },
+    {
+      "id": "rhooph",
+      "name": "Rho Ophiuchi cloud complex",
+      "ra": 246.79,
+      "dec": -24.58,
+      "fov_deg": 3.0,
+      "survey": "P/allWISE/color",
+      "caption": "The nearest stellar nursery to Earth — in mid-infrared its dust glows in incandescent golds around newborn suns."
+    },
+    {
+      "id": "casa",
+      "name": "Cassiopeia A",
+      "ra": 350.85,
+      "dec": 58.815,
+      "fov_deg": 0.8,
+      "survey": "P/NVSS",
+      "caption": "The brightest radio source in the entire sky beyond our Solar System: the blast wave of a supernova seen around 1680."
+    },
+    {
+      "id": "cyga",
+      "name": "Cygnus A",
+      "ra": 299.8682,
+      "dec": 40.7339,
+      "fov_deg": 0.7,
+      "survey": "P/NVSS",
+      "caption": "In radio light, two jets from a supermassive black hole inflate lobes half a million light-years across — the archetype radio galaxy."
+    },
+    {
+      "id": "cena",
+      "name": "Centaurus A (NGC 5128)",
+      "ra": 201.365,
+      "dec": -43.019,
+      "fov_deg": 1.0,
+      "survey": "P/DSS2/color",
+      "caption": "A giant elliptical galaxy wearing a stolen dust lane — the wreckage of a spiral it swallowed — with an active black hole at heart."
+    },
+    {
+      "id": "m81m82",
+      "name": "M81 & M82",
+      "ra": 148.97,
+      "dec": 69.27,
+      "fov_deg": 1.6,
+      "survey": "P/DSS2/color",
+      "caption": "A gravitational duel: grand-design spiral M81 and its neighbor M82, ignited into a starburst by their last close pass."
+    },
+    {
+      "id": "leotriplet",
+      "name": "Leo Triplet",
+      "ra": 170.06,
+      "dec": 13.2,
+      "fov_deg": 1.5,
+      "survey": "P/DSS2/color",
+      "caption": "Three spiral galaxies in one field, each tilted differently — edge-on, inclined, and face-on — 35 million light-years away."
+    },
+    {
+      "id": "markarian",
+      "name": "Markarian's Chain (Virgo Cluster)",
+      "ra": 187.0,
+      "dec": 13.0,
+      "fov_deg": 3.0,
+      "survey": "P/DSS2/color",
+      "caption": "A graceful arc of galaxies through the heart of the Virgo Cluster — our local supercluster's downtown."
+    },
+    {
+      "id": "coma",
+      "name": "Coma Cluster",
+      "ra": 194.95,
+      "dec": 27.98,
+      "fov_deg": 1.5,
+      "survey": "P/SDSS9/color",
+      "caption": "A thousand galaxies swarming in one gravitational well — where Fritz Zwicky first inferred dark matter in 1933."
+    },
+    {
+      "id": "stephan",
+      "name": "Stephan's Quintet",
+      "ra": 339.0,
+      "dec": 33.96,
+      "fov_deg": 0.3,
+      "survey": "P/PanSTARRS/DR1/color-z-zg-g",
+      "caption": "Four galaxies locked in a slow-motion collision (plus one photobombing from the foreground) — JWST's first deep-field showpiece."
+    },
+    {
+      "id": "m13",
+      "name": "Great Hercules Cluster (M13)",
+      "ra": 250.4235,
+      "dec": 36.4613,
+      "fov_deg": 0.4,
+      "survey": "P/PanSTARRS/DR1/color-z-zg-g",
+      "caption": "300,000 stars, 25,000 light-years away — target of the 1974 Arecibo message, humanity's loudest hello."
+    },
+    {
+      "id": "doublecluster",
+      "name": "Double Cluster (h & χ Persei)",
+      "ra": 34.75,
+      "dec": 57.13,
+      "fov_deg": 1.6,
+      "survey": "P/DSS2/color",
+      "caption": "Twin young star clusters born together a few thousand years apart, a naked-eye smudge known since antiquity."
+    },
+    {
+      "id": "butterfly",
+      "name": "Butterfly Nebula (NGC 6302)",
+      "ra": 258.435,
+      "dec": -37.104,
+      "fov_deg": 0.2,
+      "survey": "P/DSS2/color",
+      "caption": "Wings of gas at 36,000 °C spread from one of the hottest dying stars known — a 250,000-degree stellar corpse."
+    },
+    {
+      "id": "velapulsar",
+      "name": "Vela Pulsar",
+      "ra": 128.836,
+      "dec": -45.176,
+      "fov_deg": 8.0,
+      "survey": "P/Fermi/color",
+      "caption": "In gamma rays, the sky's brightest steady beacon: a city-sized neutron star sweeping its lighthouse beam 11 times a second."
+    },
+    {
+      "id": "smc",
+      "name": "Small Magellanic Cloud",
+      "ra": 13.19,
+      "dec": -72.83,
+      "fov_deg": 4.5,
+      "survey": "P/DSS2/color",
+      "caption": "A dwarf galaxy being slowly pulled apart by the Milky Way and its larger sibling — a naked-eye smudge from the southern hemisphere."
+    },
+    {
+      "id": "lmc",
+      "name": "Large Magellanic Cloud",
+      "ra": 80.89,
+      "dec": -69.76,
+      "fov_deg": 6.0,
+      "survey": "P/DSS2/color",
+      "caption": "Our largest satellite galaxy, 160,000 light-years away, home of the Tarantula Nebula and Supernova 1987A."
+    },
+    {
+      "id": "antennae",
+      "name": "Antennae Galaxies",
+      "ra": 180.47,
+      "dec": -18.87,
+      "fov_deg": 0.3,
+      "survey": "P/PanSTARRS/DR1/color-z-zg-g",
+      "caption": "Two spirals midway through a head-on collision, flinging hundred-thousand-light-year streamers of stars behind them."
+    },
+    {
+      "id": "cartwheel",
+      "name": "Cartwheel Galaxy",
+      "ra": 9.424,
+      "dec": -33.717,
+      "fov_deg": 0.2,
+      "survey": "P/DSS2/color",
+      "caption": "A galaxy shaped like a wagon wheel: a smaller galaxy punched straight through its center, sending out a ring-shaped starburst."
+    },
+    {
+      "id": "sculptor",
+      "name": "Sculptor Galaxy (NGC 253)",
+      "ra": 11.888,
+      "dec": -25.288,
+      "fov_deg": 0.5,
+      "survey": "P/DSS2/color",
+      "caption": "The dusty 'Silver Coin' — a starburst galaxy forming stars so furiously it drives a superwind out of its core."
+    },
+    {
+      "id": "bubble",
+      "name": "Bubble Nebula (NGC 7635)",
+      "ra": 350.19,
+      "dec": 61.2,
+      "fov_deg": 0.4,
+      "survey": "P/DSS2/color",
+      "caption": "A perfect 7-light-year soap bubble blown by the ferocious wind of a star 45 times the Sun's mass."
+    },
+    {
+      "id": "m101",
+      "name": "Pinwheel Galaxy (M101)",
+      "ra": 210.802,
+      "dec": 54.349,
+      "fov_deg": 0.6,
+      "survey": "P/SDSS9/color",
+      "caption": "A face-on spiral nearly twice the Milky Way's width — its arms are studded with giant star-forming regions."
+    },
+    {
+      "id": "blackeye",
+      "name": "Black Eye Galaxy (M64)",
+      "ra": 194.182,
+      "dec": 21.683,
+      "fov_deg": 0.3,
+      "survey": "P/SDSS9/color",
+      "caption": "A dark band of dust smolders in front of this galaxy's nucleus — its outer gas rotates BACKWARD, relic of an ancient merger."
+    },
+    {
+      "id": "m24",
+      "name": "Sagittarius Star Cloud (M24)",
+      "ra": 274.2,
+      "dec": -18.55,
+      "fov_deg": 2.5,
+      "survey": "P/DSS2/color",
+      "caption": "A window clear through the Milky Way's dust: thousands of stars per binocular field, 10,000 light-years deep."
+    },
+    {
+      "id": "m33",
+      "name": "Triangulum Galaxy (M33)",
+      "ra": 23.46204,
+      "dec": 30.66022,
+      "fov_deg": 1.5,
+      "caption": "The third-largest galaxy in our Local Group, 2.7 million light-years away — a face-on spiral so loosely wound its arms dissolve into swarms of star-forming regions. One of them, NGC 604, is among the largest stellar nurseries known, forty times the Orion Nebula's size.",
+      "survey": "P/DSS2/color"
+    },
+    {
+      "id": "m83",
+      "name": "Southern Pinwheel Galaxy (M83)",
+      "ra": 204.25396,
+      "dec": -29.86542,
+      "fov_deg": 0.4,
+      "caption": "A barred spiral 15 million light-years away that faces us square-on, its arms threaded with pink star-forming knots. It is one of the most prolific supernova factories known — six observed in the last century alone.",
+      "survey": "P/DSS2/color"
+    },
+    {
+      "id": "needle",
+      "name": "Needle Galaxy (NGC 4565)",
+      "ra": 189.08658,
+      "dec": 25.98767,
+      "fov_deg": 0.35,
+      "caption": "The archetypal edge-on spiral, 40 million light-years away: a razor-thin sliver of stars split down its whole length by a dark dust lane. This is very likely what our own Milky Way would look like from the side.",
+      "survey": "P/SDSS9/color"
+    },
+    {
+      "id": "m106",
+      "name": "M106",
+      "ra": 184.73958,
+      "dec": 47.30397,
+      "fov_deg": 0.45,
+      "caption": "A spiral 23 million light-years away with two extra 'anomalous arms' of glowing gas — jets driven by the supermassive black hole feeding at its core. Water masers orbiting that black hole gave astronomers one of the most precise galaxy distances ever measured, an anchor of the cosmic distance ladder.",
+      "survey": "P/SDSS9/color"
+    },
+    {
+      "id": "sunflower",
+      "name": "Sunflower Galaxy (M63)",
+      "ra": 198.95554,
+      "dec": 42.02928,
+      "fov_deg": 0.3,
+      "caption": "A flocculent spiral 27 million light-years away: instead of two grand arms, hundreds of short fleecy segments overlap like petals — star formation flaring wherever gas piles up, with no grand design at all.",
+      "survey": "P/SDSS9/color"
+    },
+    {
+      "id": "ngc1365",
+      "name": "Great Barred Spiral (NGC 1365)",
+      "ra": 53.40154,
+      "dec": -36.14039,
+      "fov_deg": 0.35,
+      "caption": "The showpiece of the Fornax cluster, 56 million light-years away — a textbook barred spiral whose central bar funnels gas straight into an actively feeding supermassive black hole, one of the few whose spin has been directly measured (close to the maximum physics allows).",
+      "survey": "P/DSS2/color"
+    },
+    {
+      "id": "fireworks",
+      "name": "Fireworks Galaxy (NGC 6946)",
+      "ra": 308.718,
+      "dec": 60.15392,
+      "fov_deg": 0.35,
+      "caption": "No galaxy has produced more observed supernovae — ten in the last century, versus roughly one per century expected in the Milky Way. It sits 25 million light-years away, dimmed and reddened behind the dust of our own galactic plane.",
+      "survey": "P/DSS2/color"
+    },
+    {
+      "id": "california",
+      "name": "California Nebula (NGC 1499)",
+      "ra": 60.81008,
+      "dec": 36.36747,
+      "fov_deg": 3.2,
+      "caption": "A glowing ridge of hydrogen 1,000 light-years away whose outline matches the state of California almost exactly. The single hot star Xi Persei, just off its shore, lights the whole 100-light-year coastline.",
+      "survey": "P/DSS2/color"
+    },
+    {
+      "id": "heartsoul",
+      "name": "Heart & Soul Nebulae (IC 1805 & IC 1848)",
+      "ra": 40.5,
+      "dec": 61.0,
+      "fov_deg": 5.0,
+      "caption": "Two vast star-forming clouds in Cassiopeia, 6,500 light-years away, carved from within by the young clusters they birthed — the Heart's central hollow is blown clear by stars fifty times the Sun's mass. Together they span nearly 300 light-years.",
+      "survey": "P/DSS2/color"
+    },
+    {
+      "id": "pacman",
+      "name": "Pacman Nebula (NGC 281)",
+      "ra": 13.24729,
+      "dec": 56.62189,
+      "fov_deg": 0.9,
+      "caption": "A round hydrogen cloud 9,500 light-years away with a dark dust lane biting a wedge out of one side — unmistakably Pac-Man. Silhouetted against the glow are Bok globules: opaque knots collapsing into the next generation of stars.",
+      "survey": "P/DSS2/color"
+    },
+    {
+      "id": "iris",
+      "name": "Iris Nebula (NGC 7023)",
+      "ra": 315.39842,
+      "dec": 68.16956,
+      "fov_deg": 0.6,
+      "caption": "A rare BLUE nebula: 1,300 light-years away, the young star HD 200775 lights the surrounding dust the way a streetlamp lights fog — reflected starlight, not glowing gas, unfolding in petals like its namesake flower.",
+      "survey": "P/DSS2/color"
+    },
+    {
+      "id": "crescent",
+      "name": "Crescent Nebula (NGC 6888)",
+      "ra": 303.02729,
+      "dec": 38.35494,
+      "fov_deg": 0.6,
+      "caption": "A dying heavyweight's last shell: the Wolf-Rayet star WR 136 is shedding its outer layers in a ferocious wind that slams into the gas it exhaled ages earlier, inflating this 25-light-year braided bubble. Within a few hundred thousand years the star should go supernova.",
+      "survey": "P/DSS2/color"
+    },
+    {
+      "id": "thorshelmet",
+      "name": "Thor's Helmet (NGC 2359)",
+      "ra": 109.62908,
+      "dec": -13.22719,
+      "fov_deg": 0.45,
+      "caption": "A winged helmet 12,000 light-years away, blown by the extremely hot Wolf-Rayet star at its center — a pre-supernova heavyweight whose wind inflated the 30-light-year dome while side-streams swept the gas into the 'wings'.",
+      "survey": "P/DSS2/color"
+    },
+    {
+      "id": "catspaw",
+      "name": "Cat's Paw Nebula (NGC 6334)",
+      "ra": 260.20708,
+      "dec": -36.10272,
+      "fov_deg": 1.2,
+      "caption": "Four glowing toe-pads stamped on the Scorpius Milky Way, 5,500 light-years away — one of our galaxy's most active nurseries of MASSIVE stars, holding tens of thousands of newborn suns behind its red hydrogen glow.",
+      "survey": "P/DSS2/color"
+    },
+    {
+      "id": "warandpeace",
+      "name": "War and Peace Nebula (NGC 6357)",
+      "ra": 261.18154,
+      "dec": -34.20133,
+      "fov_deg": 1.1,
+      "caption": "Home to Pismis 24, a cluster containing some of the most massive stars ever weighed — close to the theoretical limit where a star's own light tears it apart. Their radiation sculpts the surrounding cloud, 8,000 light-years away, into lobes that reminded surveyors of a dove and a skull.",
+      "survey": "P/DSS2/color"
+    },
+    {
+      "id": "elephantstrunk",
+      "name": "Elephant's Trunk Nebula (IC 1396)",
+      "ra": 324.74008,
+      "dec": 57.48906,
+      "fov_deg": 3.0,
+      "caption": "A dark, winding pillar of gas 2,400 light-years away, compressed by the radiation of a hot star into a trunk 20 light-years long with new stars igniting inside its tip. On the cloud's rim burns Mu Cephei, Herschel's 'Garnet Star' — one of the reddest naked-eye stars in the sky.",
+      "survey": "P/DSS2/color"
+    },
+    {
+      "id": "conenebula",
+      "name": "Cone Nebula & Christmas Tree Cluster (NGC 2264)",
+      "ra": 100.24271,
+      "dec": 9.89547,
+      "fov_deg": 1.0,
+      "caption": "A triangle of young stars 2,500 light-years away that really does read as a fir tree, with the dark, seven-light-year Cone Nebula as the shadow at its tip — a pillar of cold gas shielded from erosion by the stars it is still forming.",
+      "survey": "P/DSS2/color"
+    },
+    {
+      "id": "seagull",
+      "name": "Seagull Nebula (IC 2177)",
+      "ra": 106.15379,
+      "dec": -10.47106,
+      "fov_deg": 2.2,
+      "caption": "A bird gliding along the Monoceros–Canis Major border, 3,800 light-years away: a round glowing 'head' and hundred-light-year sweeping 'wings' of hydrogen, all lit by a scattering of hot young stars along the wingspan.",
+      "survey": "P/DSS2/color"
+    },
+    {
+      "id": "witchhead",
+      "name": "Witch Head Nebula (IC 2118)",
+      "ra": 76.725,
+      "dec": -7.217,
+      "fov_deg": 2.0,
+      "caption": "A cackling profile in profile — chin, nose and brow — 900 light-years away, shining not by its own light but by REFLECTED light from brilliant Rigel next door. The dust grains scatter blue best, giving the Witch her ghostly pallor.",
+      "survey": "P/DSS2/color"
+    },
+    {
+      "id": "coalsack",
+      "name": "Coalsack Dark Nebula",
+      "ra": 190.0,
+      "dec": -62.8,
+      "fov_deg": 5.5,
+      "caption": "The most famous hole in the sky: a cold dust cloud 600 light-years away blotting out the Milky Way beside the Southern Cross. To Aboriginal Australian astronomers it is the head of the great celestial Emu; to Andean cultures, a dark constellation in its own right — star maps drawn in shadow instead of light.",
+      "survey": "P/DSS2/color"
+    },
+    {
+      "id": "eskimo",
+      "name": "Eskimo Nebula (NGC 2392)",
+      "ra": 112.29483,
+      "dec": 20.91183,
+      "fov_deg": 0.1,
+      "caption": "A Sun-like star caught in the act of dying, 6,500 light-years away: the bright inner shell is its cast-off atmosphere, and the fringe of comet-shaped streamers — each a light-year long — forms the 'parka hood'. Our own Sun faces the same fate in about five billion years.",
+      "survey": "P/PanSTARRS/DR1/color-z-zg-g"
+    },
+    {
+      "id": "owl",
+      "name": "Owl Nebula (M97)",
+      "ra": 168.69879,
+      "dec": 55.01903,
+      "fov_deg": 0.15,
+      "caption": "Two dark 'eyes' staring out of a round planetary nebula 2,000 light-years away in the Big Dipper — hollows in a cylindrical shell of gas that happens to point almost straight at us, thrown off by a dying star 8,000 years ago.",
+      "survey": "P/SDSS9/color"
+    },
+    {
+      "id": "ghostofjupiter",
+      "name": "Ghost of Jupiter (NGC 3242)",
+      "ra": 156.192,
+      "dec": -18.64222,
+      "fov_deg": 0.1,
+      "caption": "In a small telescope it mimics Jupiter's pale disk — but this is a dying star 4,800 light-years away, its cast-off atmosphere blown into a glowing eye: a bright inner football of hot gas inside a fainter halo, with the doomed white-dwarf core at the pupil.",
+      "survey": "P/PanSTARRS/DR1/color-z-zg-g"
+    },
+    {
+      "id": "wildduck",
+      "name": "Wild Duck Cluster (M11)",
+      "ra": 282.77496,
+      "dec": -6.27003,
+      "fov_deg": 0.5,
+      "caption": "One of the richest open clusters known: nearly 3,000 stars packed so tightly, 6,200 light-years away, that it almost passes for a globular. Its brightest members form the flying-wedge 'V' of migrating ducks that named it.",
+      "survey": "P/DSS2/color"
+    },
+    {
+      "id": "jewelbox",
+      "name": "Jewel Box Cluster (NGC 4755)",
+      "ra": 193.4045,
+      "dec": -60.35631,
+      "fov_deg": 0.3,
+      "caption": "John Herschel called it 'a casket of variously coloured precious stones': a young southern cluster beside the Southern Cross whose blue-white sapphires surround a single burning-orange red supergiant — a color contrast visible in any small telescope, 6,400 light-years away.",
+      "survey": "P/DSS2/color"
+    }
+  ]
+}
